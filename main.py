@@ -633,7 +633,7 @@ async def upload_file(
     current_user: object = Depends(get_current_user)
 ):
     try:
-        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
         contents = await file.read()
 
         if len(contents) > MAX_FILE_SIZE:
@@ -648,11 +648,11 @@ async def upload_file(
 
         file_ext = file.filename.split(".")[-1].lower()
 
-        if file_ext in ["jpg", "jpeg", "png", "gif", "webp", "bmp"]:
+        if file_ext in ["jpg", "jpeg", "png"]:
             file_type = "image"
             final_filename = f"{safe_email}_profile.{file_ext}"
-            upload_data = contents  # Send as raw bytes
-        elif file_ext == "pdf":
+            upload_data = BytesIO(contents)
+        elif file_ext in ["pdf", "doc", "docx"]:
             file_type = "pdf"
             final_filename = f"{safe_email}_resume.{file_ext}"
             upload_data = base64.b64encode(contents).decode("utf-8")  # Base64 string only
