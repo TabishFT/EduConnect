@@ -888,396 +888,506 @@ select option {
     <div class="toast-content"></div>
   </div>
 
+
+
+
+
+
+
   <!-- Toast notification function -->
-  <script>
-    function showToast(message, type = 'success') {
-      const toast = document.getElementById('toast');
-      const toastContent = toast.querySelector('.toast-content');
-      
-      toast.className = 'toast show ' + type;
-      toastContent.textContent = message;
-      
-      setTimeout(() => {
-        toast.className = 'toast';
-      }, 3000);
-    }
- 
-  </script>
-
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Form navigation
-    const formSteps = document.querySelectorAll('.form-step');
-    const progressBar = document.querySelector('.progress');
-    const steps = document.querySelectorAll('.step');
-    const nextBtn = document.getElementById('next-btn');
-    const prevBtn = document.getElementById('prev-btn');
-
-    let currentStep = 0;
-    const totalSteps = formSteps.length;
-
-    // Update progress bar
-    function updateProgress() {
-      const progress = ((currentStep + 1) / totalSteps) * 100;
-      progressBar.style.width = `${progress}%`;
-    }
-
-    // Show current step
-    function showStep(stepIndex) {
-      formSteps.forEach((step, index) => {
-        step.classList.toggle('active', index === stepIndex);
-      });
-
-      steps.forEach((step, index) => {
-        step.classList.toggle('active', index === stepIndex);
-      });
-
-      prevBtn.disabled = stepIndex === 0;
-
-      if (stepIndex === totalSteps - 1) {
-        nextBtn.textContent = 'Create Profile';
-      } else {
-        nextBtn.textContent = 'Next';
-      }
-
-      updateProgress();
-    }
-
-    // Next button click
-    nextBtn.addEventListener('click', function() {
-      if (currentStep < totalSteps - 1) {
-        currentStep++;
-        showStep(currentStep);
-      } else {
-        // This is the final step, show Apply button and hide Next
-        nextBtn.style.display = 'none';
-        document.getElementById('apply-btn').style.display = 'inline-block';
-      }
-    });
-
-    // Previous button click
-    prevBtn.addEventListener('click', function() {
-      if (currentStep > 0) {
-        currentStep--;
-        showStep(currentStep);
-      }
-    });
-
-    // Save profile data to localStorage
-    async function saveProfileData() {
-  const profilePicInput = document.getElementById('profilePicture');
-  const resumeInput = document.getElementById('resumeInput');
-  
-  // Create profile data object
-  const profileData = {
-    fullName: document.getElementById('fullname').value,
-    profession: document.getElementById('profession').value,
-    bio: document.getElementById('bio').value,
-    // Start with empty URL - will be set later
-    profilePicture: '',
-    field: document.getElementById('field')?.value || '',
-    headline: document.getElementById('headline')?.value || '',
-    industry: document.getElementById('industry')?.value || '',
-    company: document.getElementById('company')?.value || '',
-    workExperience: document.getElementById('workExperience')?.value || '',
-    website: document.getElementById('website')?.value || '',
-    education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
-      degree: entry.querySelector('[id^="degree"]')?.value || '',
-      institution: entry.querySelector('[id^="institution"]')?.value || '',
-      year: entry.querySelector('[id^="eduYear"]')?.value || ''
-    })).filter(edu => edu.degree || edu.institution || edu.year),
-    skills: getSkills(),
-    email: document.getElementById('email').value,
-    phone: document.getElementById('phone').value,
-    location: document.getElementById('location').value,
-    linkedin: document.getElementById('linkedin').value,
-    twitter: document.getElementById('twitter').value,
-    github: document.getElementById('github').value
-  };
-
-  // Store profile picture as base64 if selected
-  if (profilePicInput.files.length > 0) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      profileData.profilePicture = e.target.result;
-      localStorage.setItem('internProfileData', JSON.stringify(profileData));
-    };
-    reader.readAsDataURL(profilePicInput.files[0]);
-  } else {
-    localStorage.setItem('internProfileData', JSON.stringify(profileData));
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastContent = toast.querySelector('.toast-content');
+    
+    toast.className = 'toast show ' + type;
+    toastContent.textContent = message;
+    
+    setTimeout(() => {
+      toast.className = 'toast';
+    }, 3000);
   }
-
-  // Store resume as base64 if selected
-  if (resumeInput.files.length > 0) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      localStorage.setItem("resumeFile", e.target.result);
-    };
-    reader.readAsDataURL(resumeInput.files[0]);
-  }
-
-  // Set role and redirect to preview
-  try {
-    const res = await fetch('/api/set_role', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'intern' })
-    });
-
-    if (res.ok) {
-      window.location.href = '/preview';
-    } else {
-      throw new Error('Role update failed');
-    }
-  } catch (err) {
-    showToast('Error saving profile: ' + err.message, 'error');
-  }
-}
-
-
-    // Get skills from the form
-    function getSkills() {
-      // User's script looked for '.skill-input', but existing HTML uses '.skill-tag'
-      // Modified to get skills from the displayed skill tags in the correct container
-      const skillsDisplayContainer = document.getElementById('skills-display-container');
-      if (!skillsDisplayContainer) return [];
-      const skillTags = skillsDisplayContainer.querySelectorAll('.skill-tag');
-      const skills = [];
-
-      skillTags.forEach(tag => {
-        skills.push(tag.textContent.trim().replace('×', '').trim());
-      });
-
-      return skills;
-    }
-
-    // Function to add a skill tag to the display (needed for loading)
-    function addSkillTag(skill) {
-        if (skill && skill.trim()) {
-            const skillsDisplayContainer = document.getElementById('skills-display-container');
-            if (!skillsDisplayContainer) return;
-            
-            // Check if skill already exists
-            const existingSkills = getSkills();
-            if (existingSkills.includes(skill.trim())) {
-                showToast('This skill already exists!', 'error');
-                return;
-            }
-            
-            const skillTag = document.createElement('div');
-            skillTag.className = 'skill-tag';
-            skillTag.innerHTML = `${skill.trim()} <span class="remove-skill">×</span>`;
-
-            const removeBtn = skillTag.querySelector('.remove-skill');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    skillTag.remove();
-                    // Optionally save after removing a skill
-                    // saveProfileData();
-                });
-            }
-
-            skillsDisplayContainer.appendChild(skillTag);
-        }
-    }
-
-
-    // Add skill button logic
-    const addSkillBtn = document.getElementById('add-skill');
-    const skillSelect = document.getElementById('skill-select');
-    const skillInput = document.getElementById('skill-input');
-
-    if (addSkillBtn && skillSelect && skillInput) {
-      addSkillBtn.addEventListener('click', function() {
-        let skillValue = '';
-
-        if (skillSelect.value === 'other') {
-          skillValue = skillInput.value.trim();
-        } else {
-          skillValue = skillSelect.value;
-        }
-
-        if (skillValue) {
-          addSkillTag(skillValue); // Use the helper function
-
-          // Reset inputs
-          skillSelect.value = '';
-          skillInput.value = '';
-          skillInput.style.display = 'none';
-          skillSelect.style.display = 'block'; // Ensure select is visible again
-
-          // Optionally save after adding a skill
-          // saveProfileData();
-        }
-      });
-
-      // Add change listener for skillSelect to toggle skillInput display
-      skillSelect.addEventListener('change', function() {
-          if (this.value === 'other') {
-              skillInput.style.display = 'block';
-              skillSelect.style.display = 'none'; // Hide select when custom input is shown
-          } else {
-              skillInput.style.display = 'none';
-              skillSelect.style.display = 'block'; // Show select when custom input is hidden
-          }
-      });
-
-       // Handle custom skill input Enter key
-       skillInput.addEventListener('keypress', (e) => {
-           if (e.key === 'Enter') {
-               e.preventDefault();
-               if (skillInput.value.trim()) {
-                   addSkillTag(skillInput.value.trim());
-                   skillInput.value = '';
-                   skillInput.style.display = 'none';
-                   skillSelect.style.display = 'block';
-                   skillSelect.value = '';
-               }
-           }
-       });
-    }
-
-    // Function to add education entry HTML (needed for loading and adding new)
-    function addEducationEntryHtml(degree = '', institution = '', year = '') {
-        const educationContainer = document.getElementById('education-entries');
-        if (!educationContainer) return;
-        const entryId = Date.now(); // Simple unique ID
-
-        const entryHTML = `
-            <div class="education-entry">
-              <div class="form-group">
-                <label for="degree${entryId}">Degree/Certificate*</label>
-                <input type="text" id="degree${entryId}" value="${degree}" required>
-              </div>
-              <div class="form-row">
-                <div class="form-group half">
-                  <label for="institution${entryId}">Institution*</label>
-                  <input type="text" id="institution${entryId}" value="${institution}" required>
-                </div>
-                <div class="form-group half">
-                  <label for="eduYear${entryId}">Year</label>
-                  <input type="text" id="eduYear${entryId}" value="${year}" placeholder="e.g. 2018-2022">
-                </div>
-              </div>
-              <button type="button" class="btn-remove" onclick="removeEducationEntry(this)">Remove</button>
-              <div class="divider"></div>
-            </div>
-          `;
-
-        educationContainer.insertAdjacentHTML('beforeend', entryHTML);
-    }
-
-    // Make removeEducationEntry globally accessible as it's used in onclick
-    window.removeEducationEntry = function(button) {
-        const entry = button.closest('.education-entry');
-        if (entry) {
-            entry.remove();
-             // Optionally save after removing education entry
-            // saveProfileData();
-        }
-    };
-
-    // Add event listener for the "Add Another Education" button
-    const addEducationBtn = document.getElementById('add-education');
-    if(addEducationBtn) {
-        addEducationBtn.addEventListener('click', function() {
-            addEducationEntryHtml(); // Add an empty entry
-            // Optionally save after adding education entry
-            // saveProfileData();
-        });
-    }
-
-
-    // Load data from localStorage on page load
-    const urlParams = new URLSearchParams(window.location.search);
-    const isEditing = urlParams.get('edit') === 'true'; // Check for edit mode
-
-    const profileData = JSON.parse(localStorage.getItem('internProfileData'));
-
-    if (profileData) {
-      // Fill form fields with existing data
-      if(document.getElementById('fullname')) document.getElementById('fullname').value = profileData.fullName || ''; // Corrected ID
-      if(document.getElementById('profession')) document.getElementById('profession').value = profileData.profession || '';
-      if(document.getElementById('bio')) document.getElementById('bio').value = profileData.bio || '';
-      // File input value cannot be set directly for security reasons
-      // if(document.getElementById('profilePicture')) document.getElementById('profilePicture').value = profileData.profilePicture || '';
-
-      // Fill professional details if elements exist (based on user's script IDs)
-      
-      if(document.getElementById('company')) document.getElementById('company').value = profileData.company || '';
-      if(document.getElementById('workExperience')) document.getElementById('workExperience').value = profileData.workExperience || '';
-      if(document.getElementById('field')) document.getElementById('field').value = profileData.fieldOfStudy || ''; // Added fieldOfStudy loading
-
-
-      // Fill education entries - User's script assumes single, existing HTML supports multiple
-      // Loading logic updated to handle array format saved by the previous script
-      const educationContainer = document.getElementById('education-entries');
-      if (educationContainer) {
-          educationContainer.innerHTML = ''; // Clear existing default entry
-
-          if (profileData.education && Array.isArray(profileData.education)) {
-              profileData.education.forEach(edu => {
-                  // Check if the saved education data is in the expected format (objects with degree, institution, year)
-                  if (edu.degree || edu.institution || edu.year) { // Basic check
-                       addEducationEntryHtml(edu.degree, edu.institution, edu.year); // Use the helper function
-                  }
-              });
-          } else if (profileData.degree || profileData.institution || profileData.graduationYear) {
-             // Handle potential single-entry format from user's saveProfileData (less robust)
-             addEducationEntryHtml(profileData.degree, profileData.institution, profileData.graduationYear);
-          }
-
-
-          // If no education entries were loaded, add one empty one
-          if (educationContainer.children.length === 0) {
-               addEducationEntryHtml();
-          }
-      }
-
-
-      // Fill skills - User's script saves skills as an array, existing HTML uses tags
-      // Modifying to load skills into the tag display
-      const skillsDisplayContainer = document.getElementById('skills-display-container'); // Corrected ID
-      if (skillsDisplayContainer && profileData.skills && Array.isArray(profileData.skills)) {
-          skillsDisplayContainer.innerHTML = ''; // Clear existing tags
-          profileData.skills.forEach(skill => {
-              addSkillTag(skill); // Use the helper function
-          });
-      }
-
-
-      if(document.getElementById('email')) document.getElementById('email').value = profileData.email || '';
-      if(document.getElementById('phone')) document.getElementById('phone').value = profileData.phone || '';
-      if(document.getElementById('location')) document.getElementById('location').value = profileData.location || '';
-      if(document.getElementById('website')) document.getElementById('website').value = profileData.website || '';
-      if(document.getElementById('linkedin')) document.getElementById('linkedin').value = profileData.linkedin || '';
-      if(document.getElementById('twitter')) document.getElementById('twitter').value = profileData.twitter || '';
-      if(document.getElementById('github')) document.getElementById('github').value = profileData.github || '';
-    } else {
-        // If no saved data, add one empty education entry by default
-        addEducationEntryHtml();
-    }
-
-
-    // Initial setup: Show the first step (index 0)
-    showStep(currentStep);
-
-    // Profile Save Logic (Apply Button)
-    const applyBtn = document.getElementById('apply-btn');
-    if(applyBtn) {
-      applyBtn.addEventListener('click', async function(e) {
-  e.preventDefault();
-  await saveProfileData();
-});
-    }
-  });
-
-
 </script>
 
 <script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Form navigation
+  const formSteps = document.querySelectorAll('.form-step');
+  const progressBar = document.querySelector('.progress');
+  const steps = document.querySelectorAll('.step');
+  const nextBtn = document.getElementById('next-btn');
+  const prevBtn = document.getElementById('prev-btn');
 
+  let currentStep = 0;
+  const totalSteps = formSteps.length;
 
+  // Update progress bar
+  function updateProgress() {
+    const progress = ((currentStep + 1) / totalSteps) * 100;
+    progressBar.style.width = `${progress}%`;
+  }
+
+  // Show current step
+  function showStep(stepIndex) {
+    formSteps.forEach((step, index) => {
+      step.classList.toggle('active', index === stepIndex);
+    });
+
+    steps.forEach((step, index) => {
+      step.classList.toggle('active', index === stepIndex);
+    });
+
+    prevBtn.disabled = stepIndex === 0;
+
+    if (stepIndex === totalSteps - 1) {
+      nextBtn.textContent = 'Create Profile';
+    } else {
+      nextBtn.textContent = 'Next';
+    }
+
+    updateProgress();
+  }
+
+  // Next button click
+  nextBtn.addEventListener('click', function() {
+    if (currentStep < totalSteps - 1) {
+      currentStep++;
+      showStep(currentStep);
+    } else {
+      // This is the final step, show Apply button and hide Next
+      nextBtn.style.display = 'none';
+      document.getElementById('apply-btn').style.display = 'inline-block';
+    }
+  });
+
+  // Previous button click
+  prevBtn.addEventListener('click', function() {
+    if (currentStep > 0) {
+      currentStep--;
+      showStep(currentStep);
+    }
+  });
+
+  // Function to upload file to ImageKit
+  async function uploadFileToImageKit(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      showToast('Uploading file...', 'info');
+      
+      const res = await fetch("/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include"
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Upload failed: ${res.status}`);
+      }
+      
+      const data = await res.json();
+      showToast('File uploaded successfully!', 'success');
+      return data.url;
+    } catch (err) {
+      console.error("Upload error:", err);
+      showToast(`Upload error: ${err.message}`, 'error');
+      throw err;
+    }
+  }
+
+  // Handle profile picture upload
+  const profilePictureInput = document.getElementById('profilePicture');
+  if (profilePictureInput) {
+    profilePictureInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
+          e.target.value = ''; // Clear the input
+          return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          showToast('Image file size should be less than 5MB', 'error');
+          e.target.value = ''; // Clear the input
+          return;
+        }
+        
+        try {
+          const imageUrl = await uploadFileToImageKit(file);
+          localStorage.setItem('profilePictureUrl', imageUrl);
+          
+          // Show preview
+          const preview = document.createElement('img');
+          preview.src = imageUrl;
+          preview.style.maxWidth = '150px';
+          preview.style.maxHeight = '150px';
+          preview.style.borderRadius = '8px';
+          preview.style.marginTop = '10px';
+          
+          // Remove existing preview if any
+          const existingPreview = document.querySelector('.profile-pic-preview');
+          if (existingPreview) {
+            existingPreview.remove();
+          }
+          
+          preview.className = 'profile-pic-preview';
+          e.target.parentNode.appendChild(preview);
+          
+        } catch (error) {
+          console.error('Profile picture upload failed:', error);
+          e.target.value = ''; // Clear the input on error
+        }
+      }
+    });
+  }
+
+  // Handle resume upload
+  const resumeInput = document.getElementById('resumeInput');
+  if (resumeInput) {
+    resumeInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Validate file type
+        const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+          showToast('Please select a valid file (PDF, PNG, or JPEG)', 'error');
+          e.target.value = ''; // Clear the input
+          return;
+        }
+        
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          showToast('Resume file size should be less than 10MB', 'error');
+          e.target.value = ''; // Clear the input
+          return;
+        }
+        
+        try {
+          const resumeUrl = await uploadFileToImageKit(file);
+          localStorage.setItem('resumeUrl', resumeUrl);
+          
+          // Show upload success message
+          const successMsg = document.createElement('div');
+          successMsg.textContent = `✓ Resume uploaded: ${file.name}`;
+          successMsg.style.color = 'green';
+          successMsg.style.fontSize = '14px';
+          successMsg.style.marginTop = '5px';
+          successMsg.className = 'resume-upload-success';
+          
+          // Remove existing success message if any
+          const existingMsg = document.querySelector('.resume-upload-success');
+          if (existingMsg) {
+            existingMsg.remove();
+          }
+          
+          e.target.parentNode.appendChild(successMsg);
+          
+        } catch (error) {
+          console.error('Resume upload failed:', error);
+          e.target.value = ''; // Clear the input on error
+        }
+      }
+    });
+  }
+
+  // Save profile data to localStorage
+  async function saveProfileData() {
+    // Get uploaded file URLs from localStorage
+    const profilePictureUrl = localStorage.getItem('profilePictureUrl') || '';
+    const resumeUrl = localStorage.getItem('resumeUrl') || '';
+    
+    // Create profile data object
+    const profileData = {
+      fullName: document.getElementById('fullname').value,
+      profession: document.getElementById('profession').value,
+      bio: document.getElementById('bio').value,
+      profilePicture: profilePictureUrl, // Use uploaded URL
+      resumeUrl: resumeUrl, // Use uploaded URL
+      field: document.getElementById('field')?.value || '',
+      headline: document.getElementById('headline')?.value || '',
+      industry: document.getElementById('industry')?.value || '',
+      company: document.getElementById('company')?.value || '',
+      workExperience: document.getElementById('workExperience')?.value || '',
+      website: document.getElementById('website')?.value || '',
+      education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
+        degree: entry.querySelector('[id^="degree"]')?.value || '',
+        institution: entry.querySelector('[id^="institution"]')?.value || '',
+        year: entry.querySelector('[id^="eduYear"]')?.value || ''
+      })).filter(edu => edu.degree || edu.institution || edu.year),
+      skills: getSkills(),
+      email: document.getElementById('email').value,
+      phone: document.getElementById('phone').value,
+      location: document.getElementById('location').value,
+      linkedin: document.getElementById('linkedin').value,
+      twitter: document.getElementById('twitter').value,
+      github: document.getElementById('github').value
+    };
+
+    // Store profile data in localStorage
+    localStorage.setItem('internProfileData', JSON.stringify(profileData));
+
+    // Set role and redirect to preview
+    try {
+      const res = await fetch('/api/set_role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'intern' })
+      });
+
+      if (res.ok) {
+        window.location.href = '/preview';
+      } else {
+        throw new Error('Role update failed');
+      }
+    } catch (err) {
+      showToast('Error saving profile: ' + err.message, 'error');
+    }
+  }
+
+  // Get skills from the form
+  function getSkills() {
+    const skillsDisplayContainer = document.getElementById('skills-display-container');
+    if (!skillsDisplayContainer) return [];
+    const skillTags = skillsDisplayContainer.querySelectorAll('.skill-tag');
+    const skills = [];
+
+    skillTags.forEach(tag => {
+      skills.push(tag.textContent.trim().replace('×', '').trim());
+    });
+
+    return skills;
+  }
+
+  // Function to add a skill tag to the display (needed for loading)
+  function addSkillTag(skill) {
+    if (skill && skill.trim()) {
+      const skillsDisplayContainer = document.getElementById('skills-display-container');
+      if (!skillsDisplayContainer) return;
+      
+      // Check if skill already exists
+      const existingSkills = getSkills();
+      if (existingSkills.includes(skill.trim())) {
+        showToast('This skill already exists!', 'error');
+        return;
+      }
+      
+      const skillTag = document.createElement('div');
+      skillTag.className = 'skill-tag';
+      skillTag.innerHTML = `${skill.trim()} <span class="remove-skill">×</span>`;
+
+      const removeBtn = skillTag.querySelector('.remove-skill');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', function() {
+          skillTag.remove();
+        });
+      }
+
+      skillsDisplayContainer.appendChild(skillTag);
+    }
+  }
+
+  // Add skill button logic
+  const addSkillBtn = document.getElementById('add-skill');
+  const skillSelect = document.getElementById('skill-select');
+  const skillInput = document.getElementById('skill-input');
+
+  if (addSkillBtn && skillSelect && skillInput) {
+    addSkillBtn.addEventListener('click', function() {
+      let skillValue = '';
+
+      if (skillSelect.value === 'other') {
+        skillValue = skillInput.value.trim();
+      } else {
+        skillValue = skillSelect.value;
+      }
+
+      if (skillValue) {
+        addSkillTag(skillValue);
+
+        // Reset inputs
+        skillSelect.value = '';
+        skillInput.value = '';
+        skillInput.style.display = 'none';
+        skillSelect.style.display = 'block';
+      }
+    });
+
+    // Add change listener for skillSelect to toggle skillInput display
+    skillSelect.addEventListener('change', function() {
+      if (this.value === 'other') {
+        skillInput.style.display = 'block';
+        skillSelect.style.display = 'none';
+      } else {
+        skillInput.style.display = 'none';
+        skillSelect.style.display = 'block';
+      }
+    });
+
+    // Handle custom skill input Enter key
+    skillInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (skillInput.value.trim()) {
+          addSkillTag(skillInput.value.trim());
+          skillInput.value = '';
+          skillInput.style.display = 'none';
+          skillSelect.style.display = 'block';
+          skillSelect.value = '';
+        }
+      }
+    });
+  }
+
+  // Function to add education entry HTML (needed for loading and adding new)
+  function addEducationEntryHtml(degree = '', institution = '', year = '') {
+    const educationContainer = document.getElementById('education-entries');
+    if (!educationContainer) return;
+    const entryId = Date.now();
+
+    const entryHTML = `
+      <div class="education-entry">
+        <div class="form-group">
+          <label for="degree${entryId}">Degree/Certificate*</label>
+          <input type="text" id="degree${entryId}" value="${degree}" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group half">
+            <label for="institution${entryId}">Institution*</label>
+            <input type="text" id="institution${entryId}" value="${institution}" required>
+          </div>
+          <div class="form-group half">
+            <label for="eduYear${entryId}">Year</label>
+            <input type="text" id="eduYear${entryId}" value="${year}" placeholder="e.g. 2018-2022">
+          </div>
+        </div>
+        <button type="button" class="btn-remove" onclick="removeEducationEntry(this)">Remove</button>
+        <div class="divider"></div>
+      </div>
+    `;
+
+    educationContainer.insertAdjacentHTML('beforeend', entryHTML);
+  }
+
+  // Make removeEducationEntry globally accessible
+  window.removeEducationEntry = function(button) {
+    const entry = button.closest('.education-entry');
+    if (entry) {
+      entry.remove();
+    }
+  };
+
+  // Add event listener for the "Add Another Education" button
+  const addEducationBtn = document.getElementById('add-education');
+  if (addEducationBtn) {
+    addEducationBtn.addEventListener('click', function() {
+      addEducationEntryHtml();
+    });
+  }
+
+  // Load data from localStorage on page load
+  const urlParams = new URLSearchParams(window.location.search);
+  const isEditing = urlParams.get('edit') === 'true';
+
+  const profileData = JSON.parse(localStorage.getItem('internProfileData'));
+
+  if (profileData) {
+    // Fill form fields with existing data
+    if (document.getElementById('fullname')) document.getElementById('fullname').value = profileData.fullName || '';
+    if (document.getElementById('profession')) document.getElementById('profession').value = profileData.profession || '';
+    if (document.getElementById('bio')) document.getElementById('bio').value = profileData.bio || '';
+    if (document.getElementById('company')) document.getElementById('company').value = profileData.company || '';
+    if (document.getElementById('workExperience')) document.getElementById('workExperience').value = profileData.workExperience || '';
+    if (document.getElementById('field')) document.getElementById('field').value = profileData.field || '';
+
+    // Fill education entries
+    const educationContainer = document.getElementById('education-entries');
+    if (educationContainer) {
+      educationContainer.innerHTML = '';
+
+      if (profileData.education && Array.isArray(profileData.education)) {
+        profileData.education.forEach(edu => {
+          if (edu.degree || edu.institution || edu.year) {
+            addEducationEntryHtml(edu.degree, edu.institution, edu.year);
+          }
+        });
+      }
+
+      if (educationContainer.children.length === 0) {
+        addEducationEntryHtml();
+      }
+    }
+
+    // Fill skills
+    const skillsDisplayContainer = document.getElementById('skills-display-container');
+    if (skillsDisplayContainer && profileData.skills && Array.isArray(profileData.skills)) {
+      skillsDisplayContainer.innerHTML = '';
+      profileData.skills.forEach(skill => {
+        addSkillTag(skill);
+      });
+    }
+
+    if (document.getElementById('email')) document.getElementById('email').value = profileData.email || '';
+    if (document.getElementById('phone')) document.getElementById('phone').value = profileData.phone || '';
+    if (document.getElementById('location')) document.getElementById('location').value = profileData.location || '';
+    if (document.getElementById('website')) document.getElementById('website').value = profileData.website || '';
+    if (document.getElementById('linkedin')) document.getElementById('linkedin').value = profileData.linkedin || '';
+    if (document.getElementById('twitter')) document.getElementById('twitter').value = profileData.twitter || '';
+    if (document.getElementById('github')) document.getElementById('github').value = profileData.github || '';
+  } else {
+    addEducationEntryHtml();
+  }
+
+  // Show existing profile picture if available
+  const existingProfilePic = localStorage.getItem('profilePictureUrl');
+  if (existingProfilePic) {
+    const preview = document.createElement('img');
+    preview.src = existingProfilePic;
+    preview.style.maxWidth = '150px';
+    preview.style.maxHeight = '150px';
+    preview.style.borderRadius = '8px';
+    preview.style.marginTop = '10px';
+    preview.className = 'profile-pic-preview';
+    
+    const profilePicInput = document.getElementById('profilePicture');
+    if (profilePicInput) {
+      profilePicInput.parentNode.appendChild(preview);
+    }
+  }
+  
+  // Show existing resume if available
+  const existingResume = localStorage.getItem('resumeUrl');
+  if (existingResume) {
+    const successMsg = document.createElement('div');
+    successMsg.textContent = '✓ Resume already uploaded';
+    successMsg.style.color = 'green';
+    successMsg.style.fontSize = '14px';
+    successMsg.style.marginTop = '5px';
+    successMsg.className = 'resume-upload-success';
+    
+    const resumeInput = document.getElementById('resumeInput');
+    if (resumeInput) {
+      resumeInput.parentNode.appendChild(successMsg);
+    }
+  }
+
+  // Initial setup: Show the first step
+  showStep(currentStep);
+
+  // Profile Save Logic (Apply Button)
+  const applyBtn = document.getElementById('apply-btn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      await saveProfileData();
+    });
+  }
+});
 </script>
 
 
