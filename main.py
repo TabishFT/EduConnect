@@ -512,42 +512,116 @@ imagekit = ImageKit(
 )
 
 
+
 # @app.post("/upload")
-# async def upload_file(file: UploadFile = File(...)):
+# async def upload_file(
+#     file: UploadFile = File(...),
+#     current_user: User = Depends(get_current_user)
+# ):
 #     try:
+#         # Validate file size (optional - add max size limit)
+#         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 #         contents = await file.read()
-#         print(f"Uploading: {file.filename}, Size: {len(contents)} bytes")
-
-#         # Convert to Base64
-#         encoded_string = base64.b64encode(contents).decode("utf-8")
-#         data_url = f"data:application/pdf;base64,{encoded_string}"
-
-#         # Upload using base64 string to preserve file as-is
-#         result = imagekit.upload(
-#             file=data_url,
-#             file_name=file.filename,
-#             options=UploadFileRequestOptions(
-#                 folder="/uploads/",
-#                 is_private_file=False,
-#                 tags=["pdf", "upload"],
-#                 use_unique_file_name=False,
-#                 overwrite_file=True  # ✅ Add this line
-# )
-
-#         )
-
-#         if result and hasattr(result, 'response_metadata') and result.response_metadata:
-#             return {
-#                 "url": result.response_metadata.raw['url'],
-#                 "name": file.filename
-#             }
+        
+#         if len(contents) > MAX_FILE_SIZE:
+#             raise HTTPException(status_code=413, detail="File too large")
+        
+#         print(f"Uploading file: {file.filename}")
+#         print(f"File size: {len(contents)} bytes")
+#         print(f"Content type: {file.content_type}")
+        
+#         # Sanitize email for filename
+#         raw_email = current_user.email
+#         safe_email = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
+        
+#         # Get file extension
+#         if not file.filename or '.' not in file.filename:
+#             raise HTTPException(status_code=400, detail="Invalid file name")
+            
+#         file_ext = file.filename.split(".")[-1].lower()
+        
+#         # Determine file type and create appropriate filename
+#         if file_ext in ["jpg", "jpeg", "png", "gif", "webp", "bmp"]:
+#             file_type = "image"
+#             final_filename = f"{safe_email}_profile.{file_ext}"
+#         elif file_ext in ["pdf"]:
+#             file_type = "pdf"
+#             final_filename = f"{safe_email}_resume.{file_ext}"
+#         elif file_ext in ["doc", "docx"]:
+#             file_type = "document"
+#             final_filename = f"{safe_email}_resume.{file_ext}"
 #         else:
-#             return JSONResponse(content={"error": "ImageKit upload failed"}, status_code=500)
-
+#             raise HTTPException(status_code=400, detail="Unsupported file type")
+        
+#         print(f"Final filename: {final_filename}")
+#         print(f"File type: {file_type}")
+        
+#         # For PDFs and documents, convert to base64
+#         if file_type in ["pdf", "document"]:
+#             file_b64 = base64.b64encode(contents).decode('utf-8')
+            
+#             # Create data URL based on file type
+#             if file_ext == "pdf":
+#                 data_url = f"data:application/pdf;base64,{file_b64}"
+#             elif file_ext in ["doc", "docx"]:
+#                 mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if file_ext == "docx" else "application/msword"
+#                 data_url = f"data:{mime_type};base64,{file_b64}"
+            
+#             upload_data = data_url
+#         else:
+#             # For images, use raw bytes
+#             upload_data = contents
+        
+#         # Upload to ImageKit
+#         upload_options = UploadFileRequestOptions(
+#             folder="/uploads/",
+#             use_unique_file_name=False,
+#             overwrite_file=True,
+#             is_private_file=False,
+#             tags=[file_type, "user_upload"]
+#         )
+        
+#         result = imagekit.upload(
+#             file=upload_data,
+#             file_name=final_filename,
+#             options=upload_options
+#         )
+        
+#         # Check if upload was successful
+#         if result and hasattr(result, 'url') and result.url:
+#             response_data = {
+#                 "success": True,
+#                 "url": result.url,
+#                 "name": final_filename,
+#                 "file_type": file_type,
+#                 "size": len(contents)
+#             }
+#             print(f"Upload successful: {response_data}")
+#             return response_data
+#         else:
+#             # Log detailed error information
+#             error_msg = "ImageKit upload failed"
+#             if hasattr(result, 'error'):
+#                 error_msg = f"ImageKit error: {result.error}"
+#             elif hasattr(result, 'response_metadata'):
+#                 error_msg = f"Upload failed: {result.response_metadata}"
+            
+#             print(f"Upload failed: {error_msg}")
+#             return JSONResponse(
+#                 content={"success": False, "error": error_msg},
+#                 status_code=500
+#             )
+            
+#     except HTTPException:
+#         raise
 #     except Exception as e:
-#         print(f"Upload failed: {str(e)}")
-#         return JSONResponse(content={"error": str(e)}, status_code=500)
-#Tabish Ansari3
+#         print(f"Upload failed with exception: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         return JSONResponse(
+#             content={"success": False, "error": f"Upload failed: {str(e)}"},
+#             status_code=500
+#         )
 
 
 
@@ -556,61 +630,72 @@ imagekit = ImageKit(
 @app.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: object = Depends(get_current_user)
 ):
     try:
-        # Sanitize email
-        raw_email = current_user.email
-        safe = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
-        
-        # Get file extension
-        ext = file.filename.split(".")[-1].lower()
-        
-        # Determine file type
-        if ext in ("jpg", "jpeg", "png", "gif", "webp"):
-            base = f"{safe}_profile"
-        else:
-            base = f"{safe}_resume"
-            
-        final_filename = f"{base}.{ext}"
-        
-        # Read file contents
+        MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
         contents = await file.read()
-        
+
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+
+        # Create a safe filename from user's email
+        raw_email = current_user.email
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
+
+        if not file.filename or '.' not in file.filename:
+            raise HTTPException(status_code=400, detail="Invalid file name")
+
+        file_ext = file.filename.split(".")[-1].lower()
+
+        if file_ext in ["jpg", "jpeg", "png", "gif", "webp", "bmp"]:
+            file_type = "image"
+            final_filename = f"{safe_email}_profile.{file_ext}"
+            upload_data = contents  # Send as raw bytes
+        elif file_ext == "pdf":
+            file_type = "pdf"
+            final_filename = f"{safe_email}_resume.{file_ext}"
+            upload_data = base64.b64encode(contents).decode("utf-8")  # Base64 string only
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+        # Set upload options
+        upload_options = UploadFileRequestOptions(
+            folder="/uploads/",
+            use_unique_file_name=False,
+            overwrite_file=True,
+            is_private_file=False,
+            tags=[file_type, "user_upload"]
+        )
+
         # Upload to ImageKit
         result = imagekit.upload(
-            file=contents,  # Pass bytes directly
+            file=upload_data,
             file_name=final_filename,
-            options=UploadFileRequestOptions(
-                folder="/uploads/",
-                use_unique_file_name=False,
-                is_private_file=False
-            )
+            options=upload_options
         )
-        
-        # Debug: Print full response
-        print(f"ImageKit response: {result}")
-        
-        # Extract URL from response
+
         if result and hasattr(result, 'url') and result.url:
             return {
+                "success": True,
                 "url": result.url,
-                "name": final_filename
+                "name": final_filename,
+                "file_type": file_type,
+                "size": len(contents)
             }
         else:
             error_msg = "ImageKit upload failed"
             if hasattr(result, 'error'):
-                error_msg = result.error
-            return JSONResponse(
-                content={"error": error_msg},
-                status_code=500
-            )
-            
+                error_msg = f"ImageKit error: {result.error}"
+            elif hasattr(result, 'response_metadata'):
+                error_msg = f"Upload failed: {result.response_metadata}"
+            return JSONResponse(content={"success": False, "error": error_msg}, status_code=500)
+
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Upload failed: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(content={"success": False, "error": f"Upload failed: {str(e)}"}, status_code=500)
+
 
 
 
