@@ -6,6 +6,7 @@ from imagekitio import ImageKit
 import base64
 from imagekitio.models.UploadFileRequestOptions import UploadFileRequestOptions
 import io
+from io import BytesIO
 import requests
 from pydantic import BaseModel, EmailStr
 from typing import Optional, Literal, List
