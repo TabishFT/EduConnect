@@ -652,13 +652,14 @@ async def upload_file(
         if file_ext in ["jpg", "jpeg", "png"]:
             file_type = "image"
             final_filename = f"{safe_email}_profile.{file_ext}"
-            upload_data = BytesIO(contents)
+            upload_data = base64.b64encode(contents).decode("utf-8")  # ✅ Now image will upload as base64 too
         elif file_ext in ["pdf", "doc", "docx"]:
             file_type = "pdf"
             final_filename = f"{safe_email}_resume.{file_ext}"
-            upload_data = base64.b64encode(contents).decode("utf-8")  # Base64 string only
+            upload_data = base64.b64encode(contents).decode("utf-8")  # Already correct
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type")
+
 
         # Set upload options
         upload_options = UploadFileRequestOptions(
@@ -673,7 +674,8 @@ async def upload_file(
         result = imagekit.upload(
             file=upload_data,
             file_name=final_filename,
-            options=upload_options
+            options=upload_options,
+            is_base64=True
         )
 
         if result and hasattr(result, 'url') and result.url:
