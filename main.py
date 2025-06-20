@@ -674,8 +674,7 @@ async def upload_file(
         result = imagekit.upload(
             file=upload_data,
             file_name=final_filename,
-            options=upload_options,
-            is_base64=True
+            options=upload_options
         )
 
         if result and hasattr(result, 'url') and result.url:
