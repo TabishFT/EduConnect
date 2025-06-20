@@ -901,48 +901,7 @@ select option {
         toast.className = 'toast';
       }, 3000);
     }
-    document.getElementById('profileForm').addEventListener('submit', submitProfile);
-
-async function submitProfile(e) {
-    e.preventDefault();
-    
-    try {
-        // Role update
-        const roleRes = await fetch('/api/set_role', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({role: 'intern'})
-        });
-        
-        if(!roleRes.ok) throw new Error('Role update failed');
-
-        // Collect all profile data
-        const profileData = {
-            fullName: document.getElementById('fullname').value,
-            profession: document.getElementById('profession').value,
-            bio: document.getElementById('bio').value,
-            skills: Array.from(document.querySelectorAll('.skill-tag span')).map(skill => skill.textContent),
-            education: Array.from(document.querySelectorAll('.education-entry')).map(edu => ({
-                degree: edu.querySelector('.degree').value,
-                institution: edu.querySelector('.institution').value,
-                year: edu.querySelector('.year').value
-            }))
-        };
-
-        // Save to localStorage
-        localStorage.setItem('internProfileData', JSON.stringify(profileData));
-        
-        // Show success message and redirect
-        showToast('Profile updated successfully!', 'success');
-        setTimeout(() => {
-            window.location.href = 'preview.html';
-        }, 1500);
-        
-    } catch (error) {
-        console.error('Save failed:', error);
-        showToast('Update failed! Please try again.', 'error');
-    }
-}
+ 
   </script>
 
 <script>
@@ -1005,12 +964,17 @@ async function submitProfile(e) {
     });
 
     // Save profile data to localStorage
-    async function saveProfileData(profilePicURL) {
+    async function saveProfileData() {
+  const profilePicInput = document.getElementById('profilePicture');
+  const resumeInput = document.getElementById('resumeInput');
+  
+  // Create profile data object
   const profileData = {
     fullName: document.getElementById('fullname').value,
     profession: document.getElementById('profession').value,
     bio: document.getElementById('bio').value,
-    profilePicture: profilePicURL,
+    // Start with empty URL - will be set later
+    profilePicture: '',
     field: document.getElementById('field')?.value || '',
     headline: document.getElementById('headline')?.value || '',
     industry: document.getElementById('industry')?.value || '',
@@ -1031,9 +995,28 @@ async function submitProfile(e) {
     github: document.getElementById('github').value
   };
 
-  localStorage.setItem('internProfileData', JSON.stringify(profileData));
-  showToast('Profile updated successfully!', 'success');
+  // Store profile picture as base64 if selected
+  if (profilePicInput.files.length > 0) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      profileData.profilePicture = e.target.result;
+      localStorage.setItem('internProfileData', JSON.stringify(profileData));
+    };
+    reader.readAsDataURL(profilePicInput.files[0]);
+  } else {
+    localStorage.setItem('internProfileData', JSON.stringify(profileData));
+  }
 
+  // Store resume as base64 if selected
+  if (resumeInput.files.length > 0) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      localStorage.setItem("resumeFile", e.target.result);
+    };
+    reader.readAsDataURL(resumeInput.files[0]);
+  }
+
+  // Set role and redirect to preview
   try {
     const res = await fetch('/api/set_role', {
       method: 'POST',
@@ -1047,7 +1030,7 @@ async function submitProfile(e) {
       throw new Error('Role update failed');
     }
   } catch (err) {
-    alert('Role update failed! कृपया दोबारा कोशिश करें।');
+    showToast('Error saving profile: ' + err.message, 'error');
   }
 }
 
@@ -1154,20 +1137,6 @@ async function submitProfile(e) {
        });
     }
 
-
-    document.getElementById("resumeInput").addEventListener("change", function(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const base64 = e.target.result;
-    localStorage.setItem("resumeFile", base64);
-    console.log("Resume file saved in localStorage");
-  };
-  reader.readAsDataURL(file);
-});
-
     // Function to add education entry HTML (needed for loading and adding new)
     function addEducationEntryHtml(degree = '', institution = '', year = '') {
         const educationContainer = document.getElementById('education-entries');
@@ -1234,12 +1203,9 @@ async function submitProfile(e) {
       // if(document.getElementById('profilePicture')) document.getElementById('profilePicture').value = profileData.profilePicture || '';
 
       // Fill professional details if elements exist (based on user's script IDs)
-      if(document.getElementById('currentPosition')) document.getElementById('currentPosition').value = profileData.currentPosition || '';
+      
       if(document.getElementById('company')) document.getElementById('company').value = profileData.company || '';
       if(document.getElementById('workExperience')) document.getElementById('workExperience').value = profileData.workExperience || '';
-      if(document.getElementById('startDate')) document.getElementById('startDate').value = profileData.startDate || '';
-      if(document.getElementById('endDate')) document.getElementById('endDate').value = profileData.endDate === 'Present' ? '' : profileData.endDate || '';
-      if(document.getElementById('responsibilities')) document.getElementById('responsibilities').value = profileData.responsibilities || '';
       if(document.getElementById('field')) document.getElementById('field').value = profileData.fieldOfStudy || ''; // Added fieldOfStudy loading
 
 
@@ -1301,23 +1267,11 @@ async function submitProfile(e) {
     if(applyBtn) {
       applyBtn.addEventListener('click', async function(e) {
   e.preventDefault();
-
-  const profilePicInput = document.getElementById('profilePicture');
-  let profilePicURL = '';
-
-  if (profilePicInput && profilePicInput.files && profilePicInput.files[0]) {
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      profilePicURL = e.target.result;
-      await saveProfileData(profilePicURL);  // ✅ Call this
-    };
-    reader.readAsDataURL(profilePicInput.files[0]);
-  } else {
-    await saveProfileData('');  // ✅ Call this
-  }
+  await saveProfileData();
 });
     }
   });
+
 
 </script>
 

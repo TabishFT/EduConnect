@@ -519,62 +519,66 @@ body {
 
 document.getElementById('continue-btn').addEventListener('click', async () => {
   const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+  let profilePicURL = '';
+  let resumeURL = '';
 
-  // Convert base64 data URL to File
-  function dataURLtoFile(dataurl, filename) {
-    const arr = dataurl.split(',');
-    const mime = arr[0].match(/:(.*?);/)[1];
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while(n--) u8arr[n] = bstr.charCodeAt(n);
-    return new File([u8arr], filename, { type: mime });
-  }
-
-  let resumeURL = localStorage.getItem("resumeUrl");
-  let profilePicURL = localStorage.getItem("profilePictureUrl");
-
-  // 1. Upload profile pic if it's a base64
-  if (profileData.profilePicture && profileData.profilePicture.startsWith("data:")) {
-    const profileFile = dataURLtoFile(profileData.profilePicture, "profile_pic.png");
-    console.log("Uploading profile image:", profileFile);
-    const res = await uploadToImageKit(profileFile);
-    if (res?.url) {
-      profilePicURL = res.url;
-      localStorage.setItem("profilePictureUrl", profilePicURL);
-      profileData.profilePicture = profilePicURL;
+  try {
+    // 1. Upload profile picture if it's base64
+    if (profileData.profilePicture && profileData.profilePicture.startsWith("data:")) {
+      profilePicURL = await uploadBase64(profileData.profilePicture, "profile_pic.png");
+      if (profilePicURL) {
+        profileData.profilePicture = profilePicURL;
+        localStorage.setItem("profilePictureUrl", profilePicURL);
+      }
     }
+
+    // 2. Upload resume if it's base64
+    const resumeBase64 = localStorage.getItem("resumeFile");
+    if (resumeBase64 && resumeBase64.startsWith("data:")) {
+      resumeURL = await uploadBase64(resumeBase64, "resume.pdf");
+      if (resumeURL) {
+        profileData.resumeUrl = resumeURL;
+        localStorage.setItem("resumeUrl", resumeURL);
+        localStorage.removeItem("resumeFile"); // Clean up
+      }
+    }
+
+    // 3. Save updated profile data
+    localStorage.setItem('internProfileData', JSON.stringify(profileData));
+    
+    // 4. Navigate to home
+    window.location.href = "/home";
+    
+  } catch (error) {
+    console.error("Upload failed:", error);
+    showToast("Failed to save profile. Please try again.", "error");
   }
-
-  // 2. Upload resume if resumeUrl is base64
- // 2. Upload resume if stored base64
-const resumeBase64 = localStorage.getItem("resumeFile");
-if (resumeBase64 && resumeBase64.startsWith("data:")) {
-  const resumeFile = dataURLtoFile(resumeBase64, "resume.pdf");
-  console.log("Uploading resume file:", resumeFile);
-  const res = await uploadToImageKit(resumeFile);
-  if (res?.url) {
-    resumeURL = res.url;
-    localStorage.setItem("resumeUrl", resumeURL);
-    profileData.resumeUrl = resumeURL;
-  }
-}
-
-
-  localStorage.setItem("internProfileData", JSON.stringify(profileData));
-
-  // TODO: Send to Firebase or MongoDB from here if needed
-
-  // Navigate
-  window.location.href = "/interns/home";
 });
 
 
+  // Helper function to upload base64 data
+  async function uploadBase64(base64Data, filename) {
+    // Convert base64 to Blob
+    const byteString = atob(base64Data.split(',')[1]);
+    const mimeType = base64Data.split(',')[0].split(':')[1].split(';')[0];
+    const ab = new ArrayBuffer(byteString.length);
+    const ia = new Uint8Array(ab);
+    
+    for (let i = 0; i < byteString.length; i++) {
+      ia[i] = byteString.charCodeAt(i);
+    }
+    
+    const blob = new Blob([ab], { type: mimeType });
+    const file = new File([blob], filename, { type: mimeType });
+    
+    // Upload the file
+    return await uploadToImageKit(file);
+  }
+
+  
 
 
-
-
-
+  // Function to upload file to ImageKit
 async function uploadToImageKit(file) {
   const formData = new FormData();
   formData.append("file", file);
@@ -583,7 +587,7 @@ async function uploadToImageKit(file) {
     const res = await fetch("/upload", {
       method: "POST",
       body: formData,
-      credentials: "include"  // Ensure cookies are sent
+      credentials: "include"
     });
     
     if (!res.ok) {
@@ -592,31 +596,14 @@ async function uploadToImageKit(file) {
     }
     
     const data = await res.json();
-    return data.url;  // Return just the URL
-    
+    return data.url;
   } catch (err) {
     console.error("Upload error:", err);
     showToast(`Upload error: ${err.message}`, "error");
-    return null;
+    throw err;
   }
 }
 
-
-
-
-
-function viewResume() {
-  const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
-  const resumeUrl = profileData.resumeUrl || localStorage.getItem("resumeUrl");
-
-  if (resumeUrl) {
-    const iframe = document.getElementById('resumeViewer');
-    iframe.src = resumeUrl;
-    iframe.style.display = 'block';
-  } else {
-    showToast('No resume found in your profile.', 'error');
-  }
-}
 
 
 </script>
