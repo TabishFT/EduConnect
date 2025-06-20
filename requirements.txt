@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pymongo
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+fastapi-sso
+email-validator
+python-multipart
+pymongo[srv]==4.3.3
+certifi==2023.7.22
+firebase_admin
+cloudinary
+httpx

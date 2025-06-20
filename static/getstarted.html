@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InternPro - Launch Your Career</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+             padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        :root {
+            --background: #1A1F2C;
+            --foreground: #F9F7F7;
+            --card: #111824;
+            --border: rgba(255, 255, 255, 0.1);
+            --accent: #E6A55E;
+            --accent-hover: #D89144;
+        }
+
+        body {
+            background: url('https://safixenterprises.github.io/landing-pg/Landing_page_img.gif');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            color: var(--foreground);
+            min-height: 100vh;
+        }
+
+        /* Header Styles */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bolder;
+        }
+
+        .sign-in-btn {
+            background-color: var(--card);
+            color: var(--foreground);
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .sign-in-btn:hover {
+            background-color: #192133;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        .video-background {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: brightness(0.4);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 1rem;
+        }
+
+        .hero-card {
+            background-color: rgba(17, 24, 36, 0.8);
+            backdrop-filter: blur(8px);
+            padding: 3rem;
+            border-radius: 0.6rem;
+            border: 1px solid var(--border);
+            max-width: 42rem;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .gradient-text {
+            display: block;
+            background: linear-gradient(to right, var(--accent), #F0C096);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero-description {
+            font-size: 1.125rem;
+            color: rgba(249, 247, 247, 0.8);
+            margin-bottom: 2rem;
+        }
+
+        .cta-button {
+            background-color: var(--accent);
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 9999px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cta-button:hover {
+            background-color: var(--accent-hover);
+            transform: scale(1.05);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 5rem 1.5rem;
+            background-color: #1A1F2C;
+        }
+
+        .features-container {
+            max-width: 72rem;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .accent-bar {
+            width: 5rem;
+            height: 0.25rem;
+            background-color: var(--accent);
+            margin: 0 auto 4rem;
+        }
+
+        .section-description {
+            font-size: 1.125rem;
+            color: rgba(249, 247, 247, 0.8);
+            max-width: 48rem;
+            margin: 0 auto 4rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            padding: 0 1rem;
+        }
+
+        .feature-card {
+            background-color: var(--card);
+            padding: 2rem;
+            border-radius: 0.6rem;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: scale(1.05);
+        }
+
+        .icon-container {
+            background-color: rgba(230, 165, 94, 0.15);
+            padding: 1rem;
+            border-radius: 9999px;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-icon {
+            width: 2rem;
+            height: 2rem;
+            color: var(--accent);
+        }
+
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .feature-description {
+            color: rgba(249, 247, 247, 0.8);
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.5rem;
+            }
+
+            .hero-card {
+                padding: 2rem;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="logo">Easify</div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <video class="video-background" autoplay loop muted playsinline>
+            <source src="https://cdn.pixabay.com/vimeo/147860375/hexagon-1847.mp4?width=1280&hash=4c8f8a6b5d16d33c6c1e78e9a5cd7f9c5e115e0f" type="video/mp4">
+        </video>
+        <div class="hero-content">
+            <div class="hero-card">
+                <h1 class="hero-title">
+                    Collaborative Platform
+                    <span class="gradient-text">for Interns and Starups</span>
+                </h1>
+                <p class="hero-description">
+                    Internship seekers and startups, meet here! Get experienced, build projects, and grow together.
+                </p>
+                <button class="cta-button" onclick="handleGetStarted()">Get Started</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-container">
+            <h2 class="section-title">Why Choose Us?</h2>
+            <div class="accent-bar"></div>
+            <p class="section-description">
+                Empowering students to launch their careers through real-world startup experiences and collaborative innovation.
+            </p>
+    
+            <div class="features-grid">
+                <!-- Startup & Internship Flexibility Card -->
+                <div class="feature-card">
+                    <div class="icon-container">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Startup or Internship Pathways</h3>
+                    <p class="feature-description">
+                        Whether you're ready to build your own venture or explore hands-on internships, our platform provides the ideal space to get started.
+                    </p>
+                </div>
+    
+                <!-- Real Project Experience Card -->
+                <div class="feature-card">
+                    <div class="icon-container">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Real Project Experience</h3>
+                    <p class="feature-description">
+                        Gain valuable, hands-on experience by working on real projects that strengthen your portfolio and boost your confidence.
+                    </p>
+                </div>
+    
+                <!-- Student Collaboration Card -->
+                <div class="feature-card">
+                    <div class="icon-container">
+                        <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <h3 class="feature-title">Peer Collaboration Network</h3>
+                    <p class="feature-description">
+                        Connect and collaborate with like-minded students to co-create, innovate, and build something impactful together.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+
+    <script>
+        function handleGetStarted() {
+            // Redirect to the login/signup page
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+</html>

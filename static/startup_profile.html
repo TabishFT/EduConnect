@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Startup Profile Creator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
+  <style>
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Premium color scheme with dark blue-gray & gold accents */
+  --background: #1A1F2C;
+  --foreground: #F9F7F7;
+  --card: #111824;
+  --card-foreground: #F9F7F7;
+  --primary: #334155;
+  --primary-hover: #1E293B;
+  --border: rgba(255, 255, 255, 0.1);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --error: #DC2626;
+  --success: #10B981;
+  --radius: 0.6rem;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --accent: #E6A55E;
+  --accent-hover: #D89144;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5em;
+}
+
+h1 {
+  font-size: 2.5rem;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-size: 2rem;
+  letter-spacing: -0.3px;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+header {
+  padding: 1rem 0;
+  background-color: rgba(17, 24, 39, 0.95);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+nav a {
+  color: var(--foreground);
+  font-weight: 500;
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+nav a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: var(--accent);
+  transition: width 0.3s ease;
+}
+
+nav a:hover::after,
+nav a.active::after {
+  width: 100%;
+}
+
+nav a.active {
+  color: var(--accent);
+}
+
+main {
+  flex: 1;
+  padding: 4rem 0;
+}
+
+.intro {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 3rem;
+}
+
+.intro h1 {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+/* Form Container */
+.form-container {
+  background-color: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* Progress Bar */
+.progress-container {
+  padding-top: 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.step {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  position: relative;
+  flex: 1;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.step.active {
+  color: var(--accent);
+  font-weight: 600;
+  transform: scale(1.05);
+}
+
+.progress-bar {
+  background-color: rgba(255, 255, 255, 0.1);
+  height: 3px;
+  width: 100%;
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+.progress {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  height: 100%;
+  width: 0;
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+/* Form Steps */
+.form-step {
+  display: none;
+  padding: 2.5rem;
+}
+
+.form-step.active {
+  display: block;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-step h2 {
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.form-step p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+}
+
+/* Form Controls */
+.form-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 1.5rem 2.5rem;
+  border-top: 1px solid var(--border);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+}
+
+input.error, select.error, textarea.error {
+  border-color: var(--error);
+}
+
+input[type="file"] {
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.checkbox label {
+  margin-bottom: 0;
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Social Inputs */
+.social-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.social-input span {
+  min-width: 80px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Tech Stack Input */
+.tech-input-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tech-input-container input {
+  flex: 1;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  color: #111824;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 10px rgba(230, 165, 94, 0.2);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 15px rgba(230, 165, 94, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(230, 165, 94, 0.2);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: rgba(230, 165, 94, 0.1);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(230, 165, 94, 0.2);
+  box-shadow: 0 4px 8px rgba(230, 165, 94, 0.1);
+}
+
+.btn-remove {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.btn-remove:hover {
+  background-color: rgba(220, 38, 38, 0.2);
+}
+
+/* Founders Entries */
+.founder-entry {
+  position: relative;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.founder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.founder-title {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 1.5rem 0 2rem;
+}
+
+/* Tech Stacks */
+.tech-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 2rem;
+}
+
+.tech-tag {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+  position: relative;
+}
+
+.remove-tech {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 0.8;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.remove-tech:hover {
+  opacity: 1;
+}
+
+/* Required skills container */
+.required-skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 2rem;
+}
+
+.skill-item {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+  position: relative;
+}
+
+.remove-skill {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 0.8;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.remove-skill:hover {
+  opacity: 1;
+}
+
+/* Location style for conditional display */
+.location-field {
+  margin-top: 1rem;
+  display: none;
+}
+
+/* Footer */
+footer {
+  background-color: rgba(17, 24, 39, 0.95);
+  padding: 2rem 0;
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  max-width: 350px;
+  transform: translateY(100px);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+  visibility: visible;
+}
+
+.toast-content {
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: white;
+  font-weight: 500;
+}
+
+.toast.error .toast-content {
+  background-color: var(--error);
+}
+
+.toast.success .toast-content {
+  background-color: var(--success);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .steps {
+    display: none; /* Hide progress steps on mobile */
+  }
+  .form-step {
+    padding: 1.5rem; /* Reduce form step padding on mobile */
+  }
+  .form-controls {
+    padding: 1rem 1.5rem; /* Reduce form controls padding on mobile */
+  }
+  .form-row {
+    flex-direction: column; /* Stack form rows on mobile */
+    gap: 0;
+  }
+  nav ul {
+    gap: 1rem; /* Reduce gap between navigation links on mobile */
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+  .footer-container {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  .footer-links {
+    margin-top: 1rem;
+    justify-content: center;
+  }
+  .btn-primary, .btn-outline {
+    padding: 0.75rem 1rem; /* Reduce button padding on smaller screens */
+  }
+  .intro h1 {
+    font-size: 2rem; /* Reduce heading size on smaller screens */
+  }
+  .form-step {
+    padding: 1.25rem; /* Further reduce form step padding on smaller screens */
+  }
+}
+
+/* Select dropdown options styling */
+select option {
+  color: black;
+  background-color: white;
+}
+</style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <div class="intro">
+        <h1>Create Your Startup Profile</h1>
+        <p>Showcase your startup, find talent, and connect with potential partners.</p>
+      </div>
+
+      <div class="form-container">
+        <div class="progress-container">
+          <div class="steps">
+            <div class="step active" data-step="1">Founders</div>
+            <div class="step" data-step="2">Startup Info</div>
+            <div class="step" data-step="3">Contact Info</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress" style="width: 20%"></div>
+          </div>
+        </div>
+
+        <div class="form-step active" data-step="1">
+          <h2>Founder Information</h2>
+          <p>Tell us about the founders of your startup. Add as many as needed.</p>
+          
+          <div id="founders-container">
+            <!-- Founder entries will be added here dynamically -->
+          </div>
+          
+          <button type="button" class="btn-secondary" id="add-founder">Add Another Founder</button>
+        </div>
+
+        <div class="form-step" data-step="2">
+          <h2>Startup Information</h2>
+          <p>Tell us about your startup venture.</p>
+          
+          <div class="form-group">
+            <label for="startup-name">Startup Name*</label>
+            <input type="text" id="startup-name" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="startup-logo">Logo (Optional)</label>
+            <input type="file" id="startup-logo" accept="image/*">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="founding-year">Founding Year*</label>
+              <input type="number" id="founding-year" min="1900" max="2025" required>
+            </div>
+            
+            <div class="form-group half">
+              <label for="location-type">Location Type*</label>
+              <select id="location-type" required>
+                <option value="">Select type</option>
+                <option value="remote">Remote / Virtual</option>
+                <option value="physical">Physical Location</option>
+                <option value="hybrid">Hybrid</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group location-field" id="physical-location-field">
+            <label for="physical-location">Location Address/City*</label>
+            <input type="text" id="physical-location" placeholder="City, Country or Full Address">
+          </div>
+        </div>
+
+        <div class="form-step" data-step="3">
+          <h2>Contact Information</h2>
+          <p>How can interested people reach your startup?</p>
+          
+          <div class="form-group">
+            <label for="contact-email">Email*</label>
+            <input type="email" id="contact-email" required autocomplete="email">
+          </div>
+          
+          <div class="form-group">
+            <label for="contact-phone">Phone Number</label>
+            <input type="tel" id="contact-phone" autocomplete="tel">
+          </div>
+          
+          <div class="form-group">
+            <label for="website">Website/Landing Page</label>
+            <input type="url" id="website" placeholder="https://example.com" autocomplete="url">
+          </div>
+          
+          <div class="form-group">
+            <label>Social Links</label>
+            <div class="social-input">
+              <span>LinkedIn:</span>
+              <input type="url" id="linkedin" placeholder="https://linkedin.com/company/..." autocomplete="url">
+            </div>
+            <div class="social-input">
+              <span>Twitter:</span>
+              <input type="url" id="twitter" placeholder="https://twitter.com/..." autocomplete="url">
+            </div>
+            <div class="social-input">
+              <span>GitHub:</span>
+              <input type="url" id="github" placeholder="https://github.com/..." autocomplete="url">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-controls">
+          <button type="button" class="btn-outline" id="prev-btn" disabled>Previous</button>
+          <button type="button" class="btn-primary" id="next-btn">Next</button>
+          <button type="button" class="btn-primary" id="apply-btn" style="display:none;">Apply</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+
+
+  <div id="toast" class="toast">
+    <div class="toast-content"></div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Select form elements
+  const formSteps = document.querySelectorAll('.form-step');
+  const nextBtn = document.getElementById('next-btn');
+  const prevBtn = document.getElementById('prev-btn');
+  const progressBar = document.querySelector('.progress');
+  const stepsContainer = document.querySelector('.steps');
+  const addFounderBtn = document.getElementById('add-founder');
+  const foundersContainer = document.getElementById('founders-container');
+  const locationTypeSelect = document.getElementById('location-type');
+  const physicalLocationField = document.getElementById('physical-location-field');
+  const startupLogoInput = document.getElementById('startup-logo');
+
+  let currentStep = 1;
+  let founderCounter = 0;
+
+  // Show/hide physical location field based on location type selection
+  locationTypeSelect.addEventListener('change', function() {
+    if (this.value === 'physical' || this.value === 'hybrid') {
+      physicalLocationField.style.display = 'block';
+      document.getElementById('physical-location').setAttribute('required', true);
+    } else {
+      physicalLocationField.style.display = 'none';
+      document.getElementById('physical-location').removeAttribute('required');
+    }
+  });
+
+  // Function to load data from localStorage
+  function loadStartupData() {
+    const startupDataString = localStorage.getItem('startupData');
+    if (startupDataString) {
+      try {
+        const data = JSON.parse(startupDataString);
+        console.log("Loading data from localStorage:", data);
+
+        // Populate Founders
+        if (data.founders && data.founders.length > 0) {
+          foundersContainer.innerHTML = ''; // Clear existing entries
+          founderCounter = 0; // Reset counter before loading
+          data.founders.forEach(founder => {
+            addFounderEntry(founder);
+          });
+        } else {
+          // If no founders data, add one empty entry by default
+          addFounderEntry();
+        }
+
+        // Populate Startup Info
+        if (data.startupInfo) {
+          document.getElementById('startup-name').value = data.startupInfo.name || '';
+          document.getElementById('founding-year').value = data.startupInfo.foundingYear || '';
+          
+          // Set location type and handle physical location field visibility
+          const locationType = data.startupInfo.locationType || '';
+          locationTypeSelect.value = locationType;
+          
+          if (locationType === 'physical' || locationType === 'hybrid') {
+            physicalLocationField.style.display = 'block';
+            document.getElementById('physical-location').value = data.startupInfo.physicalLocation || '';
+            document.getElementById('physical-location').setAttribute('required', true);
+          }
+        }
+
+        // Populate Contact Info
+        if (data.contact) {
+          document.getElementById('contact-email').value = data.contact.email || '';
+          document.getElementById('contact-phone').value = data.contact.phone || '';
+          document.getElementById('website').value = data.contact.website || '';
+          document.getElementById('linkedin').value = data.contact.linkedin || '';
+          document.getElementById('twitter').value = data.contact.twitter || '';
+          document.getElementById('github').value = data.contact.github || '';
+        }
+
+      } catch (e) {
+        console.error("Error loading or parsing data from localStorage:", e);
+        showToast('Could not load saved startup data.', 'error');
+        // If loading fails, start with a clean form
+        addFounderEntry(); // Add one empty founder entry by default
+      }
+    } else {
+      // If no data in localStorage, add one empty founder entry by default
+      addFounderEntry();
+    }
+  }
+
+  // Function to update progress bar
+  function updateProgressBar() {
+    const progressPercentage = ((currentStep - 1) / (formSteps.length - 1)) * 100;
+    progressBar.style.width = `${progressPercentage}%`;
+  }
+
+  // Function to update active step indicator
+  function updateActiveStepIndicator() {
+    const steps = stepsContainer?.querySelectorAll('.step');
+    if (!steps) return;
+    
+    steps.forEach((step, index) => {
+      if (index < currentStep) {
+        step.classList.add('active');
+      } else {
+        step.classList.remove('active');
+      }
+      
+      if (index === currentStep - 1) {
+        step.style.fontWeight = 'bold';
+      } else {
+        step.style.fontWeight = 'normal';
+      }
+    });
+  }
+
+  // Function to show specific step
+  function showStep(stepNumber) {
+    formSteps.forEach(step => step.classList.remove('active'));
+    formSteps[stepNumber - 1].classList.add('active');
+    currentStep = stepNumber;
+    updateProgressBar();
+    updateActiveStepIndicator();
+
+    prevBtn.disabled = currentStep === 1;
+
+    if (currentStep === formSteps.length) {
+      nextBtn.textContent = 'Create Profile';
+    } else {
+      nextBtn.textContent = 'Next';
+    }
+  }
+
+  // Function to go to next step
+  function nextStep() {
+    if (currentStep === formSteps.length) {
+  nextBtn.style.display = 'none';
+  document.getElementById('apply-btn').style.display = 'inline-block';
+}
+    if (validateCurrentStep()) {
+      if (currentStep < formSteps.length) {
+        showStep(currentStep + 1);
+      } else {
+        console.log("Last step reached. Calling saveStartupDataAndRedirect...");
+        saveStartupDataAndRedirect();
+      }
+    } else {
+      showToast('Please fill in all required fields.', 'error');
+    }
+  }
+
+  // Function to go to previous step
+  function prevStep() {
+    if (currentStep > 1) {
+      showStep(currentStep - 1);
+    }
+  }
+
+  // Function to validate current step
+  function validateCurrentStep() {
+    const currentFormStep = formSteps[currentStep - 1];
+    const inputs = currentFormStep.querySelectorAll('input[required], textarea[required], select[required]');
+    let isValid = true;
+
+    inputs.forEach(input => {
+      if (!input.value.trim()) {
+        input.classList.add('error');
+        isValid = false;
+      } else {
+        input.classList.remove('error');
+      }
+    });
+    
+    console.log(`Step ${currentStep} validation result: ${isValid}`);
+    return isValid;
+  }
+
+  // Function to add a new founder entry
+  function addFounderEntry(data = {}) {
+    const newEntry = document.createElement('div');
+    newEntry.classList.add('founder-entry');
+    const entryId = founderCounter++;
+
+    newEntry.innerHTML = `
+      <div class="founder-header">
+        <h3 class="founder-title">Founder ${entryId + 1}</h3>
+        ${entryId > 0 ? '<button type="button" class="btn-remove remove-founder">Remove</button>' : ''}
+      </div>
+      <div class="form-group">
+        <label for="founder-name-${entryId}">Full Name*</label>
+        <input type="text" id="founder-name-${entryId}" class="founder-name-input" value="${data.name || ''}" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group half">
+          <label for="founder-title-${entryId}">Title/Role*</label>
+          <input type="text" id="founder-title-${entryId}" class="founder-title-input" value="${data.title || ''}" placeholder="CEO, CTO, etc." required>
+        </div>
+        <div class="form-group half">
+          <label for="founder-email-${entryId}">Email (this can not be edit/update or change further)</label>
+          <input type="email" id="founder-email-${entryId}" class="founder-email-input" value="${data.email || ''}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="founder-bio-${entryId}">Bio/Background</label>
+        <textarea id="founder-bio-${entryId}" class="founder-bio-input" rows="3">${data.bio || ''}</textarea>
+      </div>`;
+
+    // Add remove button event listener if it exists
+    const removeButton = newEntry.querySelector('.remove-founder');
+    if (removeButton) {
+      removeButton.addEventListener('click', () => {
+        newEntry.remove();
+        // Update founder numbers for all entries
+        updateFounderNumbers();
+      });
+    }
+
+    foundersContainer.appendChild(newEntry);
+  }
+
+  // Function to update founder numbers after deletion
+  function updateFounderNumbers() {
+    const founderEntries = foundersContainer.querySelectorAll('.founder-entry');
+    founderEntries.forEach((entry, index) => {
+      const founderTitle = entry.querySelector('.founder-title');
+      if (founderTitle) {
+        founderTitle.textContent = `Founder ${index + 1}`;
+      }
+    });
+  }
+
+  // Function to save startup data and redirect
+  async function saveStartupDataAndRedirect() {
+    console.log("Inside saveStartupDataAndRedirect function.");
+
+    // Get role from localStorage
+    const selectedRole = localStorage.getItem('selectedRole');
+    if (!selectedRole) {
+      showToast('Role not found. Please select a role first.', 'error');
+      return;
+    }
+
+    // Handle logo file upload
+    let startupLogoDataUrl = '';
+    const logoFile = startupLogoInput.files[0];
+    
+    if (logoFile) {
+      const reader = new FileReader();
+      reader.onloadend = function() {
+        startupLogoDataUrl = reader.result;
+        saveOtherStartupData(startupLogoDataUrl, selectedRole);
+      };
+      reader.onerror = function(error) {
+        console.error("Error reading logo file:", error);
+        showToast('Error reading logo file.', 'error');
+        saveOtherStartupData('', selectedRole);
+      };
+      reader.readAsDataURL(logoFile);
+    } else {
+      // Check if there was a previously saved logo
+      const existingData = localStorage.getItem('startupData');
+      if (existingData) {
+        try {
+          const parsedData = JSON.parse(existingData);
+          startupLogoDataUrl = parsedData.startupInfo?.logo || '';
+        } catch (e) {
+          console.error("Error parsing existing data for logo:", e);
+          startupLogoDataUrl = '';
+        }
+      }
+      // Save other data immediately if no new logo is selected
+      saveOtherStartupData(startupLogoDataUrl, selectedRole);
+    }
+  }
+
+  // Function to save the rest of the startup data
+  async function saveOtherStartupData(logoDataUrl, selectedRole) {
+    // Collect founders data
+    const foundersData = Array.from(foundersContainer.querySelectorAll('.founder-entry')).map(entry => ({
+      name: entry.querySelector('.founder-name-input').value.trim(),
+      title: entry.querySelector('.founder-title-input').value.trim(),
+      email: entry.querySelector('.founder-email-input').value.trim(),
+      bio: entry.querySelector('.founder-bio-input').value.trim()
+    })).filter(founder => founder.name || founder.title);
+
+    // Get location information
+    const locationType = locationTypeSelect.value;
+    let physicalLocation = '';
+    if (locationType === 'physical' || locationType === 'hybrid') {
+      physicalLocation = document.getElementById('physical-location').value.trim();
+    }
+
+    // Collect all startup data
+    const startupData = {
+      founders: foundersData,
+      startupInfo: {
+        name: document.getElementById('startup-name').value.trim(),
+        logo: localStorage.getItem("logoUrl") || logoDataUrl,
+        foundingYear: document.getElementById('founding-year').value.trim(),
+        locationType: locationType,
+        physicalLocation: physicalLocation
+      },
+      contact: {
+        email: document.getElementById('contact-email').value.trim(),
+        phone: document.getElementById('contact-phone').value.trim(),
+        website: document.getElementById('website').value.trim(),
+        linkedin: document.getElementById('linkedin').value.trim(),
+        twitter: document.getElementById('twitter').value.trim(),
+        github: document.getElementById('github').value.trim()
+      }
+    };
+
+    try {
+      // Save startup data to localStorage
+      localStorage.setItem('startupData', JSON.stringify(startupData));
+
+      // Submit role to backend
+      const response = await fetch('/api/set_role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ role: selectedRole })
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // If unauthorized, redirect to login
+          window.location.href = '/login';
+          return;
+        }
+        throw new Error('Failed to update role in database');
+      }
+
+      // Clear role from localStorage
+      localStorage.removeItem('selectedRole');
+
+      // Show success message
+      showToast('Profile data saved. Redirecting to preview...', 'success');
+      
+      // Redirect to preview page
+      setTimeout(() => {
+        window.location.href = '/preview2';
+      }, 1500);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      showToast('Could not save profile data. Please try again.', 'error');
+    }
+  }
+
+  // Function to show toast notifications
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastContent = toast.querySelector('.toast-content');
+    if (!toast || !toastContent) return;
+
+    toast.className = 'toast show ' + type;
+    toastContent.textContent = message;
+
+    setTimeout(() => {
+      toast.className = 'toast';
+    }, 3000);
+  }
+
+  // Event listeners
+  nextBtn.addEventListener('click', nextStep);
+  prevBtn.addEventListener('click', prevStep);
+  addFounderBtn.addEventListener('click', () => addFounderEntry());
+
+  // Initial setup
+  loadStartupData();
+  showStep(1);
+});
+</script>
+<script>
+</script>
+
+</body>
+</html>

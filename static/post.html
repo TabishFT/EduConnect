@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Post Creation Form</title>
+    <style>
+        /* --- Base Styles --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            color: #fff;
+            line-height: 1.5;
+        }
+
+        /* --- Layout --- */
+        .main {
+            display: flex;
+            flex-direction: column; /* Mobile first: single column */
+            padding: 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            gap: 2rem;
+        }
+
+        /* Desktop layout: side-by-side */
+        @media (min-width: 1024px) {
+            .main {
+                flex-direction: row;
+                padding: 2rem;
+            }
+        }
+
+        /* --- Form Container --- */
+        .create_post {
+            flex: 1; /* Takes available space left by preview_wrapper on desktop */
+            background: #1e293b;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            /* Width remains consistent as preview_wrapper always takes up space */
+        }
+
+        @media (min-width: 640px) {
+            .create_post {
+                padding: 2rem; /* More padding on larger screens */
+            }
+        }
+
+        /* --- Form Header --- */
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            color: #f59e0b; /* Accent color */
+            margin-bottom: 0.75rem;
+            line-height: 1.2;
+        }
+
+        @media (min-width: 640px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+        }
+
+        .header p {
+            color: #94a3b8; /* Lighter text color */
+            font-size: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .header p {
+                font-size: 1.2rem;
+            }
+        }
+
+        /* --- Image Upload --- */
+        .image_upload_area {
+            border: 2px dashed #475569;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+        }
+
+        .image_upload_area:hover {
+            border-color: #f59e0b;
+            background: rgba(245, 158, 11, 0.1); /* Subtle hover effect */
+        }
+
+        .image_preview {
+            display: none; /* Hidden until image is selected */
+            width: 100%;
+            aspect-ratio: 16/9; /* Common aspect ratio */
+            border-radius: 0.75rem;
+            overflow: hidden;
+            margin-bottom: 1rem;
+            background-color: #334155; /* Placeholder background */
+        }
+
+        .image_preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Ensure image covers the area */
+        }
+
+        /* --- Form Inputs --- */
+        .details_tag {
+            font-size: 1rem;
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .details {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 0.5rem;
+            color: #fff;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            resize: none; /* Disable textarea resizing */
+            transition: all 0.3s;
+            min-height: 2.5rem; /* Minimum height for single-line textareas */
+        }
+
+        .details:focus {
+            outline: none;
+            border-color: #f59e0b;
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2); /* Focus ring */
+        }
+
+        /* --- Buttons --- */
+        .post_preview_buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end; /* Align buttons to the right */
+            margin-top: 2rem;
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            font-size: 1rem;
+            white-space: nowrap; /* Prevent text wrapping */
+        }
+
+        @media (max-width: 640px) {
+            .button {
+                padding: 0.75rem 1rem;
+                font-size: 0.875rem; /* Smaller buttons on small screens */
+            }
+        }
+
+        .preview_button {
+            background: #334155;
+            color: #fff;
+            border: 1px solid #475569;
+        }
+
+        .preview_button:hover {
+            background: #475569;
+        }
+
+        .post_button {
+            background: #f59e0b;
+            color: #000;
+        }
+
+        .post_button:hover {
+            background: #d97706; /* Darker shade on hover */
+        }
+
+        /* --- Preview Area Styling --- */
+
+        /* Styles for the actual preview content card area */
+        .preview_post {
+             /* Mobile: initially hidden, takes full width when shown */
+             /* Desktop: shown/hidden by JS, sits inside wrapper */
+            display: none; /* Initially hidden */
+            width: 100%; /* Takes full width of its container */
+            will-change: transform; /* Hint to the browser for smoother rendering */
+        }
+
+         /* Styles for the wrapper that reserves space on desktop */
+        .preview_wrapper {
+             /* Mobile: acts like a normal div */
+             width: 100%;
+             margin-top: 2rem; /* Space below form on mobile */
+        }
+
+
+        /* Desktop styles for the wrapper */
+        @media (min-width: 1024px) {
+            .preview_wrapper {
+                position: sticky; /* Make it sticky */
+                top: 2rem;       /* Offset from top */
+                flex: 0 0 40%;   /* **Takes fixed 40% width, preserves space** */
+                height: calc(100vh - 4rem); /* Fill available height */
+                overflow-y: auto; /* Allow internal scrolling if needed */
+                margin-top: 0;   /* Reset mobile margin */
+                display: block;  /* Ensure it's a block element */
+            }
+             /* Reset width for preview_post inside wrapper on desktop */
+             .preview_post {
+                 margin-top: 0; /* Reset mobile margin */
+             }
+        }
+
+        /* --- Preview Card --- */
+        .post_card {
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+            border-radius: 1rem;
+            overflow: hidden;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            max-width: 500px; /* Limit width on smaller screens */
+            margin: 0 auto; /* Center card on mobile */
+        }
+
+        @media (min-width: 1024px) {
+            .post_card {
+                margin: 0; /* Align to container on desktop */
+                max-width: none; /* Allow full width within sidebar */
+            }
+        }
+
+         /* Preview Image Container */
+        #previewImageContainer {
+             display: none; /* Hidden until image uploaded */
+             width: 100%;
+             aspect-ratio: 16/9;
+             overflow: hidden;
+             background-color: #334155; /* Placeholder background */
+        }
+         #previewImageContainer img {
+             width: 100%;
+             height: 100%;
+             object-fit: cover;
+         }
+
+
+        .post_card .info {
+            padding: 1.5rem;
+        }
+
+        .post_card .name {
+            font-size: 1.5rem;
+            color: #f59e0b;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            word-break: break-word; /* Prevent long names from overflowing */
+        }
+
+        @media (min-width: 640px) {
+            .post_card .name {
+                font-size: 1.8rem;
+            }
+        }
+
+        .post_card .tagline {
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-style: italic;
+            word-break: break-word;
+        }
+
+        /* Info sections within the card */
+        .info_section {
+            background: #1e293b; /* Slightly different background */
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .info_section h4 {
+            color: #f59e0b;
+            font-size: 0.875rem; /* Smaller heading */
+            margin-bottom: 0.5rem;
+            text-transform: uppercase; /* Uppercase for style */
+            letter-spacing: 0.05em;
+        }
+
+        .info_section p {
+            color: #e2e8f0; /* Lighter text for content */
+            word-break: break-word;
+            white-space: pre-wrap; /* Preserve line breaks from textarea */
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="main">
+        <div class="create_post">
+            <div class="header">
+                <h1>Create Your Professional Post</h1>
+                <p>Design a compelling job posting to attract the perfect candidates.</p>
+            </div>
+
+            <div class="image_upload_area" id="uploadArea">
+                <p>Click to upload or drag and drop</p>
+                <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
+                    SVG, PNG, JPG or GIF (max. 2MB)
+                </p>
+            </div>
+            <div class="image_preview" id="imagePreview">
+                <img id="uploadedImage" src="" alt="Form Upload Preview">
+            </div>
+            <input type="file" id="fileInput" style="display: none;" accept="image/*">
+
+            <div class="details_tag">Startup Name</div>
+            <textarea class="details" id="name" rows="1" placeholder="Your company's name"></textarea>
+
+            <div class="details_tag">Tagline</div>
+            <textarea class="details" id="tagline" rows="2" placeholder="A short, catchy phrase that sums up your brand"></textarea>
+
+            <div class="details_tag">Job Title</div>
+            <textarea class="details" id="title" rows="1" placeholder="Position you're hiring for"></textarea>
+
+            <div class="details_tag">Required Skills</div>
+            <textarea class="details" id="skills" rows="3" placeholder="Skills needed for this role (comma-separated)"></textarea>
+
+            <div class="details_tag">Job Description</div>
+            <textarea class="details" id="body" rows="5" placeholder="Detailed description of the job responsibilities and expectations"></textarea>
+
+            <div class="post_preview_buttons">
+                <button class="button preview_button" onclick="togglePreview()">Show Preview</button>
+                <button class="button post_button" onclick="submitPost()">Publish Post</button>
+            </div>
+        </div>
+
+        <div class="preview_wrapper">
+            <div class="preview_post" id="previewWindow">
+                <div class="post_card">
+                    <div id="previewImageContainer">
+                         <img id="previewImage" src="" alt="Post Image Preview">
+                    </div>
+                    <div class="info">
+                        <div class="name" id="previewName" data-placeholder="Startup Name">Startup Name</div>
+                        <div class="tagline" id="previewTagline" data-placeholder="Your company tagline will appear here">Your company tagline will appear here</div>
+
+                        <div class="info_section">
+                            <h4>Position</h4>
+                            <p id="previewTitle" data-placeholder="Job Title">Job Title</p>
+                        </div>
+
+                        <div class="info_section">
+                            <h4>Required Skills</h4>
+                            <p id="previewSkills" data-placeholder="Skills needed for this position">Skills needed for this position</p>
+                        </div>
+
+                        <div class="info_section">
+                            <h4>Description</h4>
+                            <p id="previewBody" data-placeholder="Detailed job description">Detailed job description</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div> </div> <script>
+        // --- DOM Element References ---
+        const fileInput = document.getElementById('fileInput');
+        const uploadArea = document.getElementById('uploadArea');
+        const imagePreviewInForm = document.getElementById('imagePreview'); // Div containing image preview in form
+        const uploadedImage = document.getElementById('uploadedImage'); // Image tag inside imagePreviewInForm
+        const previewImageContainer = document.getElementById('previewImageContainer'); // Div containing image in the actual post card preview
+        const previewImage = document.getElementById('previewImage'); // Image tag inside previewImageContainer
+        const previewWindow = document.getElementById('previewWindow'); // The actual preview content area (inside wrapper)
+        const previewButton = document.querySelector('.preview_button'); // The "Show/Hide Preview" button
+
+        // --- Input Fields for Real-time Update ---
+        const fields = ['name', 'tagline', 'title', 'skills', 'body'];
+        fields.forEach(field => {
+            const element = document.getElementById(field);
+            if (element) {
+                // Add input listener to update preview in real-time
+                element.addEventListener('input', updatePreview);
+            }
+            // Set placeholder data attribute on corresponding preview elements for fallback
+            const previewElement = document.getElementById(`preview${field.charAt(0).toUpperCase() + field.slice(1)}`);
+            if (previewElement && !previewElement.hasAttribute('data-placeholder')) {
+                previewElement.setAttribute('data-placeholder', previewElement.textContent);
+            }
+        });
+
+        // --- State Variable ---
+        let isPreviewLogicallyVisible = false; // Tracks the *intended* state (shown/hidden)
+
+        // --- Image Upload Handling ---
+        // Trigger file input click when upload area is clicked
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and Drop Listeners for upload area styling
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Necessary to allow drop
+            uploadArea.style.borderColor = '#f59e0b';
+            uploadArea.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#475569';
+            uploadArea.style.backgroundColor = 'transparent';
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#475569';
+            uploadArea.style.backgroundColor = 'transparent';
+            // Process dropped file if present
+            if (e.dataTransfer.files.length) {
+                handleImageUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        // File Input Change Listener
+        fileInput.addEventListener('change', (e) => {
+            // Process selected file if present
+            if (e.target.files.length) {
+                handleImageUpload(e.target.files[0]);
+            }
+        });
+
+        // Function to process the uploaded image file
+        function handleImageUpload(file) {
+            // Basic validation: Check if it's an image file
+            if (!file.type.startsWith('image/')){
+                alert('Please upload an image file (SVG, PNG, JPG, GIF).');
+                return;
+            }
+
+            const reader = new FileReader();
+            // Define what happens when the file is successfully read
+            reader.onload = (e) => {
+                const imageUrl = e.target.result; // Get the data URL
+
+                // Update image preview within the form section
+                uploadedImage.src = imageUrl;
+                imagePreviewInForm.style.display = 'block';
+                uploadArea.style.display = 'none';
+
+                // Update image in the actual post preview card
+                previewImage.src = imageUrl;
+                previewImageContainer.style.display = 'block';
+
+                // Call updatePreview after image is loaded and displayed
+                updatePreview();
+            };
+            // Define what happens on file reading error
+            reader.onerror = () => {
+                alert('Error reading the image file.');
+            };
+            // Read the file as a Data URL
+            reader.readAsDataURL(file);
+        }
+
+        // --- Preview Functionality ---
+
+        /**
+         * Toggles the visibility state of the preview content area (.preview_post)
+         * and updates the button text. Works for both mobile and desktop.
+         */
+        function togglePreview() {
+            const isMobile = window.innerWidth < 1024; // Check mobile state inside the function
+
+            // 1. Toggle the logical visibility state
+            isPreviewLogicallyVisible = !isPreviewLogicallyVisible;
+
+            // 2. Update display style for the preview content window
+            previewWindow.style.display = isPreviewLogicallyVisible ? 'block' : 'none';
+
+            // Add mobile min-height adjustment
+            if (isMobile) {
+                 if (isPreviewLogicallyVisible) {
+                     previewWindow.style.minHeight = '1px'; // Add a minimal height hint
+                 } else {
+                     previewWindow.style.minHeight = ''; // Remove min-height when hidden
+                 }
+            } else {
+                // Ensure no min-height on desktop if it was accidentally applied
+                 previewWindow.style.minHeight = '';
+            }
+            // End mobile min-height adjustment
+
+
+            // 3. Update button text based on the new logical state
+            previewButton.textContent = isPreviewLogicallyVisible ? 'Hide Preview' : 'Show Preview';
+
+            // 4. Ensure preview content is up-to-date when shown
+            if (isPreviewLogicallyVisible) {
+                 updatePreview();
+            }
+        }
+
+        /**
+         * Updates the text content of the preview elements based on the current form input values.
+         * Uses data-placeholder attributes as fallbacks if inputs are empty.
+         */
+        function updatePreview() {
+            fields.forEach(field => {
+                const inputElement = document.getElementById(field);
+                const previewElement = document.getElementById(`preview${field.charAt(0).toUpperCase() + field.slice(1)}`);
+                if (inputElement && previewElement) {
+                    const value = inputElement.value.trim(); // Get trimmed input value
+                    // Set preview text to input value, or fallback to placeholder attribute, or empty string
+                    previewElement.textContent = value || previewElement.getAttribute('data-placeholder') || '';
+                }
+            });
+            // Note: Image preview is updated separately in handleImageUpload
+        }
+
+        // --- Initialization ---
+
+        /**
+         * Sets the initial state of the preview content area (visibility) and the preview button (visibility and text)
+         * based on the screen size when the page loads or resizes.
+         */
+        function initializePreviewState() {
+            const isMobile = window.innerWidth < 1024;
+
+            if (isMobile) {
+                // Mobile: Preview content starts hidden, button visible with "Show Preview"
+                previewWindow.style.display = 'none';
+                isPreviewLogicallyVisible = false;
+                previewButton.textContent = 'Show Preview';
+                previewButton.style.display = 'inline-block'; // Ensure button is visible
+                previewWindow.style.minHeight = ''; // Ensure no min-height initially on mobile
+
+            } else {
+                // Desktop: Preview content starts VISIBLE, button visible with "Hide Preview"
+                previewWindow.style.display = 'block'; // Show preview content by default
+                isPreviewLogicallyVisible = true;
+                previewButton.textContent = 'Hide Preview'; // Reflect visible state
+                previewButton.style.display = 'inline-block'; // Ensure button is visible
+                 previewWindow.style.minHeight = ''; // Ensure no min-height on desktop
+            }
+
+            // Populate preview with initial form values or placeholders if it's initially visible
+             if (isPreviewLogicallyVisible) {
+                 updatePreview();
+                 // If preview is initially visible on mobile (shouldn't happen with current logic, but as a safeguard)
+                 if (isMobile) {
+                      previewWindow.style.minHeight = '1px';
+                 }
+            }
+        }
+
+        // --- Form Submission ---
+        /**
+         * Handles the "Publish Post" button click.
+         * Includes basic validation.
+         */
+        function submitPost() {
+            // Basic validation example: Check if name and title are filled
+            const name = document.getElementById('name').value.trim();
+            const title = document.getElementById('title').value.trim();
+            if (!name || !title) {
+                alert('Please fill in at least the Startup Name and Job Title before publishing.');
+                return; // Stop submission if validation fails
+            }
+
+            // --- Data Collection (Example) ---
+            const postData = {
+                name: name,
+                tagline: document.getElementById('tagline').value.trim(),
+                title: title,
+                skills: document.getElementById('skills').value.trim(),
+                description: document.getElementById('body').value.trim(),
+                // imageUrl: previewImage.src // Example
+            };
+            console.log("Submitting Post Data:", postData);
+
+            // --- API Call (Simulation) ---
+            alert('Post published successfully! (Simulation)');
+
+            // Optionally clear form or redirect
+        }
+
+        // --- Event Listeners Setup ---
+        // Initialize the preview state when the page finishes loading
+        window.addEventListener('load', initializePreviewState);
+        // Re-initialize the preview state if the window is resized
+        window.addEventListener('resize', initializePreviewState);
+
+    </script>
+</body>
+</html>

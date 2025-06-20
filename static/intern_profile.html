@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Creator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
+  <!-- Add to <head> section of all pages -->
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <style>
+        /* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Premium color scheme with dark blue-gray & gold accents */
+  --background: #1A1F2C;
+  --foreground: #F9F7F7;
+  --card: #111824;
+  --card-foreground: #F9F7F7;
+  --primary: #334155;
+  --primary-hover: #1E293B;
+  --border: rgba(255, 255, 255, 0.1);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --error: #DC2626;
+  --success: #10B981;
+  --radius: 0.6rem;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --accent: #E6A55E;
+  --accent-hover: #D89144;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 0.5em;
+}
+
+h1 {
+  font-size: 2.5rem;
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-size: 2rem;
+  letter-spacing: -0.3px;
+}
+
+h3 {
+  font-size: 1.5rem;
+}
+
+p {
+  margin-bottom: 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Layout */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+header {
+  padding: 1rem 0;
+  background-color: rgba(17, 24, 39, 0.95);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+nav ul {
+  display: flex;
+  list-style: none;
+  gap: 2rem;
+}
+
+nav a {
+  color: var(--foreground);
+  font-weight: 500;
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+nav a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -2px;
+  left: 0;
+  background-color: var(--accent);
+  transition: width 0.3s ease;
+}
+
+nav a:hover::after,
+nav a.active::after {
+  width: 100%;
+}
+
+nav a.active {
+  color: var(--accent);
+}
+
+main {
+  flex: 1;
+  padding: 4rem 0;
+}
+
+.intro {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 3rem;
+}
+
+.intro h1 {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+}
+
+/* Form Container */
+.form-container {
+  background-color: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* Progress Bar */
+.progress-container {
+  padding-top: 1.5rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.step {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  position: relative;
+  flex: 1;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.step.active {
+  color: var(--accent);
+  font-weight: 600;
+  transform: scale(1.05);
+}
+
+.progress-bar {
+  background-color: rgba(255, 255, 255, 0.1);
+  height: 3px;
+  width: 0;
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+.progress {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  height: 100%;
+  width: 0;
+  transition: width 0.5s ease;
+  border-radius: 3px;
+}
+
+/* Form Steps */
+.form-step {
+  display: none;
+  padding: 2.5rem;
+}
+
+.form-step.active {
+  display: block;
+  animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-step h2 {
+  color: white;
+  margin-bottom: 0.5rem;
+}
+
+.form-step p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+}
+
+/* Form Controls */
+.form-controls {
+  display: flex;
+  justify-content: space-between;
+  padding: 1.5rem 2.5rem;
+  border-top: 1px solid var(--border);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+}
+
+input.error, select.error, textarea.error {
+  border-color: var(--error);
+}
+
+input[type="file"] {
+  padding: 0.5rem 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+.checkbox label {
+  margin-bottom: 0;
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Social Inputs */
+.social-input {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.social-input span {
+  min-width: 80px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Skill Input */
+.skill-input-container {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.skill-input-container input {
+  flex: 1;
+}
+
+/* Buttons */
+button {
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  color: #111824;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 10px rgba(230, 165, 94, 0.2);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 15px rgba(230, 165, 94, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 5px rgba(230, 165, 94, 0.2);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: rgba(230, 165, 94, 0.1);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.btn-secondary:hover {
+  background-color: rgba(230, 165, 94, 0.2);
+  box-shadow: 0 4px 8px rgba(230, 165, 94, 0.1);
+}
+
+.btn-remove {
+  background-color: rgba(220, 38, 38, 0.1);
+  color: var(--error);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.btn-remove:hover {
+  background-color: rgba(220, 38, 38, 0.2);
+}
+
+/* Education & Experience Entries */
+.education-entry, .experience-entry {
+  position: relative;
+  padding: 1rem 0;
+}
+
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 1.5rem 0 2rem;
+}
+
+/* Skills */
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 2rem;
+}
+
+.skill-tag {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+  position: relative;
+}
+
+.remove-skill {
+  margin-left: 0.5rem;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 0.8;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.remove-skill:hover {
+  opacity: 1;
+}
+
+/* Footer */
+footer {
+  background-color: rgba(17, 24, 39, 0.95);
+  padding: 2rem 0;
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-links a {
+  color: rgba(255, 255, 255, 0.7);
+  transition: color 0.3s ease;
+}
+
+.footer-links a:hover {
+  color: var(--accent);
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4CAF50;
+  color: white;
+  padding: 15px;
+  border-radius: 5px;
+  display: none;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.toast.show {
+  display: block;
+}
+
+.toast.error {
+  background: #f44336;
+}
+
+.toast-content {
+  border-radius: var(--radius);
+  padding: 1rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color: white;
+  font-weight: 500;
+}
+
+.toast.success .toast-content {
+  background-color: var(--success);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .steps {
+    display: none; /* Progress steps ko mobile par hide karein */
+  }
+  .form-step {
+    padding: 1.5rem; /* Mobile par form step padding kam karein */
+  }
+  .form-controls {
+    padding: 1rem 1.5rem; /* Mobile par form controls padding kam karein */
+  }
+  .form-row {
+    flex-direction: column; /* Form row ko mobile par stack karein */
+    gap: 0;
+  }
+  nav ul {
+    gap: 1rem; /* Mobile par navigation links ke beech gap kam karein */
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+  .footer-container {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+  .footer-links {
+    margin-top: 1rem;
+    justify-content: center;
+  }
+  .btn-primary, .btn-outline {
+    padding: 0.75rem 1rem; /* Chhote screens par buttons ki padding kam karein */
+  }
+  .intro h1 {
+    font-size: 2rem; /* Chhote screens par heading ka size kam karein */
+  }
+  .form-step {
+    padding: 1.25rem; /* Chhote screens par form step padding aur kam karein */
+  }
+}
+
+/* Select dropdown options ke liye styles */
+select option {
+  color: black;
+  background-color: white;
+}
+
+/* Add these styles to your existing CSS */
+.skill-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+  margin-bottom: 0.5rem;
+}
+
+.skill-select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+}
+
+.skill-select option {
+  background-color: var(--card);
+  color: white;
+  padding: 0.5rem;
+}
+
+.skill-select optgroup {
+  background-color: var(--card);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.skill-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  transition: all 0.3s ease;
+  margin-bottom: 0.5rem;
+}
+
+.skill-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+}
+</style>
+</head>
+<body>
+  <main>
+    <div class="container">
+      <div class="intro">
+        <h1>Create Your Professional Profile</h1>
+        <p>Build a comprehensive profile to showcase your professional journey and expertise.</p>
+      </div>
+
+      <div class="form-container">
+        <div class="progress-container">
+          <div class="steps">
+            <div class="step active" data-step="1">Personal Info</div>
+            <div class="step" data-step="2">Professional Details</div>
+            <div class="step" data-step="3">Education</div>
+            <div class="step" data-step="4">Skills</div>
+            <div class="step" data-step="5">Contact Info</div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress" style="width: 20%"></div>
+          </div>
+        </div>
+
+        <div class="form-step active" data-step="1">
+          <h2>Personal Information</h2>
+          <p>Start with the basics. Tell us about yourself.</p>
+          <div class="form-group">
+            <label for="profilePicture">Profile Picture</label>
+            <input type="file" id="profilePicture" accept="image/*">
+          </div>
+          <div class="form-group">
+            <label for="profilePicture">Resume</label>
+            <input type="file" id="resumeInput" accept=".pdf, .png, .jpg, .jpeg" />
+          </div>
+
+
+          <div class="form-group">
+            <label for="fullname">Full Name*</label>
+            <input type="text" id="fullname" required autocomplete="name">
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group half">
+              <label for="profession">Profession*</label>
+              <input type="text" id="profession" required autocomplete="organization-title">
+            </div>
+            <div class="form-group half">
+              <label for="location">Location</label>
+              <input type="text" id="location" placeholder="City, Country" autocomplete="address-level2">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="bio">Bio/Summary</label>
+            <textarea id="bio" rows="4" placeholder="A brief introduction about yourself..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-step" data-step="2">
+          <h2>Professional Details</h2>
+          <p>Tell us about your professional background.</p>
+          <div class="form-group">
+            <label for="field">Field of Study*</label>
+            <select id="field" required>
+              <option value="">Select your field</option>
+              <optgroup label="Computer Science & IT">
+                <option value="Computer Science">Computer Science</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Software Engineering">Software Engineering</option>
+                <option value="Computer Engineering">Computer Engineering</option>
+                <option value="Information Systems">Information Systems</option>
+              </optgroup>
+              <optgroup label="Engineering">
+                <option value="Electrical Engineering">Electrical Engineering</option>
+                <option value="Mechanical Engineering">Mechanical Engineering</option>
+                <option value="Civil Engineering">Civil Engineering</option>
+                <option value="Chemical Engineering">Chemical Engineering</option>
+                <option value="Electronics Engineering">Electronics Engineering</option>
+              </optgroup>
+              <optgroup label="Business & Management">
+                <option value="Business Administration">Business Administration</option>
+                <option value="Management">Management</option>
+                <option value="Finance">Finance</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Human Resources">Human Resources</option>
+              </optgroup>
+              <optgroup label="Other">
+                <option value="other">Other Field</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="headline">Professional Headline*</label>
+            <input type="text" id="headline" placeholder="e.g. Aspiring Software Engineer" required autocomplete="organization-title">
+          </div>
+          <div class="form-group">
+            <label for="industry">Industry</label>
+            <select id="industry">
+              <option value="">Select an industry</option>
+              <option value="technology">Technology</option>
+              <option value="finance">Finance</option>
+              <option value="healthcare">Healthcare</option>
+              <option value="education">Education</option>
+              <option value="marketing">Marketing</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-step" data-step="3">
+          <h2>Education</h2>
+          <p>Share your educational background.</p>
+          <div id="education-entries">
+            </div>
+          <button type="button" class="btn-secondary" id="add-education">Add Another Education</button>
+        </div>
+
+        <div class="form-step" data-step="4">
+          <h2>Skills</h2>
+          <p>Showcase your key skills.</p>
+          <div class="form-group">
+            <label for="skill-input">Key Skills</label>
+            <div class="skill-input-container">
+              <select id="skill-select" class="skill-select">
+                <option value="">Select a skill</option>
+                <optgroup label="Programming Languages">
+                  <option value="Python">Python</option>
+                  <option value="JavaScript">JavaScript</option>
+                  <option value="Java">Java</option>
+                  <option value="C++">C++</option>
+                  <option value="C#">C#</option>
+                  <option value="Ruby">Ruby</option>
+                  <option value="PHP">PHP</option>
+                  <option value="Swift">Swift</option>
+                  <option value="Kotlin">Kotlin</option>
+                  <option value="Go">Go</option>
+                </optgroup>
+                <optgroup label="Web Development">
+                  <option value="HTML5">HTML5</option>
+                  <option value="CSS3">CSS3</option>
+                  <option value="React">React</option>
+                  <option value="Angular">Angular</option>
+                  <option value="Vue.js">Vue.js</option>
+                  <option value="Node.js">Node.js</option>
+                  <option value="Express.js">Express.js</option>
+                  <option value="Django">Django</option>
+                  <option value="Flask">Flask</option>
+                  <option value="Laravel">Laravel</option>
+                </optgroup>
+                <optgroup label="Databases">
+                  <option value="MySQL">MySQL</option>
+                  <option value="PostgreSQL">PostgreSQL</option>
+                  <option value="MongoDB">MongoDB</option>
+                  <option value="Redis">Redis</option>
+                  <option value="SQLite">SQLite</option>
+                  <option value="Oracle">Oracle</option>
+                </optgroup>
+                <optgroup label="DevOps & Tools">
+                  <option value="Git">Git</option>
+                  <option value="Docker">Docker</option>
+                  <option value="Kubernetes">Kubernetes</option>
+                  <option value="AWS">AWS</option>
+                  <option value="Azure">Azure</option>
+                  <option value="GCP">Google Cloud Platform</option>
+                  <option value="Jenkins">Jenkins</option>
+                  <option value="CI/CD">CI/CD</option>
+                </optgroup>
+                <optgroup label="Data Science & AI">
+                  <option value="Machine Learning">Machine Learning</option>
+                  <option value="Deep Learning">Deep Learning</option>
+                  <option value="TensorFlow">TensorFlow</option>
+                  <option value="PyTorch">PyTorch</option>
+                  <option value="Data Analysis">Data Analysis</option>
+                  <option value="Data Visualization">Data Visualization</option>
+                </optgroup>
+                <optgroup label="Mobile Development">
+                  <option value="React Native">React Native</option>
+                  <option value="Flutter">Flutter</option>
+                  <option value="Android Development">Android Development</option>
+                  <option value="iOS Development">iOS Development</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option value="other">Add Custom Skill</option>
+                </optgroup>
+              </select>
+              <input type="text" id="skill-input" class="skill-input" placeholder="Enter a custom skill" style="display: none;">
+              <button type="button" class="btn-secondary" id="add-skill">Add</button>
+            </div>
+            <div id="skills-display-container" class="skills-container">
+              </div>
+          </div>
+        </div>
+
+        <div class="form-step" data-step="5">
+          <h2>Contact Information</h2>
+          <p>Provide your contact details.</p>
+          <div class="form-group">
+            <label for="email">Email*</label>
+            <input type="email" id="email" required autocomplete="email">
+          </div>
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" autocomplete="tel">
+          </div>
+          <div class="form-group">
+            <label for="website">Website/Portfolio</label>
+            <input type="url" id="website" placeholder="https://example.com" autocomplete="url">
+          </div>
+          <div class="form-group">
+            <label>Social Links</label>
+            <div class="social-input">
+              <span>LinkedIn:</span>
+              <input type="url" id="linkedin" placeholder="https://linkedin.com/in/..." autocomplete="url">
+            </div>
+            <div class="social-input">
+              <span>Twitter:</span>
+              <input type="url" id="twitter" placeholder="https://twitter.com/..." autocomplete="url">
+            </div>
+            <div class="social-input">
+              <span>GitHub:</span>
+              <input type="url" id="github" placeholder="https://github.com/..." autocomplete="url">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-controls">
+          <button type="button" class="btn-outline" id="prev-btn" disabled>Previous</button>
+          <button type="button" class="btn-primary" id="next-btn">Next</button>
+          <button type="submit" onclick="saveProfileData()" class="btn-primary" id="apply-btn" style="display:none;">Apply</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  
+
+  <div id="toast" class="toast">
+    <div class="toast-content"></div>
+  </div>
+
+  <!-- Toast notification function -->
+  <script>
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastContent = toast.querySelector('.toast-content');
+      
+      toast.className = 'toast show ' + type;
+      toastContent.textContent = message;
+      
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+    }
+    document.getElementById('profileForm').addEventListener('submit', submitProfile);
+
+async function submitProfile(e) {
+    e.preventDefault();
+    
+    try {
+        // Role update
+        const roleRes = await fetch('/api/set_role', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({role: 'intern'})
+        });
+        
+        if(!roleRes.ok) throw new Error('Role update failed');
+
+        // Collect all profile data
+        const profileData = {
+            fullName: document.getElementById('fullname').value,
+            profession: document.getElementById('profession').value,
+            bio: document.getElementById('bio').value,
+            skills: Array.from(document.querySelectorAll('.skill-tag span')).map(skill => skill.textContent),
+            education: Array.from(document.querySelectorAll('.education-entry')).map(edu => ({
+                degree: edu.querySelector('.degree').value,
+                institution: edu.querySelector('.institution').value,
+                year: edu.querySelector('.year').value
+            }))
+        };
+
+        // Save to localStorage
+        localStorage.setItem('internProfileData', JSON.stringify(profileData));
+        
+        // Show success message and redirect
+        showToast('Profile updated successfully!', 'success');
+        setTimeout(() => {
+            window.location.href = 'preview.html';
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Save failed:', error);
+        showToast('Update failed! Please try again.', 'error');
+    }
+}
+  </script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Form navigation
+    const formSteps = document.querySelectorAll('.form-step');
+    const progressBar = document.querySelector('.progress');
+    const steps = document.querySelectorAll('.step');
+    const nextBtn = document.getElementById('next-btn');
+    const prevBtn = document.getElementById('prev-btn');
+
+    let currentStep = 0;
+    const totalSteps = formSteps.length;
+
+    // Update progress bar
+    function updateProgress() {
+      const progress = ((currentStep + 1) / totalSteps) * 100;
+      progressBar.style.width = `${progress}%`;
+    }
+
+    // Show current step
+    function showStep(stepIndex) {
+      formSteps.forEach((step, index) => {
+        step.classList.toggle('active', index === stepIndex);
+      });
+
+      steps.forEach((step, index) => {
+        step.classList.toggle('active', index === stepIndex);
+      });
+
+      prevBtn.disabled = stepIndex === 0;
+
+      if (stepIndex === totalSteps - 1) {
+        nextBtn.textContent = 'Create Profile';
+      } else {
+        nextBtn.textContent = 'Next';
+      }
+
+      updateProgress();
+    }
+
+    // Next button click
+    nextBtn.addEventListener('click', function() {
+      if (currentStep < totalSteps - 1) {
+        currentStep++;
+        showStep(currentStep);
+      } else {
+        // This is the final step, show Apply button and hide Next
+        nextBtn.style.display = 'none';
+        document.getElementById('apply-btn').style.display = 'inline-block';
+      }
+    });
+
+    // Previous button click
+    prevBtn.addEventListener('click', function() {
+      if (currentStep > 0) {
+        currentStep--;
+        showStep(currentStep);
+      }
+    });
+
+    // Save profile data to localStorage
+    async function saveProfileData(profilePicURL) {
+  const profileData = {
+    fullName: document.getElementById('fullname').value,
+    profession: document.getElementById('profession').value,
+    bio: document.getElementById('bio').value,
+    profilePicture: profilePicURL,
+    field: document.getElementById('field')?.value || '',
+    headline: document.getElementById('headline')?.value || '',
+    industry: document.getElementById('industry')?.value || '',
+    company: document.getElementById('company')?.value || '',
+    workExperience: document.getElementById('workExperience')?.value || '',
+    website: document.getElementById('website')?.value || '',
+    education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
+      degree: entry.querySelector('[id^="degree"]')?.value || '',
+      institution: entry.querySelector('[id^="institution"]')?.value || '',
+      year: entry.querySelector('[id^="eduYear"]')?.value || ''
+    })).filter(edu => edu.degree || edu.institution || edu.year),
+    skills: getSkills(),
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value,
+    location: document.getElementById('location').value,
+    linkedin: document.getElementById('linkedin').value,
+    twitter: document.getElementById('twitter').value,
+    github: document.getElementById('github').value
+  };
+
+  localStorage.setItem('internProfileData', JSON.stringify(profileData));
+  showToast('Profile updated successfully!', 'success');
+
+  try {
+    const res = await fetch('/api/set_role', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'intern' })
+    });
+
+    if (res.ok) {
+      window.location.href = '/preview';
+    } else {
+      throw new Error('Role update failed');
+    }
+  } catch (err) {
+    alert('Role update failed! कृपया दोबारा कोशिश करें।');
+  }
+}
+
+
+    // Get skills from the form
+    function getSkills() {
+      // User's script looked for '.skill-input', but existing HTML uses '.skill-tag'
+      // Modified to get skills from the displayed skill tags in the correct container
+      const skillsDisplayContainer = document.getElementById('skills-display-container');
+      if (!skillsDisplayContainer) return [];
+      const skillTags = skillsDisplayContainer.querySelectorAll('.skill-tag');
+      const skills = [];
+
+      skillTags.forEach(tag => {
+        skills.push(tag.textContent.trim().replace('×', '').trim());
+      });
+
+      return skills;
+    }
+
+    // Function to add a skill tag to the display (needed for loading)
+    function addSkillTag(skill) {
+        if (skill && skill.trim()) {
+            const skillsDisplayContainer = document.getElementById('skills-display-container');
+            if (!skillsDisplayContainer) return;
+            
+            // Check if skill already exists
+            const existingSkills = getSkills();
+            if (existingSkills.includes(skill.trim())) {
+                showToast('This skill already exists!', 'error');
+                return;
+            }
+            
+            const skillTag = document.createElement('div');
+            skillTag.className = 'skill-tag';
+            skillTag.innerHTML = `${skill.trim()} <span class="remove-skill">×</span>`;
+
+            const removeBtn = skillTag.querySelector('.remove-skill');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    skillTag.remove();
+                    // Optionally save after removing a skill
+                    // saveProfileData();
+                });
+            }
+
+            skillsDisplayContainer.appendChild(skillTag);
+        }
+    }
+
+
+    // Add skill button logic
+    const addSkillBtn = document.getElementById('add-skill');
+    const skillSelect = document.getElementById('skill-select');
+    const skillInput = document.getElementById('skill-input');
+
+    if (addSkillBtn && skillSelect && skillInput) {
+      addSkillBtn.addEventListener('click', function() {
+        let skillValue = '';
+
+        if (skillSelect.value === 'other') {
+          skillValue = skillInput.value.trim();
+        } else {
+          skillValue = skillSelect.value;
+        }
+
+        if (skillValue) {
+          addSkillTag(skillValue); // Use the helper function
+
+          // Reset inputs
+          skillSelect.value = '';
+          skillInput.value = '';
+          skillInput.style.display = 'none';
+          skillSelect.style.display = 'block'; // Ensure select is visible again
+
+          // Optionally save after adding a skill
+          // saveProfileData();
+        }
+      });
+
+      // Add change listener for skillSelect to toggle skillInput display
+      skillSelect.addEventListener('change', function() {
+          if (this.value === 'other') {
+              skillInput.style.display = 'block';
+              skillSelect.style.display = 'none'; // Hide select when custom input is shown
+          } else {
+              skillInput.style.display = 'none';
+              skillSelect.style.display = 'block'; // Show select when custom input is hidden
+          }
+      });
+
+       // Handle custom skill input Enter key
+       skillInput.addEventListener('keypress', (e) => {
+           if (e.key === 'Enter') {
+               e.preventDefault();
+               if (skillInput.value.trim()) {
+                   addSkillTag(skillInput.value.trim());
+                   skillInput.value = '';
+                   skillInput.style.display = 'none';
+                   skillSelect.style.display = 'block';
+                   skillSelect.value = '';
+               }
+           }
+       });
+    }
+
+
+    document.getElementById("resumeInput").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    localStorage.setItem("resumeFile", base64);
+    console.log("Resume file saved in localStorage");
+  };
+  reader.readAsDataURL(file);
+});
+
+    // Function to add education entry HTML (needed for loading and adding new)
+    function addEducationEntryHtml(degree = '', institution = '', year = '') {
+        const educationContainer = document.getElementById('education-entries');
+        if (!educationContainer) return;
+        const entryId = Date.now(); // Simple unique ID
+
+        const entryHTML = `
+            <div class="education-entry">
+              <div class="form-group">
+                <label for="degree${entryId}">Degree/Certificate*</label>
+                <input type="text" id="degree${entryId}" value="${degree}" required>
+              </div>
+              <div class="form-row">
+                <div class="form-group half">
+                  <label for="institution${entryId}">Institution*</label>
+                  <input type="text" id="institution${entryId}" value="${institution}" required>
+                </div>
+                <div class="form-group half">
+                  <label for="eduYear${entryId}">Year</label>
+                  <input type="text" id="eduYear${entryId}" value="${year}" placeholder="e.g. 2018-2022">
+                </div>
+              </div>
+              <button type="button" class="btn-remove" onclick="removeEducationEntry(this)">Remove</button>
+              <div class="divider"></div>
+            </div>
+          `;
+
+        educationContainer.insertAdjacentHTML('beforeend', entryHTML);
+    }
+
+    // Make removeEducationEntry globally accessible as it's used in onclick
+    window.removeEducationEntry = function(button) {
+        const entry = button.closest('.education-entry');
+        if (entry) {
+            entry.remove();
+             // Optionally save after removing education entry
+            // saveProfileData();
+        }
+    };
+
+    // Add event listener for the "Add Another Education" button
+    const addEducationBtn = document.getElementById('add-education');
+    if(addEducationBtn) {
+        addEducationBtn.addEventListener('click', function() {
+            addEducationEntryHtml(); // Add an empty entry
+            // Optionally save after adding education entry
+            // saveProfileData();
+        });
+    }
+
+
+    // Load data from localStorage on page load
+    const urlParams = new URLSearchParams(window.location.search);
+    const isEditing = urlParams.get('edit') === 'true'; // Check for edit mode
+
+    const profileData = JSON.parse(localStorage.getItem('internProfileData'));
+
+    if (profileData) {
+      // Fill form fields with existing data
+      if(document.getElementById('fullname')) document.getElementById('fullname').value = profileData.fullName || ''; // Corrected ID
+      if(document.getElementById('profession')) document.getElementById('profession').value = profileData.profession || '';
+      if(document.getElementById('bio')) document.getElementById('bio').value = profileData.bio || '';
+      // File input value cannot be set directly for security reasons
+      // if(document.getElementById('profilePicture')) document.getElementById('profilePicture').value = profileData.profilePicture || '';
+
+      // Fill professional details if elements exist (based on user's script IDs)
+      if(document.getElementById('currentPosition')) document.getElementById('currentPosition').value = profileData.currentPosition || '';
+      if(document.getElementById('company')) document.getElementById('company').value = profileData.company || '';
+      if(document.getElementById('workExperience')) document.getElementById('workExperience').value = profileData.workExperience || '';
+      if(document.getElementById('startDate')) document.getElementById('startDate').value = profileData.startDate || '';
+      if(document.getElementById('endDate')) document.getElementById('endDate').value = profileData.endDate === 'Present' ? '' : profileData.endDate || '';
+      if(document.getElementById('responsibilities')) document.getElementById('responsibilities').value = profileData.responsibilities || '';
+      if(document.getElementById('field')) document.getElementById('field').value = profileData.fieldOfStudy || ''; // Added fieldOfStudy loading
+
+
+      // Fill education entries - User's script assumes single, existing HTML supports multiple
+      // Loading logic updated to handle array format saved by the previous script
+      const educationContainer = document.getElementById('education-entries');
+      if (educationContainer) {
+          educationContainer.innerHTML = ''; // Clear existing default entry
+
+          if (profileData.education && Array.isArray(profileData.education)) {
+              profileData.education.forEach(edu => {
+                  // Check if the saved education data is in the expected format (objects with degree, institution, year)
+                  if (edu.degree || edu.institution || edu.year) { // Basic check
+                       addEducationEntryHtml(edu.degree, edu.institution, edu.year); // Use the helper function
+                  }
+              });
+          } else if (profileData.degree || profileData.institution || profileData.graduationYear) {
+             // Handle potential single-entry format from user's saveProfileData (less robust)
+             addEducationEntryHtml(profileData.degree, profileData.institution, profileData.graduationYear);
+          }
+
+
+          // If no education entries were loaded, add one empty one
+          if (educationContainer.children.length === 0) {
+               addEducationEntryHtml();
+          }
+      }
+
+
+      // Fill skills - User's script saves skills as an array, existing HTML uses tags
+      // Modifying to load skills into the tag display
+      const skillsDisplayContainer = document.getElementById('skills-display-container'); // Corrected ID
+      if (skillsDisplayContainer && profileData.skills && Array.isArray(profileData.skills)) {
+          skillsDisplayContainer.innerHTML = ''; // Clear existing tags
+          profileData.skills.forEach(skill => {
+              addSkillTag(skill); // Use the helper function
+          });
+      }
+
+
+      if(document.getElementById('email')) document.getElementById('email').value = profileData.email || '';
+      if(document.getElementById('phone')) document.getElementById('phone').value = profileData.phone || '';
+      if(document.getElementById('location')) document.getElementById('location').value = profileData.location || '';
+      if(document.getElementById('website')) document.getElementById('website').value = profileData.website || '';
+      if(document.getElementById('linkedin')) document.getElementById('linkedin').value = profileData.linkedin || '';
+      if(document.getElementById('twitter')) document.getElementById('twitter').value = profileData.twitter || '';
+      if(document.getElementById('github')) document.getElementById('github').value = profileData.github || '';
+    } else {
+        // If no saved data, add one empty education entry by default
+        addEducationEntryHtml();
+    }
+
+
+    // Initial setup: Show the first step (index 0)
+    showStep(currentStep);
+
+    // Profile Save Logic (Apply Button)
+    const applyBtn = document.getElementById('apply-btn');
+    if(applyBtn) {
+      applyBtn.addEventListener('click', async function(e) {
+  e.preventDefault();
+
+  const profilePicInput = document.getElementById('profilePicture');
+  let profilePicURL = '';
+
+  if (profilePicInput && profilePicInput.files && profilePicInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      profilePicURL = e.target.result;
+      await saveProfileData(profilePicURL);  // ✅ Call this
+    };
+    reader.readAsDataURL(profilePicInput.files[0]);
+  } else {
+    await saveProfileData('');  // ✅ Call this
+  }
+});
+    }
+  });
+
+</script>
+
+<script>
+
+
+</script>
+
+
+</body>
+</html>

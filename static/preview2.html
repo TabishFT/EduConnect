@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Startup Profile Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
+<style>
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Same color scheme as index2.html */
+  --background: #1A1F2C;
+  --foreground: #F9F7F7;
+  --card: #111824;
+  --card-foreground: #F9F7F7;
+  --border: rgba(255, 255, 255, 0.1);
+  --radius: 0.6rem;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --accent: #E6A55E;
+  --accent-hover: #D89144;
+  --error: #DC2626;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+}
+
+/* Layout */
+.container {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header for Preview Page */
+.preview-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.preview-header h1 {
+  font-size: 2.2rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.preview-header p {
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Profile Preview Box Styling */
+.startup-preview {
+  background-color: var(--card);
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-bottom: 2rem;
+  flex-grow: 1;
+}
+
+/* Startup Info Section in Preview */
+.preview-startup-header {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-logo {
+  flex-shrink: 0;
+}
+
+/* Logo Styling */
+.startup-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  border: 2px solid var(--accent);
+}
+
+/* Placeholder for logo */
+.placeholder-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: var(--radius);
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Startup Name and Details */
+.preview-startup-info h2 {
+  margin-bottom: 0.25rem;
+  font-size: 1.8rem;
+  color: var(--foreground);
+}
+
+.preview-startup-info .founding-year {
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.preview-startup-info .location {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+/* General Preview Section Item Styling */
+.preview-section-item {
+  margin-bottom: 2.5rem;
+}
+
+.preview-section-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Section Heading Styling */
+.preview-section-item h3 {
+  font-size: 1.25rem;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Individual Preview Item */
+.preview-item {
+  margin-bottom: 1.5rem;
+}
+
+.preview-item:last-child {
+  margin-bottom: 0;
+}
+
+.preview-item h4 {
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.preview-item .title {
+  font-weight: normal;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.25rem;
+}
+
+.preview-item .email {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.preview-item p:not(.title):not(.email) {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 0.5rem;
+}
+
+.preview-item p:last-child {
+  margin-bottom: 0;
+}
+
+/* Tech Stack Container Styling */
+.tech-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+/* Tech Tag Styling */
+.tech-tag {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+}
+
+/* Required Positions Styling */
+.positions-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.position-tag {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+}
+
+/* Contact Info Styling */
+.contact-info p {
+  margin-bottom: 0.5rem;
+}
+
+.contact-info p strong {
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 80px;
+  display: inline-block;
+}
+
+.contact-info a {
+  color: var(--accent);
+}
+
+.contact-info a:hover {
+  color: var(--accent-hover);
+}
+
+/* Social Links Styling */
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.social-links a {
+  color: var(--accent);
+  padding: 0.35rem 0.85rem;
+  background-color: rgba(230, 165, 94, 0.15);
+  border-radius: 9999px;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.social-links a:hover {
+  background-color: rgba(230, 165, 94, 0.25);
+  color: var(--accent-hover);
+}
+
+/* Founder Grid for multiple founders */
+.founders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Divider Line */
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 1.5rem 0;
+}
+
+/* Edit Button Styling */
+.edit-controls {
+  text-align: center;
+  margin-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Message for no data */
+#no-data-message {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 3rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem 0;
+  }
+  
+  .container {
+    padding: 0 0.75rem;
+    max-width: 95%;
+  }
+  
+  .startup-preview {
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .preview-startup-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    text-align: left;
+  }
+  
+  .preview-logo {
+    align-self: center;
+    margin-bottom: 1rem;
+  }
+  
+  .placeholder-logo, .startup-logo {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .preview-startup-info h2 {
+    font-size: 1.5rem;
+  }
+  
+  .preview-startup-info .founding-year {
+    font-size: 1rem;
+  }
+  
+  .preview-section-item h3 {
+    font-size: 1.1rem;
+  }
+  
+  .edit-controls {
+    padding-bottom: 0.5rem;
+  }
+  
+  .founders-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    max-width: 100%;
+    padding: 0 0.5rem;
+  }
+  
+  .startup-preview {
+    padding: 1rem;
+  }
+  
+  .btn-outline {
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+  }
+  
+  .preview-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .preview-startup-header {
+    gap: 0.5rem;
+    padding-bottom: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .preview-section-item {
+    margin-bottom: 1.5rem;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="preview-header">
+      <h1>Startup Profile Preview</h1>
+      <p>Here's a preview of the startup profile you created. Review the details below.</p>
+    </div>
+
+    <div id="startup-preview-content" class="startup-preview">
+      <p>Loading startup data...</p>
+    </div>
+
+    <div id="no-data-message" style="display: none;">
+      <p>Could not load startup data. Please go back and try creating the profile again.</p>
+    </div>
+
+    <div class="edit-controls">
+      <!-- Add this button next to the Edit Profile button in the actions section -->
+      <div class="preview-actions">
+          <a href="/startup_profile" class="btn-outline" id="edit-profile-btn">Edit Profile</a>
+          <a href="/home" class="btn-outline">Continue</a>
+      </div>
+    </div>
+  </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const previewContent = document.getElementById('startup-preview-content');
+    const noDataMessage = document.getElementById('no-data-message');
+    const editBtn = document.getElementById('edit-profile-btn');
+
+    // Add event listener to edit button to set role in localStorage
+    editBtn.addEventListener('click', function(e) {
+        localStorage.setItem('selectedRole', 'startup');
+    });
+    
+    // Get startup data from localStorage
+    const startupDataString = localStorage.getItem('startupData');
+    console.log("Retrieved startup data from localStorage:", startupDataString);
+
+    if (startupDataString) {
+        try {
+            const data = JSON.parse(startupDataString);
+            console.log("Parsed startup data:", data);
+            renderStartupPreview(data);
+            noDataMessage.style.display = 'none';
+        } catch (e) {
+            console.error("Error parsing startup data:", e);
+            previewContent.innerHTML = '<p style="color: var(--error);">Error loading startup data. Please try again.</p>';
+            noDataMessage.style.display = 'block';
+        }
+    } else {
+        console.log("No startup data found in localStorage");
+        previewContent.style.display = 'none';
+        noDataMessage.style.display = 'block';
+    }
+
+    // Edit button handler
+    editBtn.addEventListener('click', () => {
+        window.location.href = '/startup_profile';
+    });
+
+    // Function to render the startup preview
+    function renderStartupPreview(data) {
+        // Helper function to check if value exists and is not empty
+        const hasValue = (value) => value !== null && value !== undefined && String(value).trim() !== '';
+
+        let previewHTML = '';
+
+        // --- Startup Header Section ---
+        let startupHeaderHTML = `
+          <div class="preview-logo">
+            ${hasValue(data.startupInfo?.logo)
+              ? `<img src="${data.startupInfo.logo}" alt="Startup Logo" class="startup-logo">`
+              : `<div class="placeholder-logo"><span>Logo</span></div>`
+            }
+          </div>
+          <div class="preview-startup-info">
+            ${hasValue(data.startupInfo?.name) ? `<h2>${data.startupInfo.name}</h2>` : ''}
+            ${hasValue(data.startupInfo?.foundingYear) ? `<p class="founding-year">Founded in ${data.startupInfo.foundingYear}</p>` : ''}
+            ${hasValue(data.startupInfo?.locationType) ? 
+              `<p class="location">${data.startupInfo.locationType === 'remote' ? 'Remote / Virtual' : 
+                                    data.startupInfo.locationType === 'hybrid' ? 'Hybrid' : 'Physical Location'} 
+               ${data.startupInfo.physicalLocation ? `- ${data.startupInfo.physicalLocation}` : ''}</p>` : ''}
+          </div>`;
+
+        // Add startup header only if there's any data in it
+        if (hasValue(data.startupInfo?.name) || hasValue(data.startupInfo?.foundingYear) || hasValue(data.startupInfo?.locationType) || hasValue(data.startupInfo?.logo)) {
+          previewHTML += `<div class="preview-startup-header">${startupHeaderHTML}</div>`;
+        }
+
+        // --- Description Section ---
+        if (hasValue(data.description?.text)) {
+          previewHTML += `
+            <div class="preview-section-item">
+              <h3>About Our Startup</h3>
+              <p>${data.description.text}</p>
+            </div>
+          `;
+        }
+
+        // --- Founders Section ---
+        if (data.founders && data.founders.length > 0) {
+          // Filter out empty founder entries
+          const validFounders = data.founders.filter(founder => hasValue(founder.name) || hasValue(founder.title));
+          
+          if (validFounders.length > 0) {
+            previewHTML += `
+              <div class="preview-section-item">
+                <h3>Our Founders</h3>
+                <div class="founders-grid">
+                  ${validFounders.map(founder => {
+                    let founderHTML = '<div class="preview-item">';
+                    if (hasValue(founder.name)) founderHTML += `<h4>${founder.name}</h4>`;
+                    if (hasValue(founder.title)) founderHTML += `<p class="title">${founder.title}</p>`;
+                    if (hasValue(founder.email)) founderHTML += `<p class="email">${founder.email}</p>`;
+                    if (hasValue(founder.bio)) founderHTML += `<p>${founder.bio}</p>`;
+                    founderHTML += '</div>';
+                    return founderHTML;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }
+        }
+
+        // --- Tech Stack Section ---
+        if (data.techStack && data.techStack.length > 0) {
+          const validTechStack = data.techStack.filter(tech => hasValue(tech));
+          
+          if (validTechStack.length > 0) {
+            previewHTML += `
+              <div class="preview-section-item">
+                <h3>Our Tech Stack</h3>
+                <div class="tech-container">
+                  ${validTechStack.map(tech => `<div class="tech-tag">${tech}</div>`).join('')}
+                </div>
+              </div>
+            `;
+          }
+        }
+
+        // --- Required Positions Section ---
+        if (data.description?.requiredPositions && data.description.requiredPositions.length > 0) {
+          const validPositions = data.description.requiredPositions.filter(position => hasValue(position));
+          
+          if (validPositions.length > 0) {
+            previewHTML += `
+              <div class="preview-section-item">
+                <h3>Positions We're Looking For</h3>
+                <div class="positions-container">
+                  ${validPositions.map(position => `<div class="position-tag">${position}</div>`).join('')}
+                </div>
+              </div>
+            `;
+          }
+        }
+
+        // --- Contact Information Section ---
+        let contactInfoHTML = '';
+        
+        if (hasValue(data.contact?.email)) {
+          contactInfoHTML += `<p><strong>Email:</strong> <a href="mailto:${data.contact.email}">${data.contact.email}</a></p>`;
+        }
+        
+        if (hasValue(data.contact?.phone)) {
+          contactInfoHTML += `<p><strong>Phone:</strong> ${data.contact.phone}</p>`;
+        }
+        
+        if (hasValue(data.contact?.website)) {
+          let websiteUrl = data.contact.website;
+          if (!websiteUrl.startsWith('http://') && !websiteUrl.startsWith('https://')) {
+            websiteUrl = 'https://' + websiteUrl;
+          }
+          contactInfoHTML += `<p><strong>Website:</strong> <a href="${websiteUrl}" target="_blank" rel="noopener noreferrer">${data.contact.website}</a></p>`;
+        }
+
+        // Social Links
+        let socialLinksHTML = '';
+        
+        const addSocialLink = (platform, url) => {
+          if (hasValue(url)) {
+            let fullUrl = url;
+            if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+              fullUrl = 'https://' + fullUrl;
+            }
+            const platformDisplay = platform.charAt(0).toUpperCase() + platform.slice(1);
+            return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${platformDisplay}</a>`;
+          }
+          return '';
+        };
+
+        socialLinksHTML += addSocialLink('linkedin', data.contact?.linkedin);
+        socialLinksHTML += addSocialLink('twitter', data.contact?.twitter);
+        socialLinksHTML += addSocialLink('github', data.contact?.github);
+
+        if (contactInfoHTML || socialLinksHTML) {
+          previewHTML += `
+            <div class="preview-section-item">
+              <h3>Get In Touch</h3>
+              <div class="contact-info">${contactInfoHTML}</div>
+              ${socialLinksHTML ? `<div class="social-links">${socialLinksHTML}</div>` : ''}
+            </div>
+          `;
+        }
+
+        // Final check: If previewHTML is still empty, show a message
+        if (!previewHTML.trim()) {
+          previewContent.innerHTML = '<p>No startup information was entered.</p>';
+        } else {
+          // Insert the final HTML into the content area
+          previewContent.innerHTML = previewHTML;
+        }
+    }
+});
+</script>
+</body>
+</html>

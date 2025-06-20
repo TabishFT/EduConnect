@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EASIFY - Select Role</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+        }
+          .hero {
+            text-align: center;
+            max-width: 800px;
+        }
+        .hero p {
+            font-size: 18px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        body {
+            background-color: #2b3349;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            height: 100vh;
+            padding: 1rem;
+            color: #ffffff;
+        }
+
+        .container {
+            background-color: #1E2330;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 550px;
+        }
+
+        h1 {
+            font-weight: 600;
+            margin: 0;
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: #F2A94F;
+            text-align: center;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.5rem;
+            margin: 1rem 0 1.5rem;
+            color: #a0a0b0;
+            text-align: center;
+        }
+
+        .role-buttons {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            width: 100%;
+        }
+
+        .role-btn {
+            flex: 1;
+            background-color: #232838;
+            border: 2px solid #232838;
+            color: #ffffff;
+            padding: 1.75rem 1.25rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .role-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(242, 169, 79, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .role-btn:hover {
+            border-color: #F2A94F;
+            transform: translateY(-5px);
+        }
+
+        .role-btn:hover::before {
+            opacity: 1;
+        }
+
+        .role-btn img {
+            width: 48px;
+            height: 48px;
+            transition: transform 0.3s ease;
+            filter: brightness(0.9) contrast(1.1);
+        }
+
+        .role-btn:hover img {
+            transform: scale(1.1);
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .loading {
+            display: none;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(242, 169, 79, 0.2);
+            border-radius: 50%;
+            border-top: 3px solid #F2A94F;
+            animation: spin 1s linear infinite;
+            margin: 0.5rem auto 0;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            .role-buttons {
+                flex-direction: column;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+            
+            .container {
+                padding: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+                <h1>Welcome to EASIFY</h1>
+                <p style="font-weight: bolder; color: rgb(255, 255, 255); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);">Internship seekers and startups, meet here!
+                    Get experience, build projects, and grow together</p>
+    </div>
+    <div class="container">
+        <h1>Choose Your Role</h1>
+        <p>Select how you want to join EASIFY</p>
+        <div class="role-buttons">
+            <button class="role-btn" onclick="selectRole('intern')">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="Intern">
+                Join as Intern
+            </button>
+            <button class="role-btn" onclick="selectRole('startup')">
+                <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Startup">
+                Join as Startup
+            </button>
+        </div>
+        <div id="error-message" class="error-message"></div>
+        <div id="loading" class="loading"></div>
+    </div>
+
+    <script>
+        // Check authentication on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/home', { 
+                    redirect: 'manual',
+                    credentials: 'include'
+                });
+                
+                // If unauthorized, redirect to login
+                if (response.status === 401) {
+                    window.location.replace('/login');
+                    return;
+                }
+                
+                // If already has role, redirect to home
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.role) {
+                        window.location.replace('/home');
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.replace('/login');
+            }
+        });
+
+        async function selectRole(role) {
+            const errorEl = document.getElementById('error-message');
+            const loadingEl = document.getElementById('loading');
+            const buttons = document.querySelectorAll('.role-btn');
+            
+            errorEl.textContent = '';
+            loadingEl.style.display = 'block';
+            buttons.forEach(btn => btn.disabled = true);
+
+            try {
+                // Store role in localStorage instead of making API call
+                localStorage.setItem('selectedRole', role);
+                
+                // Redirect to appropriate profile page
+                const nextPage = `/${role}_profile`;
+                window.location.href = nextPage;
+            } catch (error) {
+                console.error('Error:', error);
+                errorEl.textContent = error.message;
+            } finally {
+                loadingEl.style.display = 'none';
+                buttons.forEach(btn => btn.disabled = false);
+            }
+        }
+
+        // Check if role is already selected in localStorage
+        document.addEventListener('DOMContentLoaded', () => {
+            const selectedRole = localStorage.getItem('selectedRole');
+            if (selectedRole) {
+                window.location.href = `/${selectedRole}_profile`;
+            }
+        });
+    </script>
+</body>
+</html>

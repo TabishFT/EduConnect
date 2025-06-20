@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
+  <!-- Add to <head> section of all pages -->
+<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+<style>
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  /* Same color scheme as index.html */
+  --background: #1A1F2C;
+  --foreground: #F9F7F7;
+  --card: #111824; /* Card background for preview */
+  --card-foreground: #F9F7F7;
+  --border: rgba(255, 255, 255, 0.1);
+  --radius: 0.6rem;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --accent: #E6A55E;
+  --accent-hover: #D89144;
+  --error: #DC2626; /* Error color */
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0; /* Body mein upar neeche padding */
+}
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #4CAF50;
+  color: white;
+  padding: 15px;
+  border-radius: 5px;
+  display: none;
+  z-index: 1000;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Layout */
+.container {
+  /* कंप्यूटर पर प्रीव्यू की चौड़ाई कम करने के लिए max-width को 700px किया गया */
+  max-width: 700px; /* Thoda wider container preview ke liye */
+  width: 100%; /* Ensure container takes width */
+  margin: 0 auto;
+  padding: 0 1rem;
+  flex: 1; /* Container ko available space lene dena */
+  display: flex; /* Flex container banana */
+  flex-direction: column; /* Content ko vertically align karna */
+}
+
+/* Header for Preview Page */
+.preview-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.preview-header h1 {
+  font-size: 2.2rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.preview-header p {
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Profile Preview Box Styling */
+.profile-preview {
+  background-color: var(--card);
+  border-radius: var(--radius);
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  margin-bottom: 2rem; /* Neeche margin, future nav bar ke liye adjust ho sakta hai */
+  flex-grow: 1; /* Preview box ko available vertical space lene dena */
+}
+
+/* Personal Info Section in Preview */
+.preview-personal {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border); /* Separator */
+}
+
+.preview-pic {
+  flex-shrink: 0;
+}
+
+/* Profile Picture Styling */
+.profile-picture {
+  width: 100px; /* Thoda chhota size */
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover; /* Ensure image covers the area without distortion */
+  border: 2px solid var(--accent);
+}
+
+/* Placeholder for image */
+.placeholder-img {
+  width: 100px; /* Thoda chhota size */
+  height: 100px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+
+/* Name and Title in Preview */
+.preview-name h2 {
+  margin-bottom: 0.25rem;
+  font-size: 1.8rem; /* Thoda bada naam */
+  color: var(--foreground);
+}
+
+.preview-name .profession { /* Profession ke liye specific class */
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
+.preview-name .location { /* Location ke liye specific class */
+   color: rgba(255, 255, 255, 0.7);
+   font-size: 0.9rem;
+}
+
+/* General Preview Section Item Styling */
+.preview-section-item {
+  margin-bottom: 2.5rem;
+}
+.preview-section-item:last-child {
+    margin-bottom: 0; /* Section ke last item ke neeche margin hatana */
+}
+
+
+/* Section Heading Styling */
+.preview-section-item h3 {
+  font-size: 1.25rem;
+  color: var(--accent);
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+/* Individual Preview Item (like education entry) */
+.preview-item {
+  margin-bottom: 1.5rem;
+}
+.preview-item:last-child {
+    margin-bottom: 0; /* Item list ke last item ke neeche margin hatana */
+}
+
+.preview-item h4 { /* Degree/Title */
+  margin-bottom: 0.25rem;
+  font-size: 1.1rem;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.preview-item .institution { /* Institution name */
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 0.25rem;
+}
+
+.preview-item .date { /* Date range */
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+.preview-item p:not(.institution):not(.date) { /* Description or other details */
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 0.5rem; /* Paragraphs ke beech thoda gap */
+}
+.preview-item p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* Skills Container Styling */
+.skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem; /* Heading ke baad thoda gap */
+}
+
+/* Skill Tag Styling (same as form) */
+.skill-tag {
+  background-color: rgba(230, 165, 94, 0.15);
+  color: var(--accent);
+  border-radius: 9999px;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+}
+
+/* Contact Info Styling */
+.contact-info p {
+    margin-bottom: 0.5rem; /* Contact items ke beech gap */
+}
+.contact-info p strong {
+    color: rgba(255, 255, 255, 0.8); /* Label ko thoda halka dikhana */
+    min-width: 80px; /* Consistent alignment ke liye */
+    display: inline-block;
+}
+.contact-info a {
+    color: var(--accent); /* Links ko accent color dena */
+}
+.contact-info a:hover {
+    color: var(--accent-hover);
+}
+
+
+/* Social Links Styling */
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem; /* Contact info ke baad thoda gap */
+}
+
+.social-links a {
+  color: var(--accent);
+  padding: 0.35rem 0.85rem;
+  background-color: rgba(230, 165, 94, 0.15);
+  border-radius: 9999px;
+  border: 1px solid rgba(230, 165, 94, 0.3);
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.social-links a:hover {
+  background-color: rgba(230, 165, 94, 0.25);
+  color: var(--accent-hover);
+}
+
+/* Divider Line */
+.divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 1.5rem 0; /* Items ke beech divider */
+}
+
+/* Edit Button Styling */
+.edit-controls {
+  text-align: center; /* Button ko center mein rakhna */
+  margin-top: 1rem; /* Preview box ke baad thoda gap */
+  padding-bottom: 1rem; /* Neeche padding, nav bar ke liye adjust ho sakta hai */
+}
+
+.btn-outline { /* Same style as index.html */
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-outline:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Message for no data */
+#no-data-message {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: 3rem;
+}
+
+/* Responsive Design Adjustments for Preview Page */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem 0; /* Mobile par body padding kam */
+  }
+  .container {
+     /* Mobile par full width lena, side padding kam karna */
+     padding: 0 0.75rem;
+     /* Max-width ko adjust karna taki zyada width le mobile par */
+     max-width: 95%;
+  }
+  .profile-preview {
+    padding: 1.5rem; /* Mobile par preview padding kam */
+    /* Neeche margin kam karna mobile par, nav bar ke liye */
+    margin-bottom: 1rem;
+  }
+  .preview-personal {
+    flex-direction: column; /* Personal info ko stack karna */
+    align-items: flex-start; /* Items ko left align karna */
+    gap: 1rem; /* Gap kam karna */
+    text-align: left; /* Text ko left align karna */
+  }
+  .preview-pic {
+      align-self: center; /* Image ko center mein rakhna */
+      margin-bottom: 1rem;
+  }
+   .placeholder-img, .profile-picture {
+       width: 80px;
+       height: 80px;
+   }
+   .preview-name h2 {
+       font-size: 1.5rem; /* Mobile par naam ka size kam */
+   }
+   .preview-name .profession {
+       font-size: 1rem; /* Mobile par profession ka size kam */
+   }
+   .preview-section-item h3 {
+       font-size: 1.1rem; /* Mobile par section heading ka size kam */
+   }
+   .edit-controls {
+       padding-bottom: 0.5rem; /* Mobile par neeche padding aur kam */
+   }
+}
+
+@media (max-width: 480px) {
+  .container {
+      max-width: 100%; /* Chhote screen par full width */
+      padding: 0 0.5rem; /* Padding aur kam */
+  }
+  .profile-preview {
+    padding: 1rem; /* Chhote screens par padding aur kam */
+  }
+  .btn-outline {
+    padding: 0.6rem 1.2rem; /* Chhote screens par button padding kam */
+    font-size: 0.9rem;
+  }
+  .preview-header h1 {
+      font-size: 1.8rem;
+  }
+  .preview-personal {
+      gap: 0.5rem; /* Personal info mein gap aur kam */
+      padding-bottom: 1rem; /* Separator ke upar padding kam */
+      margin-bottom: 1.5rem; /* Section ke neeche margin kam */
+  }
+  .preview-section-item {
+      margin-bottom: 1.5rem; /* Sections ke beech margin kam */
+  }
+  .resume{
+    margin: 5%;
+  }
+}
+
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="preview-header">
+      <h1>Profile Preview</h1>
+      <p>Here's a preview of the profile you created. Review the details below.</p>
+    </div>
+
+    <div id="profile-preview-content" class="profile-preview">
+      <p>Loading profile data...</p>
+    </div>
+
+     <div id="no-data-message" style="display: none;">
+        <p>Could not load profile data. Please go back and try creating the profile again.</p>
+     </div>
+
+    <div class="edit-controls">
+      <div class="preview-actions">
+          <a href="/intern_profile" class="btn-outline" id="edit-profile-btn">Edit Profile</a>
+          <a href="/home" class="btn-outline" id="continue-btn" onclick="localStorage.setItem('selectedRole', 'intern')">Continue</a>
+          <button class="btn-outline resume" onclick="viewResume()">View Resume</button>
+      </div>
+    </div>
+    <iframe id="resumeViewer" style="display:none; width:100%; height:600px; border:1px solid #ccc; margin-top: 20px;" allow="autoplay"></iframe>
+  </div>
+  <div id="toast" class="toast">
+    <div class="toast-content"></div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const profileDataString = localStorage.getItem('internProfileData');
+    const profilePic = localStorage.getItem("profilePictureUrl");
+    if (profileDataString) {
+      const profileData = JSON.parse(profileDataString);
+      const previewContent = document.getElementById('profile-preview-content');
+      if (profilePic) {
+      profileData.profilePicture = profilePic; // ✅ Overwrite with Cloudinary image
+    }
+
+      function hasValue(value) {
+        return value !== null && value !== undefined && String(value).trim() !== '';
+      }
+
+      function makeSocialLink(label, url) {
+        if (!hasValue(url)) return '';
+        let display = label.charAt(0).toUpperCase() + label.slice(1);
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+      }
+
+      const previewHTML = `
+        <div class="preview-personal">
+          <div class="preview-pic">
+            ${profileData.profilePicture ? 
+              `<img src="${profileData.profilePicture}" alt="Profile Picture" class="profile-picture">` : 
+              `<div class="placeholder-img">No Image</div>`}
+          </div>
+          <div class="preview-name">
+            <h2>${profileData.fullName || 'Anonymous User'}</h2>
+            ${hasValue(profileData.profession) ? `<p class="profession">${profileData.profession}</p>` : ''}
+            ${hasValue(profileData.location) ? `<p class="location">${profileData.location}</p>` : ''}
+          </div>
+        </div>
+        ${hasValue(profileData.bio) ? `
+        <div class="preview-section-item">
+          <h3>About Me</h3>
+          <p>${profileData.bio}</p>
+        </div>` : ''}
+        ${(hasValue(profileData.field) || hasValue(profileData.headline) || hasValue(profileData.industry) || hasValue(profileData.company) || hasValue(profileData.workExperience) || hasValue(profileData.website)) ? `
+        <div class="preview-section-item">
+          <h3>Professional Details</h3>
+          <div class="preview-item">
+            ${hasValue(profileData.field) ? `<p><strong>Field:</strong> ${profileData.field}</p>` : ''}
+            ${hasValue(profileData.headline) ? `<p><strong>Headline:</strong> ${profileData.headline}</p>` : ''}
+            ${hasValue(profileData.industry) ? `<p><strong>Industry:</strong> ${profileData.industry}</p>` : ''}
+            ${hasValue(profileData.company) ? `<p><strong>Company:</strong> ${profileData.company}</p>` : ''}
+            ${hasValue(profileData.workExperience) ? `<p><strong>Experience:</strong> ${profileData.workExperience}</p>` : ''}
+            ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website}" target="_blank" rel="noopener noreferrer">${profileData.website}</a></p>` : ''}
+          </div>
+        </div>` : ''}
+        ${(hasValue(profileData.degree) || hasValue(profileData.institution) || hasValue(profileData.graduationYear)) ? `
+        <div class="preview-section-item">
+          <h3>Education</h3>
+          <div class="preview-item">
+            ${hasValue(profileData.degree) ? `<h4>${profileData.degree}</h4>` : ''}
+            ${hasValue(profileData.institution) ? `<p class="institution">${profileData.institution}</p>` : ''}
+            ${hasValue(profileData.graduationYear) ? `<p class="date">${profileData.graduationYear}</p>` : ''}
+          </div>
+        </div>` : ''}
+        ${profileData.skills && profileData.skills.length > 0 ? `
+        <div class="preview-section-item">
+          <h3>Skills</h3>
+          <div class="skills-container">
+            ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+          </div>
+        </div>` : ''}
+        ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `
+        <div class="preview-section-item">
+          <h3>Contact Information</h3>
+          <div class="contact-info">
+            ${hasValue(profileData.email) ? `<p><strong>Email:</strong> ${profileData.email}</p>` : ''}
+            ${hasValue(profileData.phone) ? `<p><strong>Phone:</strong> ${profileData.phone}</p>` : ''}
+          </div>
+          <div class="social-links">
+            ${makeSocialLink('linkedin', profileData.linkedin)}
+            ${makeSocialLink('twitter', profileData.twitter)}
+            ${makeSocialLink('github', profileData.github)}
+          </div>
+        </div>` : ''}
+      `;
+      previewContent.innerHTML = previewHTML;
+    } else {
+      document.getElementById('no-data-message').style.display = 'block';
+      document.getElementById('profile-preview-content').style.display = 'none';
+    }
+  });
+
+  function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  const toastContent = toast.querySelector('.toast-content');
+  
+  toast.className = 'toast show ' + type;
+  toastContent.textContent = message;
+  
+  setTimeout(() => {
+    toast.className = 'toast';
+  }, 3000);
+}
+//imagekit:
+
+document.getElementById('continue-btn').addEventListener('click', async () => {
+  const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+
+  // Convert base64 data URL to File
+  function dataURLtoFile(dataurl, filename) {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  }
+
+  let resumeURL = localStorage.getItem("resumeUrl");
+  let profilePicURL = localStorage.getItem("profilePictureUrl");
+
+  // 1. Upload profile pic if it's a base64
+  if (profileData.profilePicture && profileData.profilePicture.startsWith("data:")) {
+    const profileFile = dataURLtoFile(profileData.profilePicture, "profile_pic.png");
+    console.log("Uploading profile image:", profileFile);
+    const res = await uploadToImageKit(profileFile);
+    if (res?.url) {
+      profilePicURL = res.url;
+      localStorage.setItem("profilePictureUrl", profilePicURL);
+      profileData.profilePicture = profilePicURL;
+    }
+  }
+
+  // 2. Upload resume if resumeUrl is base64
+ // 2. Upload resume if stored base64
+const resumeBase64 = localStorage.getItem("resumeFile");
+if (resumeBase64 && resumeBase64.startsWith("data:")) {
+  const resumeFile = dataURLtoFile(resumeBase64, "resume.pdf");
+  console.log("Uploading resume file:", resumeFile);
+  const res = await uploadToImageKit(resumeFile);
+  if (res?.url) {
+    resumeURL = res.url;
+    localStorage.setItem("resumeUrl", resumeURL);
+    profileData.resumeUrl = resumeURL;
+  }
+}
+
+
+  localStorage.setItem("internProfileData", JSON.stringify(profileData));
+
+  // TODO: Send to Firebase or MongoDB from here if needed
+
+  // Navigate
+  window.location.href = "/interns/home";
+});
+
+
+
+
+
+async function uploadToImageKit(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/upload", {
+      method: "POST",
+      body: formData,
+      credentials: "include"  // Ensure cookies are sent
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Upload failed: ${res.status} - ${errorText}`);
+    }
+    
+    const data = await res.json();
+    return data.url;  // Return just the URL
+    
+  } catch (err) {
+    console.error("Upload error:", err);
+    showToast(`Upload error: ${err.message}`, "error");
+    return null;
+  }
+}
+
+
+
+
+
+function viewResume() {
+  const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+  const resumeUrl = profileData.resumeUrl || localStorage.getItem("resumeUrl");
+
+  if (resumeUrl) {
+    const iframe = document.getElementById('resumeViewer');
+    iframe.src = resumeUrl;
+    iframe.style.display = 'block';
+  } else {
+    showToast('No resume found in your profile.', 'error');
+  }
+}
+
+
+</script>
+</body>
+</html>
