@@ -350,6 +350,16 @@ async def intern_preview_page(request: Request):
 async def startup_preview_page(request: Request):
     return templates.TemplateResponse("preview2.html", {"request": request})
 
+
+@app.get("/interns/home")
+async def intern_home(request: Request):
+    return templates.TemplateResponse("interns/home.html", {"request": request})
+
+@app.get("/startups/home")
+async def startup_home(request: Request):
+    return templates.TemplateResponse("startups/home.html", {"request": request})
+
+
 # --------------------- Authentication Routes ---------------------
 
 @app.post("/signup")
