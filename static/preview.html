@@ -429,6 +429,7 @@ body {
       
       if (profileDataString) {
         const profileData = JSON.parse(profileDataString);
+        profileData.profilePicture = localStorage.getItem("profilePictureUrl") || profileData.profilePicture;
         const previewContent = document.getElementById('profile-preview-content');
     
         function hasValue(value) {
