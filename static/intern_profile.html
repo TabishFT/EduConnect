@@ -974,181 +974,209 @@ document.addEventListener('DOMContentLoaded', function() {
     formData.append("file", file);
 
     try {
-      showToast('Uploading file...', 'info');
-      
-      const res = await fetch("/upload", {
-        method: "POST",
-        body: formData,
-        credentials: "include"
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || `Upload failed: ${res.status}`);
-      }
-      
-      const data = await res.json();
-      showToast('File uploaded successfully!', 'success');
-      return data.url;
+        showToast('Uploading file...', 'info');
+        
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+        
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || `Upload failed: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        showToast('File uploaded successfully!', 'success');
+        return data.url;
     } catch (err) {
-      console.error("Upload error:", err);
-      showToast(`Upload error: ${err.message}`, 'error');
-      throw err;
+        console.error("Upload error:", err);
+        showToast(`Upload error: ${err.message}`, 'error');
+        throw err;
     }
-  }
+}
+
 
   // Handle profile picture upload
   const profilePictureInput = document.getElementById('profilePicture');
-  if (profilePictureInput) {
-    profilePictureInput.addEventListener('change', async function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
-          showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
-          e.target.value = ''; // Clear the input
-          return;
-        }
-        
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          showToast('Image file size should be less than 5MB', 'error');
-          e.target.value = ''; // Clear the input
-          return;
-        }
-        
-        try {
-          const imageUrl = await uploadFileToImageKit(file);
-          localStorage.setItem('profilePictureUrl', imageUrl);
-          
-          // Show preview
-          const preview = document.createElement('img');
-          preview.src = imageUrl;
-          preview.style.maxWidth = '150px';
-          preview.style.maxHeight = '150px';
-          preview.style.borderRadius = '8px';
-          preview.style.marginTop = '10px';
-          
-          // Remove existing preview if any
-          const existingPreview = document.querySelector('.profile-pic-preview');
-          if (existingPreview) {
-            existingPreview.remove();
-          }
-          
-          preview.className = 'profile-pic-preview';
-          e.target.parentNode.appendChild(preview);
-          
-        } catch (error) {
-          console.error('Profile picture upload failed:', error);
-          e.target.value = ''; // Clear the input on error
-        }
-      }
-    });
-  }
+    if (profilePictureInput) {
+        profilePictureInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+                
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    showToast('Image file size should be less than 5MB', 'error');
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+                
+                try {
+                    const imageUrl = await uploadFileToImageKit(file);
+                    
+                    // Clear old profile picture URL and set new one
+                    localStorage.removeItem('profilePictureUrl');
+                    localStorage.setItem('profilePictureUrl', imageUrl);
+                    
+                    console.log('New profile picture URL saved:', imageUrl);
+                    
+                    // Show preview
+                    const preview = document.createElement('img');
+                    preview.src = imageUrl;
+                    preview.style.maxWidth = '150px';
+                    preview.style.maxHeight = '150px';
+                    preview.style.borderRadius = '8px';
+                    preview.style.marginTop = '10px';
+                    
+                    // Remove existing preview if any
+                    const existingPreview = document.querySelector('.profile-pic-preview');
+                    if (existingPreview) {
+                        existingPreview.remove();
+                    }
+                    
+                    preview.className = 'profile-pic-preview';
+                    e.target.parentNode.appendChild(preview);
+                    
+                } catch (error) {
+                    console.error('Profile picture upload failed:', error);
+                    e.target.value = ''; // Clear the input on error
+                }
+            }
+        });
+    }
 
   // Handle resume upload
-  const resumeInput = document.getElementById('resumeInput');
-  if (resumeInput) {
-    resumeInput.addEventListener('change', async function(e) {
-      const file = e.target.files[0];
-      if (file) {
-        // Validate file type
-        const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-        if (!allowedTypes.includes(file.type)) {
-          showToast('Please select a valid file (PDF, PNG, or JPEG)', 'error');
-          e.target.value = ''; // Clear the input
-          return;
-        }
-        
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          showToast('Resume file size should be less than 10MB', 'error');
-          e.target.value = ''; // Clear the input
-          return;
-        }
-        
-        try {
-          const resumeUrl = await uploadFileToImageKit(file);
-          localStorage.setItem('resumeUrl', resumeUrl);
-          
-          // Show upload success message
-          const successMsg = document.createElement('div');
-          successMsg.textContent = `✓ Resume uploaded: ${file.name}`;
-          successMsg.style.color = 'green';
-          successMsg.style.fontSize = '14px';
-          successMsg.style.marginTop = '5px';
-          successMsg.className = 'resume-upload-success';
-          
-          // Remove existing success message if any
-          const existingMsg = document.querySelector('.resume-upload-success');
-          if (existingMsg) {
-            existingMsg.remove();
-          }
-          
-          e.target.parentNode.appendChild(successMsg);
-          
-        } catch (error) {
-          console.error('Resume upload failed:', error);
-          e.target.value = ''; // Clear the input on error
-        }
-      }
-    });
-  }
+const resumeInput = document.getElementById('resumeInput');
+    if (resumeInput) {
+        resumeInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Validate file type
+                const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('Please select a valid file (PDF, PNG, or JPEG)', 'error');
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+                
+                // Validate file size (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    showToast('Resume file size should be less than 10MB', 'error');
+                    e.target.value = ''; // Clear the input
+                    return;
+                }
+                
+                try {
+                    const resumeUrl = await uploadFileToImageKit(file);
+                    
+                    // Clear old resume URL and set new one
+                    localStorage.removeItem('resumeUrl');
+                    localStorage.setItem('resumeUrl', resumeUrl);
+                    
+                    console.log('New resume URL saved:', resumeUrl);
+                    
+                    // Show upload success message
+                    const successMsg = document.createElement('div');
+                    successMsg.textContent = `✓ Resume uploaded: ${file.name}`;
+                    successMsg.style.color = 'green';
+                    successMsg.style.fontSize = '14px';
+                    successMsg.style.marginTop = '5px';
+                    successMsg.className = 'resume-upload-success';
+                    
+                    // Remove existing success message if any
+                    const existingMsg = document.querySelector('.resume-upload-success');
+                    if (existingMsg) {
+                        existingMsg.remove();
+                    }
+                    
+                    e.target.parentNode.appendChild(successMsg);
+                    
+                } catch (error) {
+                    console.error('Resume upload failed:', error);
+                    e.target.value = ''; // Clear the input on error
+                }
+            }
+        });
+    }
+
 
   // Save profile data to localStorage
   async function saveProfileData() {
-    // Get uploaded file URLs from localStorage
+    // Get uploaded file URLs from localStorage - these are the most recent uploads
     const profilePictureUrl = localStorage.getItem('profilePictureUrl') || '';
     const resumeUrl = localStorage.getItem('resumeUrl') || '';
     
+    console.log('Latest profile picture URL:', profilePictureUrl);
+    console.log('Latest resume URL:', resumeUrl);
+    
     // Create profile data object
     const profileData = {
-      fullName: document.getElementById('fullname').value,
-      profession: document.getElementById('profession').value,
-      bio: document.getElementById('bio').value,
-      profilePicture: profilePictureUrl, // Use uploaded URL
-      resumeUrl: resumeUrl, // Use uploaded URL
-      field: document.getElementById('field')?.value || '',
-      headline: document.getElementById('headline')?.value || '',
-      industry: document.getElementById('industry')?.value || '',
-      company: document.getElementById('company')?.value || '',
-      workExperience: document.getElementById('workExperience')?.value || '',
-      website: document.getElementById('website')?.value || '',
-      education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
-        degree: entry.querySelector('[id^="degree"]')?.value || '',
-        institution: entry.querySelector('[id^="institution"]')?.value || '',
-        year: entry.querySelector('[id^="eduYear"]')?.value || ''
-      })).filter(edu => edu.degree || edu.institution || edu.year),
-      skills: getSkills(),
-      email: document.getElementById('email').value,
-      phone: document.getElementById('phone').value,
-      location: document.getElementById('location').value,
-      linkedin: document.getElementById('linkedin').value,
-      twitter: document.getElementById('twitter').value,
-      github: document.getElementById('github').value
+        fullName: document.getElementById('fullname').value,
+        profession: document.getElementById('profession').value,
+        bio: document.getElementById('bio').value,
+        profilePicture: profilePictureUrl, // Use latest uploaded URL
+        resumeUrl: resumeUrl, // Use latest uploaded URL
+        field: document.getElementById('field')?.value || '',
+        headline: document.getElementById('headline')?.value || '',
+        industry: document.getElementById('industry')?.value || '',
+        company: document.getElementById('company')?.value || '',
+        workExperience: document.getElementById('workExperience')?.value || '',
+        website: document.getElementById('website')?.value || '',
+        education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
+            degree: entry.querySelector('[id^="degree"]')?.value || '',
+            institution: entry.querySelector('[id^="institution"]')?.value || '',
+            year: entry.querySelector('[id^="eduYear"]')?.value || ''
+        })).filter(edu => edu.degree || edu.institution || edu.year),
+        skills: getSkills(),
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        location: document.getElementById('location').value,
+        linkedin: document.getElementById('linkedin').value,
+        twitter: document.getElementById('twitter').value,
+        github: document.getElementById('github').value
     };
 
     // Store profile data in localStorage
     localStorage.setItem('internProfileData', JSON.stringify(profileData));
+    console.log('Profile data saved to localStorage:', profileData);
 
     // Set role and redirect to preview
     try {
-      const res = await fetch('/api/set_role', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: 'intern' })
-      });
+        showToast('Setting role...', 'info');
+        
+        const res = await fetch('/api/set_role', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ role: 'intern' })
+        });
 
-      if (res.ok) {
-        window.location.href = '/preview';
-      } else {
-        throw new Error('Role update failed');
-      }
+        if (res.ok) {
+            showToast('Profile created successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = '/preview';
+            }, 1000);
+        } else {
+            const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || 'Role update failed');
+        }
     } catch (err) {
-      showToast('Error saving profile: ' + err.message, 'error');
+        console.error('Error saving profile:', err);
+        showToast('Error saving profile: ' + err.message, 'error');
     }
-  }
+}
+
 
   // Get skills from the form
   function getSkills() {

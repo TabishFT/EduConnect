@@ -421,7 +421,6 @@ body {
 <script>
 
 
-
 // Show toast
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
@@ -433,151 +432,212 @@ function showToast(message, type = 'success') {
     setTimeout(() => {
       toast.className = 'toast';
     }, 3000);
-  }
+}
 
-  // View Resume
-  function viewResume() {
+// View Resume
+function viewResume() {
     const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
-    const resumeUrl = profileData.resumeUrl || localStorage.getItem('resumeUrl');
+    
+    // Always check localStorage first for the latest resume URL
+    const resumeUrl = localStorage.getItem('resumeUrl') || profileData.resumeUrl;
 
     if (resumeUrl) {
-      window.open(resumeUrl, '_blank');
+        window.open(resumeUrl, '_blank');
     } else {
-      showToast('No resume found. Please upload a resume in your profile.', 'error');
+        showToast('No resume found. Please upload a resume in your profile.', 'error');
     }
-  }
+}
 
-  // Save to Firebase and redirect
-  async function saveToFirebaseAndContinue() {
+// Save to Firebase and redirect
+async function saveToFirebaseAndContinue() {
     try {
-      const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
-
-      Object.keys(profileData).forEach(key => {
-        if (profileData[key] === '') {
-          profileData[key] = null;
+        console.log('Starting save to Firebase...');
+        showToast('Saving profile...', 'info');
+        
+        const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+        
+        // Update profile data with latest URLs from localStorage
+        const latestProfilePicture = localStorage.getItem('profilePictureUrl');
+        const latestResumeUrl = localStorage.getItem('resumeUrl');
+        
+        if (latestProfilePicture) {
+            profileData.profilePicture = latestProfilePicture;
         }
-      });
+        if (latestResumeUrl) {
+            profileData.resumeUrl = latestResumeUrl;
+        }
 
-      const res = await fetch('/api/intern_profile', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      });
+        console.log('Profile data to save:', profileData);
 
-      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        // Convert empty strings to null
+        Object.keys(profileData).forEach(key => {
+            if (profileData[key] === '') {
+                profileData[key] = null;
+            }
+        });
 
-      showToast('Profile saved to database!', 'success');
-      localStorage.setItem('selectedRole', 'intern');
-      setTimeout(() => {
-        window.location.href = '/home';
-      }, 1000);
+        const res = await fetch('/api/intern_profile', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(profileData)
+        });
+
+        console.log('Response status:', res.status);
+        
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+            throw new Error(errorData.detail || `Server error: ${res.status}`);
+        }
+
+        const result = await res.json();
+        console.log('Save result:', result);
+        
+        showToast('Profile saved successfully!', 'success');
+        localStorage.setItem('selectedRole', 'intern');
+        
+        // Wait a bit for the toast to show, then redirect
+        setTimeout(() => {
+            console.log('Redirecting to /home...');
+            window.location.href = '/home';
+        }, 1500);
 
     } catch (err) {
-      console.error(err);
-      showToast('Could not save profile: ' + err.message, 'error');
+        console.error('Save error:', err);
+        showToast('Could not save profile: ' + err.message, 'error');
     }
-  }
+}
 
-  // DOM loaded
-  document.addEventListener('DOMContentLoaded', function () {
+// DOM loaded
+document.addEventListener('DOMContentLoaded', function () {
+    console.log('DOM loaded, initializing preview...');
+    
     const profileDataString = localStorage.getItem('internProfileData');
 
     if (profileDataString) {
-      let profileData = JSON.parse(profileDataString || '{}');
-      const storedPic = localStorage.getItem('profilePictureUrl') || profileData.profilePicture;
-      if (storedPic) {
-        profileData.profilePicture = storedPic;
-      }
+        let profileData = JSON.parse(profileDataString);
+        
+        // Always use the latest URLs from localStorage
+        const latestProfilePic = localStorage.getItem('profilePictureUrl');
+        const latestResumeUrl = localStorage.getItem('resumeUrl');
+        
+        if (latestProfilePic) {
+            profileData.profilePicture = latestProfilePic;
+        }
+        if (latestResumeUrl) {
+            profileData.resumeUrl = latestResumeUrl;
+        }
 
-      const previewContent = document.getElementById('profile-preview-content');
+        console.log('Loaded profile data:', profileData);
 
-      function hasValue(value) {
-        return value !== null && value !== undefined && String(value).trim() !== '';
-      }
+        const previewContent = document.getElementById('profile-preview-content');
 
-      function makeSocialLink(label, url) {
-        if (!hasValue(url)) return '';
-        let display = label.charAt(0).toUpperCase() + label.slice(1);
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
-      }
+        function hasValue(value) {
+            return value !== null && value !== undefined && String(value).trim() !== '';
+        }
 
-      const previewHTML = `
-        <div class="preview-personal">
-          <div class="preview-pic">
-            ${profileData.profilePicture ?
-              `<img src="${profileData.profilePicture}" alt="Profile Picture" class="profile-picture">` :
-              `<div class="placeholder-img">No Image</div>`}
-          </div>
-          <div class="preview-name">
-            <h2>${profileData.fullName || 'Anonymous User'}</h2>
-            ${hasValue(profileData.profession) ? `<p class="profession">${profileData.profession}</p>` : ''}
-            ${hasValue(profileData.location) ? `<p class="location">${profileData.location}</p>` : ''}
-          </div>
-        </div>
-        ${hasValue(profileData.bio) ? `
-        <div class="preview-section-item">
-          <h3>About Me</h3>
-          <p>${profileData.bio}</p>
-        </div>` : ''}
-        ${(hasValue(profileData.field) || hasValue(profileData.headline) || hasValue(profileData.industry) || hasValue(profileData.company) || hasValue(profileData.workExperience) || hasValue(profileData.website)) ? `
-        <div class="preview-section-item">
-          <h3>Professional Details</h3>
-          <div class="preview-item">
-            ${hasValue(profileData.field) ? `<p><strong>Field:</strong> ${profileData.field}</p>` : ''}
-            ${hasValue(profileData.headline) ? `<p><strong>Headline:</strong> ${profileData.headline}</p>` : ''}
-            ${hasValue(profileData.industry) ? `<p><strong>Industry:</strong> ${profileData.industry}</p>` : ''}
-            ${hasValue(profileData.company) ? `<p><strong>Company:</strong> ${profileData.company}</p>` : ''}
-            ${hasValue(profileData.workExperience) ? `<p><strong>Experience:</strong> ${profileData.workExperience}</p>` : ''}
-            ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
-          </div>
-        </div>` : ''}
-        ${(profileData.education && profileData.education.length > 0) ? `
-        <div class="preview-section-item">
-          <h3>Education</h3>
-          ${profileData.education.map(edu => `
-            <div class="preview-item">
-              ${hasValue(edu.degree) ? `<h4>${edu.degree}</h4>` : ''}
-              ${hasValue(edu.institution) ? `<p class="institution">${edu.institution}</p>` : ''}
-              ${hasValue(edu.year) ? `<p class="date">${edu.year}</p>` : ''}
+        function makeSocialLink(label, url) {
+            if (!hasValue(url)) return '';
+            let display = label.charAt(0).toUpperCase() + label.slice(1);
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+        }
+
+        const previewHTML = `
+            <div class="preview-personal">
+                <div class="preview-pic">
+                    ${profileData.profilePicture ?
+                        `<img src="${profileData.profilePicture}" alt="Profile Picture" class="profile-picture">` :
+                        `<div class="placeholder-img">No Image</div>`}
+                </div>
+                <div class="preview-name">
+                    <h2>${profileData.fullName || 'Anonymous User'}</h2>
+                    ${hasValue(profileData.profession) ? `<p class="profession">${profileData.profession}</p>` : ''}
+                    ${hasValue(profileData.location) ? `<p class="location">${profileData.location}</p>` : ''}
+                </div>
             </div>
-          `).join('')}
-        </div>` : ''}
-        ${profileData.skills && profileData.skills.length > 0 ? `
-        <div class="preview-section-item">
-          <h3>Skills</h3>
-          <div class="skills-container">
-            ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-          </div>
-        </div>` : ''}
-        ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `
-        <div class="preview-section-item">
-          <h3>Contact Information</h3>
-          <div class="contact-info">
-            ${hasValue(profileData.email) ? `<p><strong>Email:</strong> ${profileData.email}</p>` : ''}
-            ${hasValue(profileData.phone) ? `<p><strong>Phone:</strong> ${profileData.phone}</p>` : ''}
-          </div>
-          <div class="social-links">
-            ${makeSocialLink('linkedin', profileData.linkedin)}
-            ${makeSocialLink('twitter', profileData.twitter)}
-            ${makeSocialLink('github', profileData.github)}
-          </div>
-        </div>` : ''}
-        ${hasValue(profileData.resumeUrl) ? `
-        <div class="preview-section-item">
-          <h3>Resume</h3>
-          <div class="resume-section">
-            <button class="btn-view-resume" onclick="viewResume()">View Resume</button>
-          </div>
-        </div>` : ''}
-      `;
+            ${hasValue(profileData.bio) ? `
+            <div class="preview-section-item">
+                <h3>About Me</h3>
+                <p>${profileData.bio}</p>
+            </div>` : ''}
+            ${(hasValue(profileData.field) || hasValue(profileData.headline) || hasValue(profileData.industry) || hasValue(profileData.company) || hasValue(profileData.workExperience) || hasValue(profileData.website)) ? `
+            <div class="preview-section-item">
+                <h3>Professional Details</h3>
+                <div class="preview-item">
+                    ${hasValue(profileData.field) ? `<p><strong>Field:</strong> ${profileData.field}</p>` : ''}
+                    ${hasValue(profileData.headline) ? `<p><strong>Headline:</strong> ${profileData.headline}</p>` : ''}
+                    ${hasValue(profileData.industry) ? `<p><strong>Industry:</strong> ${profileData.industry}</p>` : ''}
+                    ${hasValue(profileData.company) ? `<p><strong>Company:</strong> ${profileData.company}</p>` : ''}
+                    ${hasValue(profileData.workExperience) ? `<p><strong>Experience:</strong> ${profileData.workExperience}</p>` : ''}
+                    ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
+                </div>
+            </div>` : ''}
+            ${(profileData.education && profileData.education.length > 0) ? `
+            <div class="preview-section-item">
+                <h3>Education</h3>
+                ${profileData.education.map(edu => `
+                    <div class="preview-item">
+                        ${hasValue(edu.degree) ? `<h4>${edu.degree}</h4>` : ''}
+                        ${hasValue(edu.institution) ? `<p class="institution">${edu.institution}</p>` : ''}
+                        ${hasValue(edu.year) ? `<p class="date">${edu.year}</p>` : ''}
+                    </div>
+                `).join('')}
+            </div>` : ''}
+            ${profileData.skills && profileData.skills.length > 0 ? `
+            <div class="preview-section-item">
+                <h3>Skills</h3>
+                <div class="skills-container">
+                    ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                </div>
+            </div>` : ''}
+            ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `
+            <div class="preview-section-item">
+                <h3>Contact Information</h3>
+                <div class="contact-info">
+                    ${hasValue(profileData.email) ? `<p><strong>Email:</strong> ${profileData.email}</p>` : ''}
+                    ${hasValue(profileData.phone) ? `<p><strong>Phone:</strong> ${profileData.phone}</p>` : ''}
+                </div>
+                <div class="social-links">
+                    ${makeSocialLink('linkedin', profileData.linkedin)}
+                    ${makeSocialLink('twitter', profileData.twitter)}
+                    ${makeSocialLink('github', profileData.github)}
+                </div>
+            </div>` : ''}
+            ${hasValue(profileData.resumeUrl) || hasValue(localStorage.getItem('resumeUrl')) ? `
+            <div class="preview-section-item">
+                <h3>Resume</h3>
+                <div class="resume-section">
+                    <button class="btn-view-resume" onclick="viewResume()">View Resume</button>
+                </div>
+            </div>` : ''}
+        `;
 
-      previewContent.innerHTML = previewHTML;
+        previewContent.innerHTML = previewHTML;
     } else {
-      document.getElementById('no-data-message').style.display = 'block';
-      document.getElementById('profile-preview-content').style.display = 'none';
+        console.log('No profile data found in localStorage');
+        document.getElementById('no-data-message').style.display = 'block';
+        document.getElementById('profile-preview-content').style.display = 'none';
     }
-  });
+
+    // Bind continue button - ensure this runs after DOM is fully loaded
+    const continueBtn = document.getElementById('continue-btn');
+    if (continueBtn) {
+        console.log('Binding continue button event...');
+        continueBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            console.log('Continue button clicked');
+            localStorage.setItem('selectedRole', 'intern');
+            saveToFirebaseAndContinue();
+        });
+    } else {
+        console.error('Continue button not found!');
+    }
+});
+
+
 
   // Bind continue button safely
   document.addEventListener('DOMContentLoaded', function () {
