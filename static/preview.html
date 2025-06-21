@@ -531,22 +531,6 @@ body {
       }, 3000);
     }
     
-    // Continue button handler - files are already uploaded to ImageKit
-    document.getElementById('continue-btn').addEventListener('click', async () => {
-      try {
-        // Files are already uploaded to ImageKit when selected in intern_profile.html
-        // Just proceed to home page
-        showToast('Profile saved successfully!', 'success');
-        
-        setTimeout(() => {
-          window.location.href = "/home";
-        }, 1000);
-        
-      } catch (error) {
-        console.error("Error:", error);
-        showToast("An error occurred. Please try again.", "error");
-      }
-    });
     
     // Function to view resume
     function viewResume() {
