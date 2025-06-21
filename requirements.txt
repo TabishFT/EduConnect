@@ -13,3 +13,4 @@ firebase_admin
 cloudinary
 httpx
 imagekitio
+jinja2
