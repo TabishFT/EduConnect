@@ -57,6 +57,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # FastAPI app setup
 app = FastAPI()
+FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE") 
 
 # CORS middleware
 app.add_middleware(
@@ -231,6 +232,33 @@ async def set_role(request: Request):
     except Exception as e:
         print(f"Role update error: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/intern_profile")
+async def save_intern_profile(
+    profile: dict,
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Sanitize the email for use as a Firebase key
+    safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+
+    # 2. Convert any empty-string fields to None so they become JSON null
+    for key, val in profile.items():
+        if val == "":
+            profile[key] = None
+
+    # 3. Push to Firebase under /interns/<safe_email>.json
+    firebase_path = f"{FIREBASE_URL}/interns/{safe_email}.json"
+    resp = requests.put(firebase_path, json=profile)
+    if resp.status_code in (200, 204):
+        return JSONResponse({"status": "profile saved"})
+    else:
+        # forward Firebase’s error
+        raise HTTPException(
+            status_code=500,
+            detail=f"Firebase error: {resp.status_code} {resp.text}"
+        )
+
 
 
 
@@ -700,6 +728,10 @@ async def upload_file(
 
 
 
+
+#Firebase database me intern ka info  pushh:
+
+ # e.g. "https://<your‑db>.firebaseio.com"
 
 
 
