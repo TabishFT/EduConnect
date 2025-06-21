@@ -172,6 +172,7 @@ async def get_current_user(request: Request):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
+        print("Decoded JWT payload:", payload)
         if email is None:
             print("Email (sub) not found in token payload. Raising 401.")
             raise credentials_exception
