@@ -428,8 +428,11 @@ body {
       const profileDataString = localStorage.getItem('internProfileData');
       
       if (profileDataString) {
-        const profileData = JSON.parse(profileDataString);
-        profileData.profilePicture = localStorage.getItem("profilePictureUrl") || profileData.profilePicture;
+        let profileData = JSON.parse(profileDataString || '{}');
+        const storedPic = localStorage.getItem('profilePictureUrl') || profileData.profilePicture;
+        if (storedPic) {
+           profileData.profilePicture = storedPic;
+          }
         const previewContent = document.getElementById('profile-preview-content');
     
         function hasValue(value) {
@@ -553,41 +556,39 @@ body {
 
 // ________________________________________________
 
+
+
+
 async function saveToFirebaseAndContinue() {
-    try {
-      // 1. Grab the full profile from localStorage
-      const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+  try {
+    const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
+    Object.keys(profileData).forEach(key => {
+      if (profileData[key] === '') {
+        profileData[key] = null;
+      }
+    });
 
-      // 2. Normalize empty strings → null
-      Object.keys(profileData).forEach(key => {
-        if (profileData[key] === '') {
-          profileData[key] = null;
-        }
-      });
+    const res = await fetch('/api/intern_profile', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
 
-      // 3. POST it to your new endpoint
-      const res = await fetch('/api/intern_profile', {
-        method: 'POST',
-        credentials: 'include',                // send your auth cookie
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
 
-      if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    showToast('Profile saved to database!', 'success');
+    localStorage.setItem('selectedRole', 'intern');  // ✅ Re-add this
+    setTimeout(() => {
+      window.location.href = '/interns/home';  // ✅ Re-add redirect
+    }, 1000);
 
-      // 4. On success, toast + redirect to /home
-      showToast('Profile saved to database!', 'success');
-      setTimeout(() => { window.location.href = '/home'; }, 1000);
-
-    } catch (err) {
-      console.error(err);
-      showToast('Could not save profile: ' + err.message, 'error');
-    }
+  } catch (err) {
+    console.error(err);
+    showToast('Could not save profile: ' + err.message, 'error');
   }
+}
 
-  // Attach to your Continue button
-  document.getElementById('continue-btn')
-          .addEventListener('click', saveToFirebaseAndContinue);
 
     </script>
 
