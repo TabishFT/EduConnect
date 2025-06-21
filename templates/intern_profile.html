@@ -988,9 +988,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const data = await res.json();
-        localStorage.setItem('resumeUrl', data.url);
+        const fullUrl = data.url + (data.url.includes('?') ? '&' : '?') + `updatedAt=${Date.now()}`;
+        localStorage.setItem('resumeUrl', fullUrl);
         showToast('File uploaded successfully!', 'success');
-        return data.url;
+        return fullUrl;
     } catch (err) {
         console.error("Upload error:", err);
         showToast(`Upload error: ${err.message}`, 'error');

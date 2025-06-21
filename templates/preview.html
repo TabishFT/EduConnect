@@ -442,10 +442,18 @@ function viewResume() {
     const resumeUrl = localStorage.getItem('resumeUrl') || profileData.resumeUrl;
 
     if (resumeUrl) {
-        window.open(resumeUrl, '_blank');
-    } else {
-        showToast('No resume found. Please upload a resume in your profile.', 'error');
+    // Ensure we have the cache-busting parameter
+    let finalUrl = resumeUrl;
+    if (!finalUrl.includes('?')) {
+      finalUrl += `?updatedAt=${Date.now()}`;
+    } else if (!finalUrl.includes('updatedAt=')) {
+      finalUrl += `&updatedAt=${Date.now()}`;
     }
+    
+    window.open(finalUrl, '_blank');
+  } else {
+    showToast('No resume found. Please upload a resume in your profile.', 'error');
+  }
 }
 
 // Save to Firebase and redirect
@@ -521,12 +529,17 @@ document.addEventListener('DOMContentLoaded', function () {
         let profileData = JSON.parse(profileDataString);
         
         // Always use the latest URLs from localStorage
-        const latestProfilePic = localStorage.getItem('profilePictureUrl');
-        const latestResumeUrl = localStorage.getItem('resumeUrl');
+        const latestProfilePic = localStorage.getItem('profilePictureUrl') || profileData.profilePicture;
+        const latestResumeUrl = localStorage.getItem('resumeUrl') || profileData.resumeUrl;
         
-        if (latestProfilePic) {
-            profileData.profilePicture = latestProfilePic;
-        }
+        let profilePicUrl = latestProfilePic || '';
+        if (profilePicUrl) {
+           if (!profilePicUrl.includes('?')) {
+               profilePicUrl += `?t=${Date.now()}`;
+              } else {
+        profilePicUrl += `&t=${Date.now()}`;
+      }
+    }
         if (latestResumeUrl) {
             profileData.resumeUrl = latestResumeUrl;
         }
@@ -546,9 +559,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const previewHTML = `
-            <div class="preview-personal">
+            <div class="preview-personal">  
                 <div class="preview-pic">
-                    ${profileData.profilePicture ?
+                    ${profilePicUrl ?
                         `<img src="${profileData.profilePicture}" alt="Profile Picture" class="profile-picture">` :
                         `<div class="placeholder-img">No Image</div>`}
                 </div>
