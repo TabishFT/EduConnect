@@ -988,6 +988,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const data = await res.json();
+        localStorage.setItem('resumeUrl', data.url);
         showToast('File uploaded successfully!', 'success');
         return data.url;
     } catch (err) {

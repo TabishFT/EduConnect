@@ -24,6 +24,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse
 from dotenv import load_dotenv
 from functools import wraps
+from fastapi.templating import Jinja2Templates
+templates = Jinja2Templates(directory="templates")
 # Load environment variables
 load_dotenv()
 
@@ -57,7 +59,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # FastAPI app setup
 app = FastAPI()
-FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE") 
+FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 
 # CORS middleware
 app.add_middleware(
@@ -193,13 +195,13 @@ async def get_current_user(request: Request):
 
 @app.get("/", include_in_schema=True)
 @app.head("/", include_in_schema=True)
-async def read_index():
-    return FileResponse("static/getstarted.html")
+async def read_index(request: Request):
+    return templates.TemplateResponse("getstarted.html", {"request": request})
 
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
-async def login_page():
-    return FileResponse("static/index.html")
+async def login_page(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/select_role", include_in_schema=True)
 @app.head("/select_role", include_in_schema=True)
@@ -208,7 +210,7 @@ async def select_role_page(request: Request):
         current_user = await get_current_user(request)
         if current_user.role:
             return RedirectResponse(url="/home", status_code=303)
-        return FileResponse("static/select_role.html")
+        return templates.TemplateResponse("select_role.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
@@ -246,6 +248,7 @@ async def save_intern_profile(
             raise HTTPException(status_code=400, detail="Email missing for current user")
 
         # Log email for debugging
+
         print("Saving profile for user:", current_user.email)
 
         # Sanitize email for Firebase path
@@ -256,7 +259,9 @@ async def save_intern_profile(
             if val == "":
                 profile[key] = None
 
-        firebase_path = f"{FIREBASE_URL}/interns/{safe_email}.json"
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns/{safe_email}.json"
+        print("Raw email:", current_user.email)
+        print("Sanitized email:", safe_email)
         resp = requests.put(firebase_path, json=profile)
 
         if resp.status_code in (200, 204):
@@ -280,7 +285,7 @@ async def intern_profile_page(request: Request):
         # Allow access if role is being set via localStorage
         if current_user.role not in ["intern", None]:
             raise HTTPException(status_code=403, detail="Access denied")
-        return FileResponse("static/intern_profile.html")
+        return templates.TemplateResponse("intern_profile.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
@@ -293,7 +298,7 @@ async def startup_profile_page(request: Request):
         # Allow access if role is being set via localStorage
         if current_user.role not in ["startup", None]:
             raise HTTPException(status_code=403, detail="Access denied")
-        return FileResponse("static/startup_profile.html")
+        return templates.TemplateResponse("startup_profile.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
@@ -337,13 +342,13 @@ async def getstarted_page_redirect(request: Request):
     #         return RedirectResponse(url="/", status_code=303)
     #     raise e
 
-@app.get("/preview", response_class=FileResponse)
-async def intern_preview_page():
-    return FileResponse("static/preview.html")
+@app.get("/preview")
+async def intern_preview_page(request: Request):
+    return templates.TemplateResponse("preview.html", {"request": request})
 
-@app.get("/preview2", response_class=FileResponse)
-async def startup_preview_page():
-    return FileResponse("static/preview2.html")
+@app.get("/preview2")
+async def startup_preview_page(request: Request):
+    return templates.TemplateResponse("preview2.html", {"request": request})
 
 # --------------------- Authentication Routes ---------------------
 
