@@ -431,7 +431,7 @@ body {
       <!-- Add this button next to the Edit Profile button in the actions section -->
       <div class="preview-actions">
           <a href="/startup_profile" class="btn-outline" id="edit-profile-btn">Edit Profile</a>
-          <a href="/home" class="btn-outline">Continue</a>
+          <a href="/startups/home" class="btn-outline">Continue</a>
       </div>
     </div>
   </div>
@@ -646,63 +646,65 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Save to Firebase and redirect
   async function saveToFirebaseAndContinue() {
-      try {
-          console.log('Starting save to Firebase...');
-          showToast('Saving startup profile...', 'info');
-          
-          const startupProfileData = JSON.parse(localStorage.getItem('startupProfileData') || '{}');
-          
-          // Update profile data with latest logo URL from localStorage
-          const latestLogoUrl = localStorage.getItem('startupLogoUrl');
-          
-          if (latestLogoUrl) {
-              startupProfileData.logo = latestLogoUrl;
-          }
-  
-          console.log('Startup profile data to save:', startupProfileData);
-  
-          // Convert empty strings to null
-          Object.keys(startupProfileData).forEach(key => {
-              if (startupProfileData[key] === '') {
-                  startupProfileData[key] = null;
-              }
-          });
-  
-          const res = await fetch('/api/startup_profile', {
-              method: 'POST',
-              credentials: 'include',
-              headers: { 
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json'
-              },
-              body: JSON.stringify(startupProfileData)
-          });
-  
-          console.log('Response status:', res.status);
-          
-          if (!res.ok) {
-              const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
-              throw new Error(errorData.detail || `Server error: ${res.status}`);
-          }
-  
-          const result = await res.json();
-          console.log('Save result:', result);
-          
-          showToast('Startup profile saved successfully!', 'success');
-          localStorage.setItem('selectedRole', 'startup');
-          
-          // Wait a bit for the toast to show, then redirect
-          setTimeout(() => {
-              console.log('Redirecting to /startups/home...');
-              window.location.href = '/startups/home';
-          }, 1500);
-  
-      } catch (err) {
-          console.error('Save error:', err);
-          showToast('Could not save startup profile: ' + err.message, 'error');
-      }
+  try {
+    console.log('[DEBUG] Starting save to Firebase...');
+    
+    const startupProfileData = JSON.parse(localStorage.getItem('startupProfileData') || '{}');
+    console.log('[DEBUG] Profile data from localStorage:', startupProfileData);
+    
+    // Update profile data with latest logo URL from localStorage
+    const latestLogoUrl = localStorage.getItem('startupLogoUrl');
+    if (latestLogoUrl) {
+        startupProfileData.logo = latestLogoUrl;
+    }
+
+    console.log('[DEBUG] Final profile data being sent:', startupProfileData);
+
+    // Convert empty strings to null
+    Object.keys(startupProfileData).forEach(key => {
+        if (startupProfileData[key] === '') {
+            startupProfileData[key] = null;
+        }
+    });
+
+    const res = await fetch('/api/startup_profile', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(startupProfileData)
+    });
+
+    console.log('[DEBUG] Response status:', res.status);
+    
+    if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+        console.error('[ERROR] Server response:', errorData);
+        throw new Error(errorData.detail || `Server error: ${res.status}`);
+    }
+
+    const result = await res.json();
+    console.log('[DEBUG] Save result:', result);
+    
+    localStorage.setItem('selectedRole', 'startup');
+    
+    // Redirect directly without toast
+    console.log('Redirecting to /startups/home...');
+    window.location.href = '/startups/home';
+      
+  } catch (err) {
+    console.error('[ERROR] Save error:', err);
+    // Fallback error display
+    alert('Could not save startup profile: ' + err.message);
   }
-  
+}
+
+
+
+
+
   // DOM loaded
   document.addEventListener('DOMContentLoaded', function () {
       console.log('DOM loaded, initializing startup preview...');

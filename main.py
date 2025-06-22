@@ -276,6 +276,7 @@ async def save_intern_profile(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
 @app.post("/api/startup_profile")
 async def save_startup_profile(
     profile: dict,
@@ -286,9 +287,7 @@ async def save_startup_profile(
         if not current_user.email:
             raise HTTPException(status_code=400, detail="Email missing for current user")
 
-        # Log email for debugging
-
-        print("Saving profile for user:", current_user.email)
+        print("Saving STARTUP profile for user:", current_user.email)
 
         # Sanitize email for Firebase path
         safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
@@ -298,10 +297,13 @@ async def save_startup_profile(
             if val == "":
                 profile[key] = None
 
+        # Use the same path format as intern endpoint
         firebase_path = f"{FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
-        print("Raw email:", current_user.email)
-        print("Sanitized email:", safe_email)
+        print("Firebase path:", firebase_path)
+        print("Profile data:", profile)
+
         resp = requests.put(firebase_path, json=profile)
+        print("Firebase response:", resp.status_code, resp.text)
 
         if resp.status_code in (200, 204):
             return JSONResponse({"status": "profile saved"})
@@ -311,8 +313,12 @@ async def save_startup_profile(
                 detail=f"Firebase error: {resp.status_code} {resp.text}"
             )
     except Exception as e:
-        print("Profile save error:", str(e))
+        print("STARTUP Profile save error:", str(e))
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 
