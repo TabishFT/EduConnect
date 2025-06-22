@@ -431,7 +431,7 @@ body {
       <!-- Add this button next to the Edit Profile button in the actions section -->
       <div class="preview-actions">
           <a href="/startup_profile" class="btn-outline" id="edit-profile-btn">Edit Profile</a>
-          <a href="/startups/home" class="btn-outline">Continue</a>
+          <a href="/startups/home" class="btn-outline" id="continue-btn">Continue</a>
       </div>
     </div>
   </div>
@@ -801,18 +801,19 @@ document.addEventListener('DOMContentLoaded', function() {
       }
   
       // Bind continue button - ensure this runs after DOM is fully loaded
-      const continueBtn = document.querySelector('.preview-actions a[href="/home"]');
+      const continueBtn = document.getElementById('continue-btn');
       if (continueBtn) {
-          console.log('Binding continue button event...');
-          continueBtn.addEventListener('click', function (e) {
-              e.preventDefault();
-              console.log('Continue button clicked');
-              localStorage.setItem('selectedRole', 'startup');
-              saveToFirebaseAndContinue();
-          });
-      } else {
-          console.error('Continue button not found!');
-      }
+        console.log('Binding continue button event...');
+        continueBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            console.log('Continue button clicked');
+            saveToFirebaseAndContinue();
+        });
+    } else {
+        console.error('Continue button not found!');
+    }
+
+
   });
   </script>
 
