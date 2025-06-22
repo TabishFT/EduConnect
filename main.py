@@ -277,7 +277,7 @@ async def save_intern_profile(
 
 
 @app.post("/api/startup_profile")
-async def save_intern_profile(
+async def save_startup_profile(
     profile: dict,
     current_user: User = Depends(get_current_user)
 ):
