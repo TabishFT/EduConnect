@@ -276,6 +276,45 @@ async def save_intern_profile(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/startup_profile")
+async def save_intern_profile(
+    profile: dict,
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        # Ensure email exists
+        if not current_user.email:
+            raise HTTPException(status_code=400, detail="Email missing for current user")
+
+        # Log email for debugging
+
+        print("Saving profile for user:", current_user.email)
+
+        # Sanitize email for Firebase path
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+
+        # Convert empty strings to null
+        for key, val in profile.items():
+            if val == "":
+                profile[key] = None
+
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+        print("Raw email:", current_user.email)
+        print("Sanitized email:", safe_email)
+        resp = requests.put(firebase_path, json=profile)
+
+        if resp.status_code in (200, 204):
+            return JSONResponse({"status": "profile saved"})
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Firebase error: {resp.status_code} {resp.text}"
+            )
+    except Exception as e:
+        print("Profile save error:", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 
 @app.get("/intern_profile")
