@@ -761,7 +761,7 @@ select option {
         <div class="form-controls">
           <button type="button" class="btn-outline" id="prev-btn" disabled>Previous</button>
           <button type="button" class="btn-primary" id="next-btn">Next</button>
-          <button type="button" class="btn-primary" id="apply-btn" style="display:none;">Apply</button>
+          <button type="button" class="btn-primary" id="apply-btn" style="display:none;" onclick="saveStartupProfileData()">Apply</button>
         </div>
       </div>
     </div>
@@ -773,7 +773,7 @@ select option {
     <div class="toast-content"></div>
   </div>
 
-<script>
+<!-- <script>
 document.addEventListener('DOMContentLoaded', () => {
   // Select form elements
   const formSteps = document.querySelectorAll('.form-step');
@@ -1145,8 +1145,400 @@ document.addEventListener('DOMContentLoaded', () => {
   showStep(1);
 });
 </script>
-<script>
+ -->
+
+
+ <script>
+  function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    const toastContent = toast.querySelector('.toast-content');
+    
+    toast.className = 'toast show ' + type;
+    toastContent.textContent = message;
+    
+    setTimeout(() => {
+      toast.className = 'toast';
+    }, 3000);
+  }
 </script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Form navigation
+  const formSteps = document.querySelectorAll('.form-step');
+  const progressBar = document.querySelector('.progress');
+  const steps = document.querySelectorAll('.step');
+  const nextBtn = document.getElementById('next-btn');
+  const prevBtn = document.getElementById('prev-btn');
+
+  let currentStep = 0;
+  const totalSteps = formSteps.length;
+
+  // Update progress bar
+  function updateProgress() {
+    const progress = ((currentStep + 1) / totalSteps) * 100;
+    progressBar.style.width = `${progress}%`;
+  }
+
+  // Show current step
+  function showStep(stepIndex) {
+    formSteps.forEach((step, index) => {
+      step.classList.toggle('active', index === stepIndex);
+    });
+
+    steps.forEach((step, index) => {
+      step.classList.toggle('active', index === stepIndex);
+    });
+
+    prevBtn.disabled = stepIndex === 0;
+
+    if (stepIndex === totalSteps - 1) {
+      nextBtn.textContent = 'Create Profile';
+    } else {
+      nextBtn.textContent = 'Next';
+    }
+
+    updateProgress();
+  }
+
+  // Next button click
+  nextBtn.addEventListener('click', function() {
+    if (currentStep < totalSteps - 1) {
+      currentStep++;
+      showStep(currentStep);
+    } else {
+      // This is the final step, show Apply button and hide Next
+      nextBtn.style.display = 'none';
+      document.getElementById('apply-btn').style.display = 'inline-block';
+    }
+  });
+
+  // Previous button click
+  prevBtn.addEventListener('click', function() {
+    if (currentStep > 0) {
+      currentStep--;
+      showStep(currentStep);
+      
+      // Show Next button and hide Apply button if going back
+      nextBtn.style.display = 'inline-block';
+      document.getElementById('apply-btn').style.display = 'none';
+    }
+  });
+
+  // Function to upload file to ImageKit
+  async function uploadFileToImageKit(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+        showToast('Uploading file...', 'info');
+        
+        const res = await fetch("/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "include"
+        });
+        
+        if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || `Upload failed: ${res.status}`);
+        }
+        
+        const data = await res.json();
+        const fullUrl = data.url + (data.url.includes('?') ? '&' : '?') + `updatedAt=${Date.now()}`;
+        showToast('File uploaded successfully!', 'success');
+        return fullUrl;
+    } catch (err) {
+        console.error("Upload error:", err);
+        showToast(`Upload error: ${err.message}`, 'error');
+        throw err;
+    }
+  }
+
+  // Handle startup logo upload
+  const startupLogoInput = document.getElementById('startup-logo');
+  if (startupLogoInput) {
+    startupLogoInput.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
+          e.target.value = '';
+          return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          showToast('Logo file size should be less than 5MB', 'error');
+          e.target.value = '';
+          return;
+        }
+        
+        try {
+          const logoUrl = await uploadFileToImageKit(file);
+          
+          // Store logo URL in localStorage
+          localStorage.setItem('startupLogoUrl', logoUrl);
+          
+          console.log('Startup logo URL saved:', logoUrl);
+          
+          // Show preview
+          const preview = document.createElement('img');
+          preview.src = logoUrl;
+          preview.style.maxWidth = '150px';
+          preview.style.maxHeight = '150px';
+          preview.style.borderRadius = '8px';
+          preview.style.marginTop = '10px';
+          
+          // Remove existing preview if any
+          const existingPreview = document.querySelector('.logo-preview');
+          if (existingPreview) {
+            existingPreview.remove();
+          }
+          
+          preview.className = 'logo-preview';
+          e.target.parentNode.appendChild(preview);
+          
+        } catch (error) {
+          console.error('Logo upload failed:', error);
+          e.target.value = '';
+        }
+      }
+    });
+  }
+
+  // Location type change handler
+  const locationTypeSelect = document.getElementById('location-type');
+  const physicalLocationField = document.getElementById('physical-location-field');
+  const physicalLocationInput = document.getElementById('physical-location');
+
+  if (locationTypeSelect && physicalLocationField) {
+    locationTypeSelect.addEventListener('change', function() {
+      if (this.value === 'physical' || this.value === 'hybrid') {
+        physicalLocationField.style.display = 'block';
+        physicalLocationInput.required = true;
+      } else {
+        physicalLocationField.style.display = 'none';
+        physicalLocationInput.required = false;
+        physicalLocationInput.value = '';
+      }
+    });
+  }
+
+  // Function to add founder entry HTML
+  function addFounderEntryHtml(name = '', role = '', email = '', linkedin = '') {
+    const foundersContainer = document.getElementById('founders-container');
+    if (!foundersContainer) return;
+    
+    const founderId = Date.now();
+    const founderCount = foundersContainer.children.length + 1;
+
+    const entryHTML = `
+      <div class="founder-entry">
+        <h3>Founder ${founderCount}</h3>
+        <div class="form-group">
+          <label for="founder-name-${founderId}">Full Name*</label>
+          <input type="text" id="founder-name-${founderId}" value="${name}" required>
+        </div>
+        <div class="form-group">
+          <label for="founder-role-${founderId}">Role/Title*</label>
+          <input type="text" id="founder-role-${founderId}" value="${role}" placeholder="e.g. CEO, CTO, Co-founder" required>
+        </div>
+        <div class="form-group">
+          <label for="founder-email-${founderId}">Email</label>
+          <input type="email" id="founder-email-${founderId}" value="${email}">
+        </div>
+        <div class="form-group">
+          <label for="founder-linkedin-${founderId}">LinkedIn Profile</label>
+          <input type="url" id="founder-linkedin-${founderId}" value="${linkedin}" placeholder="https://linkedin.com/in/...">
+        </div>
+        <button type="button" class="btn-remove" onclick="removeFounderEntry(this)">Remove Founder</button>
+        <div class="divider"></div>
+      </div>
+    `;
+
+    foundersContainer.insertAdjacentHTML('beforeend', entryHTML);
+  }
+
+  // Make removeFounderEntry globally accessible
+  window.removeFounderEntry = function(button) {
+    const entry = button.closest('.founder-entry');
+    if (entry) {
+      entry.remove();
+      // Update founder numbers
+      const foundersContainer = document.getElementById('founders-container');
+      const founderEntries = foundersContainer.querySelectorAll('.founder-entry');
+      founderEntries.forEach((entry, index) => {
+        const heading = entry.querySelector('h3');
+        if (heading) {
+          heading.textContent = `Founder ${index + 1}`;
+        }
+      });
+    }
+  };
+
+  // Add event listener for the "Add Another Founder" button
+  const addFounderBtn = document.getElementById('add-founder');
+  if (addFounderBtn) {
+    addFounderBtn.addEventListener('click', function() {
+      addFounderEntryHtml();
+    });
+  }
+
+  // Get founders data from the form
+  function getFoundersData() {
+    const foundersContainer = document.getElementById('founders-container');
+    if (!foundersContainer) return [];
+    
+    const founderEntries = foundersContainer.querySelectorAll('.founder-entry');
+    const founders = [];
+
+    founderEntries.forEach(entry => {
+      const name = entry.querySelector('[id^="founder-name-"]')?.value || '';
+      const role = entry.querySelector('[id^="founder-role-"]')?.value || '';
+      const email = entry.querySelector('[id^="founder-email-"]')?.value || '';
+      const linkedin = entry.querySelector('[id^="founder-linkedin-"]')?.value || '';
+
+      if (name || role || email || linkedin) {
+        founders.push({ name, role, email, linkedin });
+      }
+    });
+
+    return founders;
+  }
+
+  // Save startup profile data to localStorage
+  async function saveStartupProfileData() {
+    // Get uploaded logo URL from localStorage
+    const logoUrl = localStorage.getItem('startupLogoUrl') || '';
+    
+    console.log('Latest logo URL:', logoUrl);
+    
+    // Create startup profile data object
+    const startupProfileData = {
+      founders: getFoundersData(),
+      startupName: document.getElementById('startup-name').value,
+      logo: logoUrl,
+      foundingYear: document.getElementById('founding-year').value,
+      locationType: document.getElementById('location-type').value,
+      physicalLocation: document.getElementById('physical-location').value,
+      contactEmail: document.getElementById('contact-email').value,
+      contactPhone: document.getElementById('contact-phone').value,
+      website: document.getElementById('website').value,
+      linkedin: document.getElementById('linkedin').value,
+      twitter: document.getElementById('twitter').value,
+      github: document.getElementById('github').value
+    };
+
+    // Store startup profile data in localStorage
+    localStorage.setItem('startupProfileData', JSON.stringify(startupProfileData));
+    console.log('Startup profile data saved to localStorage:', startupProfileData);
+
+    // Set role and redirect to preview
+    try {
+      showToast('Setting role...', 'info');
+      
+      const res = await fetch('/api/set_role', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ role: 'startup' })
+      });
+
+      if (res.ok) {
+        showToast('Profile created successfully!', 'success');
+        setTimeout(() => {
+          window.location.href = '/preview2';
+        }, 1000);
+      } else {
+        const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || 'Role update failed');
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+      showToast('Error saving profile: ' + err.message, 'error');
+    }
+  }
+
+  // Load data from localStorage on page load
+  const urlParams = new URLSearchParams(window.location.search);
+  const isEditing = urlParams.get('edit') === 'true';
+
+  const startupProfileData = JSON.parse(localStorage.getItem('startupProfileData'));
+
+  if (startupProfileData) {
+    // Fill form fields with existing data
+    if (document.getElementById('startup-name')) document.getElementById('startup-name').value = startupProfileData.startupName || '';
+    if (document.getElementById('founding-year')) document.getElementById('founding-year').value = startupProfileData.foundingYear || '';
+    if (document.getElementById('location-type')) {
+      document.getElementById('location-type').value = startupProfileData.locationType || '';
+      // Trigger change event to show/hide physical location field
+      document.getElementById('location-type').dispatchEvent(new Event('change'));
+    }
+    if (document.getElementById('physical-location')) document.getElementById('physical-location').value = startupProfileData.physicalLocation || '';
+    if (document.getElementById('contact-email')) document.getElementById('contact-email').value = startupProfileData.contactEmail || '';
+    if (document.getElementById('contact-phone')) document.getElementById('contact-phone').value = startupProfileData.contactPhone || '';
+    if (document.getElementById('website')) document.getElementById('website').value = startupProfileData.website || '';
+    if (document.getElementById('linkedin')) document.getElementById('linkedin').value = startupProfileData.linkedin || '';
+    if (document.getElementById('twitter')) document.getElementById('twitter').value = startupProfileData.twitter || '';
+    if (document.getElementById('github')) document.getElementById('github').value = startupProfileData.github || '';
+
+    // Fill founders data
+    const foundersContainer = document.getElementById('founders-container');
+    if (foundersContainer) {
+      foundersContainer.innerHTML = '';
+
+      if (startupProfileData.founders && Array.isArray(startupProfileData.founders)) {
+        startupProfileData.founders.forEach(founder => {
+          addFounderEntryHtml(founder.name, founder.role, founder.email, founder.linkedin);
+        });
+      }
+
+      if (foundersContainer.children.length === 0) {
+        addFounderEntryHtml();
+      }
+    }
+  } else {
+    // Add initial founder entry
+    addFounderEntryHtml();
+  }
+
+  // Show existing logo if available
+  const existingLogo = localStorage.getItem('startupLogoUrl');
+  if (existingLogo) {
+    const preview = document.createElement('img');
+    preview.src = existingLogo;
+    preview.style.maxWidth = '150px';
+    preview.style.maxHeight = '150px';
+    preview.style.borderRadius = '8px';
+    preview.style.marginTop = '10px';
+    preview.className = 'logo-preview';
+    
+    const logoInput = document.getElementById('startup-logo');
+    if (logoInput) {
+      logoInput.parentNode.appendChild(preview);
+    }
+  }
+
+  // Initial setup: Show the first step
+  showStep(currentStep);
+
+  // Startup Profile Save Logic (Apply Button)
+  const applyBtn = document.getElementById('apply-btn');
+  if (applyBtn) {
+    applyBtn.addEventListener('click', async function(e) {
+      e.preventDefault();
+      await saveStartupProfileData();
+    });
+  }
+});
+</script>
+
 
 </body>
 </html>

@@ -436,7 +436,7 @@ body {
     </div>
   </div>
 
-<script>
+<!-- <script>
 document.addEventListener('DOMContentLoaded', function() {
     const previewContent = document.getElementById('startup-preview-content');
     const noDataMessage = document.getElementById('no-data-message');
@@ -626,6 +626,195 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
-</script>
+</script> -->
+
+
+
+<script>
+  // Show toast
+  function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastContent = toast.querySelector('.toast-content');
+  
+      toast.className = 'toast show ' + type;
+      toastContent.textContent = message;
+  
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+  }
+  
+  // Save to Firebase and redirect
+  async function saveToFirebaseAndContinue() {
+      try {
+          console.log('Starting save to Firebase...');
+          showToast('Saving startup profile...', 'info');
+          
+          const startupProfileData = JSON.parse(localStorage.getItem('startupProfileData') || '{}');
+          
+          // Update profile data with latest logo URL from localStorage
+          const latestLogoUrl = localStorage.getItem('startupLogoUrl');
+          
+          if (latestLogoUrl) {
+              startupProfileData.logo = latestLogoUrl;
+          }
+  
+          console.log('Startup profile data to save:', startupProfileData);
+  
+          // Convert empty strings to null
+          Object.keys(startupProfileData).forEach(key => {
+              if (startupProfileData[key] === '') {
+                  startupProfileData[key] = null;
+              }
+          });
+  
+          const res = await fetch('/api/startup_profile', {
+              method: 'POST',
+              credentials: 'include',
+              headers: { 
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+              },
+              body: JSON.stringify(startupProfileData)
+          });
+  
+          console.log('Response status:', res.status);
+          
+          if (!res.ok) {
+              const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+              throw new Error(errorData.detail || `Server error: ${res.status}`);
+          }
+  
+          const result = await res.json();
+          console.log('Save result:', result);
+          
+          showToast('Startup profile saved successfully!', 'success');
+          localStorage.setItem('selectedRole', 'startup');
+          
+          // Wait a bit for the toast to show, then redirect
+          setTimeout(() => {
+              console.log('Redirecting to /startups/home...');
+              window.location.href = '/startups/home';
+          }, 1500);
+  
+      } catch (err) {
+          console.error('Save error:', err);
+          showToast('Could not save startup profile: ' + err.message, 'error');
+      }
+  }
+  
+  // DOM loaded
+  document.addEventListener('DOMContentLoaded', function () {
+      console.log('DOM loaded, initializing startup preview...');
+      
+      const startupProfileDataString = localStorage.getItem('startupProfileData');
+  
+      if (startupProfileDataString) {
+          let startupProfileData = JSON.parse(startupProfileDataString);
+          
+          // Always use the latest logo URL from localStorage
+          const latestLogoUrl = localStorage.getItem('startupLogoUrl') || startupProfileData.logo;
+          
+          let logoUrl = latestLogoUrl || '';
+          if (logoUrl) {
+             if (!logoUrl.includes('?')) {
+                 logoUrl += `?t=${Date.now()}`;
+                } else {
+          logoUrl += `&t=${Date.now()}`;
+        }
+      }
+          
+          if (latestLogoUrl) {
+              startupProfileData.logo = latestLogoUrl;
+          }
+  
+          console.log('Loaded startup profile data:', startupProfileData);
+  
+          const previewContent = document.getElementById('startup-preview-content');
+  
+          function hasValue(value) {
+              return value !== null && value !== undefined && String(value).trim() !== '';
+          }
+  
+          function makeSocialLink(label, url) {
+              if (!hasValue(url)) return '';
+              let display = label.charAt(0).toUpperCase() + label.slice(1);
+              return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+          }
+  
+          const previewHTML = `
+              <div class="startup-header">  
+                  <div class="startup-logo">
+                      ${logoUrl ?
+                          `<img src="${logoUrl}" alt="Startup Logo" class="logo-image">` :
+                          `<div class="placeholder-logo">No Logo</div>`}
+                  </div>
+                  <div class="startup-info">
+                      <h2>${startupProfileData.startupName || 'Startup Name'}</h2>
+                      ${hasValue(startupProfileData.foundingYear) ? `<p class="founding-year">Founded: ${startupProfileData.foundingYear}</p>` : ''}
+                      ${hasValue(startupProfileData.locationType) ? `
+                          <p class="location-info">
+                              <strong>Location:</strong> ${startupProfileData.locationType}
+                              ${(startupProfileData.locationType === 'physical' || startupProfileData.locationType === 'hybrid') && hasValue(startupProfileData.physicalLocation) ? 
+                                  ` - ${startupProfileData.physicalLocation}` : ''}
+                          </p>
+                      ` : ''}
+                  </div>
+              </div>
+              
+              ${(startupProfileData.founders && startupProfileData.founders.length > 0) ? `
+              <div class="preview-section-item">
+                  <h3>Founders</h3>
+                  ${startupProfileData.founders.map(founder => `
+                      <div class="founder-item">
+                          ${hasValue(founder.name) ? `<h4>${founder.name}</h4>` : ''}
+                          ${hasValue(founder.role) ? `<p class="founder-role">${founder.role}</p>` : ''}
+                          ${hasValue(founder.email) ? `<p class="founder-email"><strong>Email:</strong> ${founder.email}</p>` : ''}
+                          ${hasValue(founder.linkedin) ? `<p class="founder-linkedin"><strong>LinkedIn:</strong> <a href="${founder.linkedin}" target="_blank">${founder.linkedin}</a></p>` : ''}
+                      </div>
+                  `).join('')}
+              </div>` : ''}
+              
+              ${(hasValue(startupProfileData.contactEmail) || hasValue(startupProfileData.contactPhone) || hasValue(startupProfileData.website)) ? `
+              <div class="preview-section-item">
+                  <h3>Contact Information</h3>
+                  <div class="contact-info">
+                      ${hasValue(startupProfileData.contactEmail) ? `<p><strong>Email:</strong> ${startupProfileData.contactEmail}</p>` : ''}
+                      ${hasValue(startupProfileData.contactPhone) ? `<p><strong>Phone:</strong> ${startupProfileData.contactPhone}</p>` : ''}
+                      ${hasValue(startupProfileData.website) ? `<p><strong>Website:</strong> <a href="${startupProfileData.website}" target="_blank">${startupProfileData.website}</a></p>` : ''}
+                  </div>
+                  <div class="social-links">
+                      ${makeSocialLink('linkedin', startupProfileData.linkedin)}
+                      ${makeSocialLink('twitter', startupProfileData.twitter)}
+                      ${makeSocialLink('github', startupProfileData.github)}
+                  </div>
+              </div>` : ''}
+          `;
+  
+          previewContent.innerHTML = previewHTML;
+      } else {
+          console.log('No startup profile data found in localStorage');
+          document.getElementById('no-data-message').style.display = 'block';
+          document.getElementById('startup-preview-content').style.display = 'none';
+      }
+  
+      // Bind continue button - ensure this runs after DOM is fully loaded
+      const continueBtn = document.querySelector('.preview-actions a[href="/home"]');
+      if (continueBtn) {
+          console.log('Binding continue button event...');
+          continueBtn.addEventListener('click', function (e) {
+              e.preventDefault();
+              console.log('Continue button clicked');
+              localStorage.setItem('selectedRole', 'startup');
+              saveToFirebaseAndContinue();
+          });
+      } else {
+          console.error('Continue button not found!');
+      }
+  });
+  </script>
+
+
+
 </body>
 </html>
