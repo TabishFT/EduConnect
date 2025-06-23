@@ -650,7 +650,6 @@ posts_imagekit = ImageKit(
 )
 
 
-
 @app.get("/api/get_intern_profiles")
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
     try:
@@ -659,6 +658,7 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
             raise HTTPException(status_code=403, detail="Access denied. Only startups can view intern profiles.")
         
         # Fetch all intern profiles from Firebase
+        # Change this line to fetch the parent 'interns' node
         firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
         print(f"Fetching intern profiles from: {firebase_path}")
         
@@ -712,7 +712,6 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
             status_code=500, 
             detail=f"Internal server error while fetching profiles: {str(e)}"
         )
-
 
 @app.post("/upload")
 async def upload_file(
