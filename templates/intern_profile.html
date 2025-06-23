@@ -1059,18 +1059,18 @@ document.addEventListener('DOMContentLoaded', function() {
 const resumeInput = document.getElementById('resumeInput');
     if (resumeInput) {
         resumeInput.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
+            const file = e.target.files[1];
             if (file) {
                 // Validate file type
-                const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+                const allowedTypes = ['application/pdf'];
                 if (!allowedTypes.includes(file.type)) {
-                    showToast('Please select a valid file (PDF, PNG, or JPEG)', 'error');
+                    showToast('Please select a valid file (PDF)', 'error');
                     e.target.value = ''; // Clear the input
                     return;
                 }
                 
-                // Validate file size (max 10MB)
-                if (file.size > 10 * 1024 * 1024) {
+                // Validate file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
                     showToast('Resume file size should be less than 10MB', 'error');
                     e.target.value = ''; // Clear the input
                     return;

@@ -60,6 +60,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # FastAPI app setup
 app = FastAPI()
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
+FIREBASE_STARTUP_DATABASE = os.getenv("FIREBASE_STARTUP_DATABASE")
 
 # CORS middleware
 app.add_middleware(
@@ -298,7 +299,7 @@ async def save_startup_profile(
                 profile[key] = None
 
         # Use the same path format as intern endpoint
-        firebase_path = f"{FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+        firebase_path = f"{FIREBASE_STARTUP_DATABASE.rstrip('/')}/startups/{safe_email}.json"
         print("Firebase path:", firebase_path)
         print("Profile data:", profile)
 
@@ -611,120 +612,76 @@ imagekit = ImageKit(
     url_endpoint="https://ik.imagekit.io/iupyun2hd"
 )
 
-
-
-# @app.post("/upload")
-# async def upload_file(
-#     file: UploadFile = File(...),
-#     current_user: User = Depends(get_current_user)
-# ):
-#     try:
-#         # Validate file size (optional - add max size limit)
-#         MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-#         contents = await file.read()
-        
-#         if len(contents) > MAX_FILE_SIZE:
-#             raise HTTPException(status_code=413, detail="File too large")
-        
-#         print(f"Uploading file: {file.filename}")
-#         print(f"File size: {len(contents)} bytes")
-#         print(f"Content type: {file.content_type}")
-        
-#         # Sanitize email for filename
-#         raw_email = current_user.email
-#         safe_email = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
-        
-#         # Get file extension
-#         if not file.filename or '.' not in file.filename:
-#             raise HTTPException(status_code=400, detail="Invalid file name")
-            
-#         file_ext = file.filename.split(".")[-1].lower()
-        
-#         # Determine file type and create appropriate filename
-#         if file_ext in ["jpg", "jpeg", "png", "gif", "webp", "bmp"]:
-#             file_type = "image"
-#             final_filename = f"{safe_email}_profile.{file_ext}"
-#         elif file_ext in ["pdf"]:
-#             file_type = "pdf"
-#             final_filename = f"{safe_email}_resume.{file_ext}"
-#         elif file_ext in ["doc", "docx"]:
-#             file_type = "document"
-#             final_filename = f"{safe_email}_resume.{file_ext}"
-#         else:
-#             raise HTTPException(status_code=400, detail="Unsupported file type")
-        
-#         print(f"Final filename: {final_filename}")
-#         print(f"File type: {file_type}")
-        
-#         # For PDFs and documents, convert to base64
-#         if file_type in ["pdf", "document"]:
-#             file_b64 = base64.b64encode(contents).decode('utf-8')
-            
-#             # Create data URL based on file type
-#             if file_ext == "pdf":
-#                 data_url = f"data:application/pdf;base64,{file_b64}"
-#             elif file_ext in ["doc", "docx"]:
-#                 mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document" if file_ext == "docx" else "application/msword"
-#                 data_url = f"data:{mime_type};base64,{file_b64}"
-            
-#             upload_data = data_url
-#         else:
-#             # For images, use raw bytes
-#             upload_data = contents
-        
-#         # Upload to ImageKit
-#         upload_options = UploadFileRequestOptions(
-#             folder="/uploads/",
-#             use_unique_file_name=False,
-#             overwrite_file=True,
-#             is_private_file=False,
-#             tags=[file_type, "user_upload"]
-#         )
-        
-#         result = imagekit.upload(
-#             file=upload_data,
-#             file_name=final_filename,
-#             options=upload_options
-#         )
-        
-#         # Check if upload was successful
-#         if result and hasattr(result, 'url') and result.url:
-#             response_data = {
-#                 "success": True,
-#                 "url": result.url,
-#                 "name": final_filename,
-#                 "file_type": file_type,
-#                 "size": len(contents)
-#             }
-#             print(f"Upload successful: {response_data}")
-#             return response_data
-#         else:
-#             # Log detailed error information
-#             error_msg = "ImageKit upload failed"
-#             if hasattr(result, 'error'):
-#                 error_msg = f"ImageKit error: {result.error}"
-#             elif hasattr(result, 'response_metadata'):
-#                 error_msg = f"Upload failed: {result.response_metadata}"
-            
-#             print(f"Upload failed: {error_msg}")
-#             return JSONResponse(
-#                 content={"success": False, "error": error_msg},
-#                 status_code=500
-#             )
-            
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         print(f"Upload failed with exception: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         return JSONResponse(
-#             content={"success": False, "error": f"Upload failed: {str(e)}"},
-#             status_code=500
-#         )
+#Imaagekit setup for posts images
+posts_imagekit = ImageKit(
+    private_key=os.getenv("POSTS_IMAGEKIT_PRIVATE_KEY"),
+    public_key=os.getenv("POSTS_IMAGEKIT_PUBLIC_KEY"),
+    url_endpoint="https://ik.imagekit.io/educonnect"
+)
 
 
 
+@app.get("/api/get_intern_profiles")
+async def get_intern_profiles(current_user: User = Depends(get_current_user)):
+    try:
+        # Only allow startups to access intern profiles
+        if current_user.role != "startup":
+            raise HTTPException(status_code=403, detail="Access denied. Only startups can view intern profiles.")
+        
+        # Fetch all intern profiles from Firebase
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
+        print(f"Fetching intern profiles from: {firebase_path}")
+        
+        response = requests.get(firebase_path)
+        
+        if response.status_code != 200:
+            print(f"Firebase error: {response.status_code} {response.text}")
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Failed to fetch profiles from Firebase: {response.status_code}"
+            )
+        
+        profiles_data = response.json()
+        
+        if not profiles_data:
+            return JSONResponse({"profiles": []})
+        
+        # Convert Firebase data to list format
+        profiles_list = []
+        for email_key, profile_data in profiles_data.items():
+            if profile_data and isinstance(profile_data, dict):
+                # Add the email key to the profile data for reference
+                profile_data['email_key'] = email_key
+                
+                # Ensure skills is a list
+                if 'skills' in profile_data:
+                    if isinstance(profile_data['skills'], str):
+                        # If skills is a string, convert to list
+                        profile_data['skills'] = [skill.strip() for skill in profile_data['skills'].split(',') if skill.strip()]
+                    elif not isinstance(profile_data['skills'], list):
+                        profile_data['skills'] = []
+                else:
+                    profile_data['skills'] = []
+                
+                profiles_list.append(profile_data)
+        
+        print(f"Successfully fetched {len(profiles_list)} intern profiles")
+        
+        return JSONResponse({
+            "profiles": profiles_list,
+            "total_count": len(profiles_list)
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching intern profiles: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error while fetching profiles: {str(e)}"
+        )
 
 
 @app.post("/upload")
@@ -796,14 +753,6 @@ async def upload_file(
         raise
     except Exception as e:
         return JSONResponse(content={"success": False, "error": f"Upload failed: {str(e)}"}, status_code=500)
-
-
-
-
-#Firebase database me intern ka info  pushh:
-
- # e.g. "https://<your‑db>.firebaseio.com"
-
 
 
 

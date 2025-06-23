@@ -1328,7 +1328,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Function to add founder entry HTML
-  function addFounderEntryHtml(name = '', role = '', email = '', linkedin = '') {
+  function addFounderEntryHtml(name = '', role = '', email = '') {
     const foundersContainer = document.getElementById('founders-container');
     if (!foundersContainer) return;
     
@@ -1395,10 +1395,9 @@ document.addEventListener('DOMContentLoaded', function() {
       const name = entry.querySelector('[id^="founder-name-"]')?.value || '';
       const role = entry.querySelector('[id^="founder-role-"]')?.value || '';
       const email = entry.querySelector('[id^="founder-email-"]')?.value || '';
-      const linkedin = entry.querySelector('[id^="founder-linkedin-"]')?.value || '';
 
-      if (name || role || email || linkedin) {
-        founders.push({ name, role, email, linkedin });
+      if (name || role || email) {
+        founders.push({ name, role, email });
       }
     });
 
@@ -1491,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       if (startupProfileData.founders && Array.isArray(startupProfileData.founders)) {
         startupProfileData.founders.forEach(founder => {
-          addFounderEntryHtml(founder.name, founder.role, founder.email, founder.linkedin);
+          addFounderEntryHtml(founder.name, founder.role, founder.email);
         });
       }
 
