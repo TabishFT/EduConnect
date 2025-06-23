@@ -408,7 +408,11 @@ async def intern_home(request: Request):
     return templates.TemplateResponse("interns/home.html", {"request": request})
 
 @app.get("/startups/home")
-async def startup_home(request: Request):
+async def startup_home(request: Request, current_user: User = Depends(get_current_user)):
+    # Check if user is a startup
+    if current_user.role != "startup":
+        raise HTTPException(status_code=403, detail="Access denied. Only startups can access this page.")
+    
     return templates.TemplateResponse("startups/home.html", {"request": request})
 
 
