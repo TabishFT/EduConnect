@@ -495,8 +495,14 @@ async def handle_oauth_callback(request: Request, user_info, provider: str):
             # New user, redirect to select role
             redirect_url = "/select_role"
         else:
-            # Existing user, redirect based on role
-            redirect_url = "/home" if db_user_data.get("role") else "/select_role"
+            # Existing user - determine redirect based on role
+            role = db_user_data.get("role")
+            if role == "intern":
+                redirect_url = "/interns/home"
+            elif role == "startup":
+                redirect_url = "/startups/home"
+            else:
+                redirect_url = "/select_role"
 
         access_token = create_access_token(
             data={"sub": user_info.email},
