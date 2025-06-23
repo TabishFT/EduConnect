@@ -202,7 +202,21 @@ async def read_index(request: Request):
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
 async def login_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        current_user = await get_current_user(request)
+        if current_user and current_user.role:
+            if current_user.role == "intern":
+                return RedirectResponse(url="/interns/home", status_code=303)
+            elif current_user.role == "startup":
+                return RedirectResponse(url="/startups/home", status_code=303)
+        # If no role or not authenticated, show login
+        return templates.TemplateResponse("index.html", {"request": request})
+    except HTTPException as e:
+        # If unauthenticated, show login
+        if e.status_code == 401:
+            return templates.TemplateResponse("index.html", {"request": request})
+        raise e
+
 
 @app.get("/select_role", include_in_schema=True)
 @app.head("/select_role", include_in_schema=True)
