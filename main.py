@@ -210,7 +210,13 @@ async def select_role_page(request: Request):
     try:
         current_user = await get_current_user(request)
         if current_user.role:
-            return RedirectResponse(url="/home", status_code=303)
+            # Redirect based on role
+            if current_user.role == "intern":
+                return RedirectResponse(url="/interns/home", status_code=303)
+            elif current_user.role == "startup":
+                return RedirectResponse(url="/startups/home", status_code=303)
+            else:
+                return RedirectResponse(url="/home", status_code=303)
         return templates.TemplateResponse("select_role.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
@@ -219,6 +225,7 @@ async def select_role_page(request: Request):
     except Exception as e:
         print(f"Error in select_role: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error on role selection")
+
 
 @app.post("/api/set_role")
 async def set_role(request: Request):
@@ -350,26 +357,25 @@ async def startup_profile_page(request: Request):
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
+
 @app.get("/home")
 async def home_page(request: Request):
     try:
         current_user = await get_current_user(request)
         if not current_user.role:
             return RedirectResponse(url="/select_role", status_code=303)
-        
-        # यहां 'intern' रोल को भी स्वीकार करें
-        if current_user.role not in ['startup', 'intern']:
+
+        if current_user.role == "intern":
+            return RedirectResponse(url="/interns/home", status_code=303)
+        elif current_user.role == "startup":
+            return RedirectResponse(url="/startups/home", status_code=303)
+        else:
             return RedirectResponse(url="/select_role", status_code=303)
-        
-        # Return role info for API requests
-        return JSONResponse(
-            content={"role": current_user.role},
-            status_code=200
-        )
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
         raise e
+
 
 @app.get("/getstarted")
 async def getstarted_page_redirect(request: Request):
