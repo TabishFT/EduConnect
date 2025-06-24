@@ -178,6 +178,57 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def read_index(request: Request):
     return templates.TemplateResponse("getstarted.html", {"request": request})
 
+async def get_current_user(request: Request):
+    print("--- Attempting to get current user ---")
+    print(f"👀 Token seen = {token}")
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    print("\n--- Attempting to get current user ---")
+    token = request.cookies.get("access_token")
+    source = "cookie"
+    if not token:
+        print("Token not found in cookies.")
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            source = "header"
+            print("Token found in Authorization header.")
+        else:
+            print("Token not found in Authorization header.")
+            token = request.query_params.get("access_token")
+            if token:
+                source = "query_param"
+                print("Token found in query parameters.")
+            else:
+                print("Token not found in cookies, headers, or query params. Raising 401.")
+                raise credentials_exception
+    else:
+        print(f"Token found in: {source}")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        print("Decoded JWT payload:", payload)
+        if email is None:
+            print("Email (sub) not found in token payload. Raising 401.")
+            raise credentials_exception
+        print(f"Token decoded successfully. Email (sub): {email}")
+    except JWTError as e:
+        print(f"JWTError decoding token: {e}. Raising 401.")
+        raise credentials_exception
+
+    user = get_user(email)
+    if user is None:
+        print(f"User with email '{email}' not found in database. Raising 401.")
+        raise credentials_exception
+
+    print(f"User '{email}' found and authenticated successfully.")
+    return user
+
+
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
 async def login_page(request: Request):
@@ -609,58 +660,6 @@ async def linkedin_callback(request: Request):
         return RedirectResponse(url="/login", status_code=303)
 
 from fastapi import HTTPException
-
-
-
-async def get_current_user(request: Request):
-    print("--- Attempting to get current user ---")
-    print(f"👀 Token seen = {token}")
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Not authenticated",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    print("\n--- Attempting to get current user ---")
-    token = request.cookies.get("access_token")
-    source = "cookie"
-    if not token:
-        print("Token not found in cookies.")
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            source = "header"
-            print("Token found in Authorization header.")
-        else:
-            print("Token not found in Authorization header.")
-            token = request.query_params.get("access_token")
-            if token:
-                source = "query_param"
-                print("Token found in query parameters.")
-            else:
-                print("Token not found in cookies, headers, or query params. Raising 401.")
-                raise credentials_exception
-    else:
-        print(f"Token found in: {source}")
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        print("Decoded JWT payload:", payload)
-        if email is None:
-            print("Email (sub) not found in token payload. Raising 401.")
-            raise credentials_exception
-        print(f"Token decoded successfully. Email (sub): {email}")
-    except JWTError as e:
-        print(f"JWTError decoding token: {e}. Raising 401.")
-        raise credentials_exception
-
-    user = get_user(email)
-    if user is None:
-        print(f"User with email '{email}' not found in database. Raising 401.")
-        raise credentials_exception
-
-    print(f"User '{email}' found and authenticated successfully.")
-    return user
 
 
 
