@@ -641,7 +641,7 @@ body {
       try {
         showToast('Loading profiles...', 'info');
         
-        const response = await fetch('/api/get_intern_profiles/', {
+        const response = await fetch('/api/get_intern_profiles', {
           method: 'GET',
           credentials: 'include',
           headers: {

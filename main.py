@@ -61,15 +61,31 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 app = FastAPI()
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 FIREBASE_STARTUP_DATABASE = os.getenv("FIREBASE_STARTUP_DATABASE")
+FIREBASE_POSTS_DATABASE = os.getenv("FIREBASE_POSTS_DATABASE")
+
+origins = [
+    "https://internweb.onrender.com",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+
+if FIREBASE_URL:
+    origins.append(FIREBASE_URL)
+if FIREBASE_STARTUP_DATABASE:
+    origins.append(FIREBASE_STARTUP_DATABASE)
+if FIREBASE_POSTS_DATABASE:
+    origins.append(FIREBASE_POSTS_DATABASE)
+
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://internweb.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Static files with caching
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
@@ -660,10 +676,20 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
         # Fetch all intern profiles from Firebase
         # Change this line to fetch the parent 'interns' node
         firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
+
         print(f"Fetching intern profiles from: {firebase_path}")
         
         response = requests.get(firebase_path)
+        print(f"Fetching profiles for {current_user.email}")
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
+        print(f"Firebase URL: {firebase_path}")
         
+        response = requests.get(firebase_path)
+        print(f"Firebase response: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"Firebase error content: {response.text}")
+
         if response.status_code != 200:
             print(f"Firebase error: {response.status_code} {response.text}")
             raise HTTPException(
