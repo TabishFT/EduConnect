@@ -49,6 +49,15 @@ client = MongoClient(
 db = client["startup_intern_db"]
 users_collection = db["users"]
 
+
+#-------------------------------ISKO REMOVE KRNA RAHEGA
+@app.middleware("http")
+async def debug_request(request: Request, call_next):
+    print(f"➡️ INCOMING: {request.method} {request.url.path}")
+    response = await call_next(request)
+    print(f"⬅️ STATUS: {response.status_code}")
+    return response
+#----------------------------------------------------------
 # Create indexes for better query performance
 users_collection.create_index([("email", ASCENDING)], unique=True)
 users_collection.create_index([("role", ASCENDING)])
@@ -161,6 +170,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(request: Request):
+    print("--- Attempting to get current user ---")
+    print(f"👀 Token seen = {token}")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated",
@@ -672,9 +683,9 @@ posts_imagekit = ImageKit(
 )
 
 
-@app.get("/api/get_intern_profiles")
 @app.get("/api/get_intern_profiles/")
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
+    print("✅ Inside /api/get_intern_profiles handler")
     try:
         # Only allow startups to access intern profiles
         if current_user.role != "startup":
