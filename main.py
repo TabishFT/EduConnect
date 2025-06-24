@@ -727,6 +727,7 @@ async def handle_external_links(full_path: str):
 
 
 @app.get("/get_intern_profiles")
+@app.get("/get_intern_profiles/")  # Handle both with and without trailing slash
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
     """
     Get all intern profiles from Firebase - accessible only to startups
@@ -855,7 +856,6 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
-
 
 
 if __name__ == "__main__":
