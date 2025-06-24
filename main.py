@@ -645,10 +645,16 @@ async def linkedin_callback(request: Request):
         print(f"LinkedIn callback error: {str(e)}")
         return RedirectResponse(url="/login", status_code=303)
 
+from fastapi import HTTPException
+
 @app.get("/{full_path:path}")
 async def handle_external_links(full_path: str):
-    # Remove domain check and directly prepend https://
+    # if it’s an API path, let FastAPI return 404 (or whatever)
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="Not found")
+    # otherwise treat it as an external-URL redirect
     return RedirectResponse(f"https://{full_path}")
+
 
 
 #imagekit:
