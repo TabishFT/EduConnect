@@ -201,7 +201,20 @@ async def read_index(request: Request):
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
 async def login_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    try:
+        current_user = await get_current_user(request)
+        if current_user and current_user.role:
+            if current_user.role == "intern":
+                return RedirectResponse(url="/interns/home", status_code=303)
+            elif current_user.role == "startup":
+                return RedirectResponse(url="/startups/home", status_code=303)
+        # If no role or not authenticated, show login
+        return templates.TemplateResponse("index.html", {"request": request})
+    except HTTPException as e:
+        # If unauthenticated, show login
+        if e.status_code == 401:
+            return templates.TemplateResponse("index.html", {"request": request})
+        raise e
 
 @app.get("/select_role", include_in_schema=True)
 @app.head("/select_role", include_in_schema=True)
@@ -209,7 +222,13 @@ async def select_role_page(request: Request):
     try:
         current_user = await get_current_user(request)
         if current_user.role:
-            return RedirectResponse(url="/home", status_code=303)
+            # Redirect based on role
+            if current_user.role == "intern":
+                return RedirectResponse(url="/interns/home", status_code=303)
+            elif current_user.role == "startup":
+                return RedirectResponse(url="/startups/home", status_code=303)
+            else:
+                return RedirectResponse(url="/home", status_code=303)
         return templates.TemplateResponse("select_role.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
@@ -218,6 +237,7 @@ async def select_role_page(request: Request):
     except Exception as e:
         print(f"Error in select_role: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error on role selection")
+
 
 @app.post("/api/set_role")
 async def set_role(request: Request):
@@ -355,16 +375,13 @@ async def home_page(request: Request):
         current_user = await get_current_user(request)
         if not current_user.role:
             return RedirectResponse(url="/select_role", status_code=303)
-        
-        # यहां 'intern' रोल को भी स्वीकार करें
-        if current_user.role not in ['startup', 'intern']:
+
+        if current_user.role == "intern":
+            return RedirectResponse(url="/interns/home", status_code=303)
+        elif current_user.role == "startup":
+            return RedirectResponse(url="/startups/home", status_code=303)
+        else:
             return RedirectResponse(url="/select_role", status_code=303)
-        
-        # Return role info for API requests
-        return JSONResponse(
-            content={"role": current_user.role},
-            status_code=200
-        )
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
@@ -401,7 +418,11 @@ async def intern_home(request: Request):
     return templates.TemplateResponse("interns/home.html", {"request": request})
 
 @app.get("/startups/home")
-async def startup_home(request: Request):
+async def startup_home(request: Request, current_user: User = Depends(get_current_user)):
+    # Check if user is a startup
+    if current_user.role != "startup":
+        raise HTTPException(status_code=403, detail="Access denied. Only startups can access this page.")
+    
     return templates.TemplateResponse("startups/home.html", {"request": request})
 
 
@@ -494,8 +515,14 @@ async def handle_oauth_callback(request: Request, user_info, provider: str):
             # New user, redirect to select role
             redirect_url = "/select_role"
         else:
-            # Existing user, redirect based on role
-            redirect_url = "/home" if db_user_data.get("role") else "/select_role"
+            # Existing user - determine redirect based on role
+            role = db_user_data.get("role")
+            if role == "intern":
+                redirect_url = "/interns/home"
+            elif role == "startup":
+                redirect_url = "/startups/home"
+            else:
+                redirect_url = "/select_role"
 
         access_token = create_access_token(
             data={"sub": user_info.email},
