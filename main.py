@@ -66,7 +66,7 @@ FIREBASE_POSTS_DATABASE = os.getenv("FIREBASE_POSTS_DATABASE")
 origins = [
     "https://internweb.onrender.com",
     "http://localhost:8000",
-    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8000"
 ]
 
 if FIREBASE_URL:
@@ -667,6 +667,7 @@ posts_imagekit = ImageKit(
 
 
 @app.get("/api/get_intern_profiles")
+@app.get("/api/get_intern_profiles/")
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
     try:
         # Only allow startups to access intern profiles
@@ -675,17 +676,18 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
         
         # Fetch all intern profiles from Firebase
         # Change this line to fetch the parent 'interns' node
-        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
-
-        print(f"Fetching intern profiles from: {firebase_path}")
-        
-        response = requests.get(firebase_path)
-        print(f"Fetching profiles for {current_user.email}")
-        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
-        print(f"Firebase URL: {firebase_path}")
-        
-        response = requests.get(firebase_path)
-        print(f"Firebase response: {response.status_code}")
+        firebase_path = f"{FIREBASE_URL}/interns.json"
+        print(f"Fetching from: {firebase_path}")
+        try:
+            response = requests.get(firebase_path)
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text[:500]}")
+        except requests.exceptions.RequestException as e:
+            print(f"Network error: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Network error connecting to Firebase: {str(e)}"
+            )
         
         if response.status_code != 200:
             print(f"Firebase error content: {response.text}")
