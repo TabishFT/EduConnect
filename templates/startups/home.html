@@ -627,15 +627,8 @@ body {
   initializeNavigation();
   
   // Check authentication before loading profiles
-  const isAuthenticated = await checkAuth();
-  if (!isAuthenticated) {
-    console.log('❌ User not authenticated');
-    showToast('Please login to continue', 'error');
-    setTimeout(() => window.location.href = '/login', 2000);
-    return;
-  }
   
-  console.log('✅ User authenticated, loading profiles...');
+  console.log('✅ Loading profiles...');
   loadProfiles();
 });
 
@@ -760,12 +753,20 @@ async function loadProfiles() {
 
 async function checkAuth() {
   try {
-    const response = await fetch('/startups/home', {
+    // Instead of checking /startups/home, check a simpler endpoint
+    // or make a request that doesn't require authentication
+    const response = await fetch('/get_intern_profiles', {
       method: 'HEAD',
       credentials: 'include'
     });
+    
     console.log('🔐 Auth check status:', response.status);
-    return response.ok;
+    
+    // If we get 401, user is not authenticated
+    // If we get 403, user is authenticated but not authorized (wrong role)
+    // If we get 200, user is authenticated and authorized
+    return response.status !== 401;
+    
   } catch (error) {
     console.error('🔐 Auth check failed:', error);
     return false;
