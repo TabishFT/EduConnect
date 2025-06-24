@@ -49,7 +49,6 @@ client = MongoClient(
 db = client["startup_intern_db"]
 users_collection = db["users"]
 
-
 # Create indexes for better query performance
 users_collection.create_index([("email", ASCENDING)], unique=True)
 users_collection.create_index([("role", ASCENDING)])
@@ -61,45 +60,18 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # FastAPI app setup
 app = FastAPI()
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
-FIREBASE_STARTUP_DATABASE = os.getenv("FIREBASE_STARTUP_DATABASE")
-FIREBASE_POSTS_DATABASE = os.getenv("FIREBASE_POSTS_DATABASE")
-
-origins = [
-    "https://internweb.onrender.com",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-]
-
-if FIREBASE_URL:
-    origins.append(FIREBASE_URL)
-if FIREBASE_STARTUP_DATABASE:
-    origins.append(FIREBASE_STARTUP_DATABASE)
-if FIREBASE_POSTS_DATABASE:
-    origins.append(FIREBASE_POSTS_DATABASE)
-
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["https://internweb.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
 # Static files with caching
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
-
-
-#-------------------------------ISKO REMOVE KRNA RAHEGA
-@app.middleware("http")
-async def debug_request(request: Request, call_next):
-    print(f"➡️ INCOMING: {request.method} {request.url.path}")
-    response = await call_next(request)
-    print(f"⬅️ STATUS: {response.status_code}")
-    return response
-#----------------------------------------------------------
 
 # OAuth configurations
 google_sso = GoogleSSO(
@@ -171,16 +143,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# --------------------- Routes ---------------------
-
-@app.get("/", include_in_schema=True)
-@app.head("/", include_in_schema=True)
-async def read_index(request: Request):
-    return templates.TemplateResponse("getstarted.html", {"request": request})
-
 async def get_current_user(request: Request):
-    print("--- Attempting to get current user ---")
-    print(f"👀 Token seen = {token}")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated",
@@ -189,68 +152,56 @@ async def get_current_user(request: Request):
     print("\n--- Attempting to get current user ---")
     token = request.cookies.get("access_token")
     source = "cookie"
-    if token:
-        print(f"👀 Token seen = {token}")
-        print("Token found in: cookie")
-    else:
+    if not token:
         print("Token not found in cookies.")
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             source = "header"
             print("Token found in Authorization header.")
-            print(f"👀 Token seen = {token}")
         else:
             print("Token not found in Authorization header.")
             token = request.query_params.get("access_token")
             if token:
                 source = "query_param"
                 print("Token found in query parameters.")
-                print(f"👀 Token seen = {token}")
             else:
                 print("Token not found in cookies, headers, or query params. Raising 401.")
                 raise credentials_exception
+    else:
+        print(f"Token found in: {source}")
 
-
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            email: str = payload.get("sub")
-            print("Decoded JWT payload:", payload)
-            if email is None:
-                print("Email (sub) not found in token payload. Raising 401.")
-                raise credentials_exception
-            print(f"Token decoded successfully. Email (sub): {email}")
-        except JWTError as e:
-            print(f"JWTError decoding token: {e}. Raising 401.")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        print("Decoded JWT payload:", payload)
+        if email is None:
+            print("Email (sub) not found in token payload. Raising 401.")
             raise credentials_exception
+        print(f"Token decoded successfully. Email (sub): {email}")
+    except JWTError as e:
+        print(f"JWTError decoding token: {e}. Raising 401.")
+        raise credentials_exception
 
-        user = get_user(email)
-        if user is None:
-            print(f"User with email '{email}' not found in database. Raising 401.")
-            raise credentials_exception
+    user = get_user(email)
+    if user is None:
+        print(f"User with email '{email}' not found in database. Raising 401.")
+        raise credentials_exception
 
-        print(f"User '{email}' found and authenticated successfully.")
-        return user
+    print(f"User '{email}' found and authenticated successfully.")
+    return user
 
+# --------------------- Routes ---------------------
+
+@app.get("/", include_in_schema=True)
+@app.head("/", include_in_schema=True)
+async def read_index(request: Request):
+    return templates.TemplateResponse("getstarted.html", {"request": request})
 
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
 async def login_page(request: Request):
-    try:
-        current_user = await get_current_user(request)
-        if current_user and current_user.role:
-            if current_user.role == "intern":
-                return RedirectResponse(url="/interns/home", status_code=303)
-            elif current_user.role == "startup":
-                return RedirectResponse(url="/startups/home", status_code=303)
-        # If no role or not authenticated, show login
-        return templates.TemplateResponse("index.html", {"request": request})
-    except HTTPException as e:
-        # If unauthenticated, show login
-        if e.status_code == 401:
-            return templates.TemplateResponse("index.html", {"request": request})
-        raise e
-
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/select_role", include_in_schema=True)
 @app.head("/select_role", include_in_schema=True)
@@ -258,13 +209,7 @@ async def select_role_page(request: Request):
     try:
         current_user = await get_current_user(request)
         if current_user.role:
-            # Redirect based on role
-            if current_user.role == "intern":
-                return RedirectResponse(url="/interns/home", status_code=303)
-            elif current_user.role == "startup":
-                return RedirectResponse(url="/startups/home", status_code=303)
-            else:
-                return RedirectResponse(url="/home", status_code=303)
+            return RedirectResponse(url="/home", status_code=303)
         return templates.TemplateResponse("select_role.html", {"request": request})
     except HTTPException as e:
         if e.status_code == 401:
@@ -273,7 +218,6 @@ async def select_role_page(request: Request):
     except Exception as e:
         print(f"Error in select_role: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error on role selection")
-
 
 @app.post("/api/set_role")
 async def set_role(request: Request):
@@ -354,7 +298,7 @@ async def save_startup_profile(
                 profile[key] = None
 
         # Use the same path format as intern endpoint
-        firebase_path = f"{FIREBASE_STARTUP_DATABASE.rstrip('/')}/startups/{safe_email}.json"
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
         print("Firebase path:", firebase_path)
         print("Profile data:", profile)
 
@@ -405,25 +349,26 @@ async def startup_profile_page(request: Request):
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
-
 @app.get("/home")
 async def home_page(request: Request):
     try:
         current_user = await get_current_user(request)
         if not current_user.role:
             return RedirectResponse(url="/select_role", status_code=303)
-
-        if current_user.role == "intern":
-            return RedirectResponse(url="/interns/home", status_code=303)
-        elif current_user.role == "startup":
-            return RedirectResponse(url="/startups/home", status_code=303)
-        else:
+        
+        # यहां 'intern' रोल को भी स्वीकार करें
+        if current_user.role not in ['startup', 'intern']:
             return RedirectResponse(url="/select_role", status_code=303)
+        
+        # Return role info for API requests
+        return JSONResponse(
+            content={"role": current_user.role},
+            status_code=200
+        )
     except HTTPException as e:
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
         raise e
-
 
 @app.get("/getstarted")
 async def getstarted_page_redirect(request: Request):
@@ -456,11 +401,7 @@ async def intern_home(request: Request):
     return templates.TemplateResponse("interns/home.html", {"request": request})
 
 @app.get("/startups/home")
-async def startup_home(request: Request, current_user: User = Depends(get_current_user)):
-    # Check if user is a startup
-    if current_user.role != "startup":
-        raise HTTPException(status_code=403, detail="Access denied. Only startups can access this page.")
-    
+async def startup_home(request: Request):
     return templates.TemplateResponse("startups/home.html", {"request": request})
 
 
@@ -553,14 +494,8 @@ async def handle_oauth_callback(request: Request, user_info, provider: str):
             # New user, redirect to select role
             redirect_url = "/select_role"
         else:
-            # Existing user - determine redirect based on role
-            role = db_user_data.get("role")
-            if role == "intern":
-                redirect_url = "/interns/home"
-            elif role == "startup":
-                redirect_url = "/startups/home"
-            else:
-                redirect_url = "/select_role"
+            # Existing user, redirect based on role
+            redirect_url = "/home" if db_user_data.get("role") else "/select_role"
 
         access_token = create_access_token(
             data={"sub": user_info.email},
@@ -663,7 +598,91 @@ async def linkedin_callback(request: Request):
         print(f"LinkedIn callback error: {str(e)}")
         return RedirectResponse(url="/login", status_code=303)
 
-from fastapi import HTTPException
+
+
+
+#imagekit:
+imagekit = ImageKit(
+    private_key=os.getenv("IMAGEKIT_PRIVATE_KEY"),
+    public_key=os.getenv("IMAGEKIT_PUBLIC_KEY"),
+    url_endpoint="https://ik.imagekit.io/iupyun2hd"
+)
+
+
+
+
+
+
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: object = Depends(get_current_user)
+):
+    try:
+        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+        contents = await file.read()
+
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail="File too large")
+
+        # Create a safe filename from user's email
+        raw_email = current_user.email
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
+
+        if not file.filename or '.' not in file.filename:
+            raise HTTPException(status_code=400, detail="Invalid file name")
+
+        file_ext = file.filename.split(".")[-1].lower()
+
+        if file_ext in ["jpg", "jpeg", "png"]:
+            file_type = "image"
+            final_filename = f"{safe_email}_profile.{file_ext}"
+            upload_data = base64.b64encode(contents).decode("utf-8")  # ✅ Now image will upload as base64 too
+        elif file_ext in ["pdf", "doc", "docx"]:
+            file_type = "pdf"
+            final_filename = f"{safe_email}_resume.{file_ext}"
+            upload_data = base64.b64encode(contents).decode("utf-8")  # Already correct
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+
+        # Set upload options
+        upload_options = UploadFileRequestOptions(
+            folder="/uploads/",
+            use_unique_file_name=False,
+            overwrite_file=True,
+            is_private_file=False,
+            tags=[file_type, "user_upload"]
+        )
+
+        # Upload to ImageKit
+        result = imagekit.upload(
+            file=upload_data,
+            file_name=final_filename,
+            options=upload_options
+        )
+
+        if result and hasattr(result, 'url') and result.url:
+            return {
+                "success": True,
+                "url": result.url,
+                "name": final_filename,
+                "file_type": file_type,
+                "size": len(contents)
+            }
+        else:
+            error_msg = "ImageKit upload failed"
+            if hasattr(result, 'error'):
+                error_msg = f"ImageKit error: {result.error}"
+            elif hasattr(result, 'response_metadata'):
+                error_msg = f"Upload failed: {result.response_metadata}"
+            return JSONResponse(content={"success": False, "error": error_msg}, status_code=500)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        return JSONResponse(content={"success": False, "error": f"Upload failed: {str(e)}"}, status_code=500)
+
 
 
 
@@ -675,21 +694,6 @@ async def handle_external_links(full_path: str):
     # otherwise treat it as an external-URL redirect
     return RedirectResponse(f"https://{full_path}")
 
-
-
-#imagekit:
-imagekit = ImageKit(
-    private_key=os.getenv("IMAGEKIT_PRIVATE_KEY"),
-    public_key=os.getenv("IMAGEKIT_PUBLIC_KEY"),
-    url_endpoint="https://ik.imagekit.io/iupyun2hd"
-)
-
-#Imaagekit setup for posts images
-posts_imagekit = ImageKit(
-    private_key=os.getenv("POSTS_IMAGEKIT_PRIVATE_KEY"),
-    public_key=os.getenv("POSTS_IMAGEKIT_PUBLIC_KEY"),
-    url_endpoint="https://ik.imagekit.io/educonnect"
-)
 
 
 @app.get("/get_intern_profiles/")
@@ -767,75 +771,6 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
             detail=f"Internal server error while fetching profiles: {str(e)}"
         )
 
-@app.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    current_user: object = Depends(get_current_user)
-):
-    try:
-        MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
-        contents = await file.read()
-
-        if len(contents) > MAX_FILE_SIZE:
-            raise HTTPException(status_code=413, detail="File too large")
-
-        # Create a safe filename from user's email
-        raw_email = current_user.email
-        safe_email = re.sub(r"[^A-Za-z0-9]", "_", raw_email)
-
-        if not file.filename or '.' not in file.filename:
-            raise HTTPException(status_code=400, detail="Invalid file name")
-
-        file_ext = file.filename.split(".")[-1].lower()
-
-        if file_ext in ["jpg", "jpeg", "png"]:
-            file_type = "image"
-            final_filename = f"{safe_email}_profile.{file_ext}"
-            upload_data = base64.b64encode(contents).decode("utf-8")  # ✅ Now image will upload as base64 too
-        elif file_ext in ["pdf", "doc", "docx"]:
-            file_type = "pdf"
-            final_filename = f"{safe_email}_resume.{file_ext}"
-            upload_data = base64.b64encode(contents).decode("utf-8")  # Already correct
-        else:
-            raise HTTPException(status_code=400, detail="Unsupported file type")
-
-
-        # Set upload options
-        upload_options = UploadFileRequestOptions(
-            folder="/uploads/",
-            use_unique_file_name=False,
-            overwrite_file=True,
-            is_private_file=False,
-            tags=[file_type, "user_upload"]
-        )
-
-        # Upload to ImageKit
-        result = imagekit.upload(
-            file=upload_data,
-            file_name=final_filename,
-            options=upload_options
-        )
-
-        if result and hasattr(result, 'url') and result.url:
-            return {
-                "success": True,
-                "url": result.url,
-                "name": final_filename,
-                "file_type": file_type,
-                "size": len(contents)
-            }
-        else:
-            error_msg = "ImageKit upload failed"
-            if hasattr(result, 'error'):
-                error_msg = f"ImageKit error: {result.error}"
-            elif hasattr(result, 'response_metadata'):
-                error_msg = f"Upload failed: {result.response_metadata}"
-            return JSONResponse(content={"success": False, "error": error_msg}, status_code=500)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        return JSONResponse(content={"success": False, "error": f"Upload failed: {str(e)}"}, status_code=500)
 
 
 
