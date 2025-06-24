@@ -188,25 +188,29 @@ async def get_current_user(request: Request):
     )
     print("\n--- Attempting to get current user ---")
     token = request.cookies.get("access_token")
-    source = "cookie"
-    if not token:
-        print("Token not found in cookies.")
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            token = auth_header.split(" ")[1]
-            source = "header"
-            print("Token found in Authorization header.")
-        else:
-            print("Token not found in Authorization header.")
-            token = request.query_params.get("access_token")
-            if token:
-                source = "query_param"
-                print("Token found in query parameters.")
-            else:
-                print("Token not found in cookies, headers, or query params. Raising 401.")
-                raise credentials_exception
+source = "cookie"
+if token:
+    print(f"👀 Token seen = {token}")
+    print("Token found in: cookie")
+else:
+    print("Token not found in cookies.")
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        source = "header"
+        print("Token found in Authorization header.")
+        print(f"👀 Token seen = {token}")
     else:
-        print(f"Token found in: {source}")
+        print("Token not found in Authorization header.")
+        token = request.query_params.get("access_token")
+        if token:
+            source = "query_param"
+            print("Token found in query parameters.")
+            print(f"👀 Token seen = {token}")
+        else:
+            print("Token not found in cookies, headers, or query params. Raising 401.")
+            raise credentials_exception
+
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
