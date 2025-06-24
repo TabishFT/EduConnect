@@ -621,10 +621,23 @@ body {
     let allSkills = [];
 
     // Initialize page
-    document.addEventListener('DOMContentLoaded', function() {
-      initializeNavigation();
-      loadProfiles();
-    });
+    document.addEventListener('DOMContentLoaded', async function() {
+  console.log('🚀 Page loaded, initializing...');
+  
+  initializeNavigation();
+  
+  // Check authentication before loading profiles
+  const isAuthenticated = await checkAuth();
+  if (!isAuthenticated) {
+    console.log('❌ User not authenticated');
+    showToast('Please login to continue', 'error');
+    setTimeout(() => window.location.href = '/login', 2000);
+    return;
+  }
+  
+  console.log('✅ User authenticated, loading profiles...');
+  loadProfiles();
+});
 
     // Navigation functionality
     function initializeNavigation() {
@@ -636,47 +649,128 @@ body {
       });
     }
 
-    // Load profiles from Firebase
-    async function loadProfiles() {
-      try {
-        showToast('Loading profiles...', 'info');
-        
-        const response = await fetch('/get_intern_profiles/', {
-          method: 'GET',
-          credentials: 'include',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
 
-        if (!response.ok) {
-          throw new Error(`Failed to load profiles: ${response.status}`);
-        }
-
-        const data = await response.json();
-        allProfiles = data.profiles || [];
-        
-        if (allProfiles.length === 0) {
-          showNoResults('No intern profiles found. Interns need to create their profiles first.');
-          return;
-        }
-
-        // Extract all unique skills
-        extractAllSkills();
-        
-        // Initialize filters and display
-        initializeSkillsFilter();
-        filteredProfiles = [...allProfiles];
-        displayProfiles();
-        updateResultsCount();
-        
-        showToast('Profiles loaded successfully!', 'success');
-      } catch (error) {
-        console.error('Error loading profiles:', error);
-        showToast('Failed to load profiles: ' + error.message, 'error');
-        showNoResults('Failed to load profiles. Please try again later.');
+async function loadProfiles() {
+  const profilesGrid = document.getElementById('profiles-grid');
+  
+  try {
+    console.log('🔄 Starting to load profiles...');
+    showToast('Loading profiles...', 'info');
+    
+    // Show loading state
+    profilesGrid.innerHTML = '<div class="loading">Loading intern profiles...</div>';
+    
+    // Make request to backend
+    const response = await fetch('/get_intern_profiles', {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
+    });
+
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response ok:', response.ok);
+
+    // Handle different response statuses
+    if (response.status === 401) {
+      showToast('Please login to access profiles', 'error');
+      window.location.href = '/login';
+      return;
     }
+
+    if (response.status === 403) {
+      showToast('Access denied. Only startups can view intern profiles.', 'error');
+      showNoResults('Access denied. Only startups can view intern profiles.');
+      return;
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Server error:', errorText);
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
+    }
+
+    // Parse JSON response
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      throw new Error('Invalid response format from server');
+    }
+
+    console.log('📦 Received data:', data);
+
+    // Check if response indicates success
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load profiles');
+    }
+
+    // Extract profiles
+    allProfiles = data.profiles || [];
+    console.log(`📋 Total profiles loaded: ${allProfiles.length}`);
+
+    if (allProfiles.length === 0) {
+      showNoResults('No intern profiles found. Interns need to create their profiles first.');
+      showToast('No profiles available yet', 'info');
+      return;
+    }
+
+    // Process profiles and initialize filters
+    console.log('🔧 Processing profiles...');
+    
+    // Extract all unique skills
+    extractAllSkills();
+    console.log(`🏷️ Unique skills found: ${allSkills.length}`);
+    
+    // Initialize filters and display
+    initializeSkillsFilter();
+    filteredProfiles = [...allProfiles];
+    displayProfiles();
+    updateResultsCount();
+    
+    showToast(`Successfully loaded ${allProfiles.length} profiles!`, 'success');
+    console.log('✅ Profiles loaded and displayed successfully');
+
+  } catch (error) {
+    console.error('💥 Error loading profiles:', error);
+    
+    // Show user-friendly error message
+    let errorMessage = 'Failed to load profiles. ';
+    
+    if (error.message.includes('Failed to fetch')) {
+      errorMessage += 'Please check your internet connection and try again.';
+    } else if (error.message.includes('401')) {
+      errorMessage += 'Please login to continue.';
+      setTimeout(() => window.location.href = '/login', 2000);
+    } else if (error.message.includes('403')) {
+      errorMessage += 'Access denied.';
+    } else if (error.message.includes('500')) {
+      errorMessage += 'Server error. Please try again later.';
+    } else {
+      errorMessage += error.message;
+    }
+    
+    showToast(errorMessage, 'error');
+    showNoResults(errorMessage);
+  }
+}
+
+async function checkAuth() {
+  try {
+    const response = await fetch('/startups/home', {
+      method: 'HEAD',
+      credentials: 'include'
+    });
+    console.log('🔐 Auth check status:', response.status);
+    return response.ok;
+  } catch (error) {
+    console.error('🔐 Auth check failed:', error);
+    return false;
+  }
+}
 
     // Extract all unique skills from profiles
     function extractAllSkills() {

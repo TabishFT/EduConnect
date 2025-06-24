@@ -723,81 +723,138 @@ async def handle_external_links(full_path: str):
 
 
 
-@app.get("/get_intern_profiles/")
+
+
+
+@app.get("/get_intern_profiles")
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
-    print("✅ Inside /get_intern_profiles handler")
+    """
+    Get all intern profiles from Firebase - accessible only to startups
+    """
     try:
         # Only allow startups to access intern profiles
         if current_user.role != "startup":
-            raise HTTPException(status_code=403, detail="Access denied. Only startups can view intern profiles.")
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only startups can view intern profiles."
+            )
         
-        # Fetch all intern profiles from Firebase
-        # Change this line to fetch the parent 'interns' node
-        firebase_path = f"{FIREBASE_URL}/interns.json"
-        print(f"Fetching from: {firebase_path}")
-        try:
-            response = requests.get(firebase_path)
-            print(f"Response status: {response.status_code}")
-            print(f"Response content: {response.text[:500]}")
-        except requests.exceptions.RequestException as e:
-            print(f"Network error: {str(e)}")
+        # Construct Firebase URL
+        if not FIREBASE_URL:
             raise HTTPException(
                 status_code=500,
-                detail=f"Network error connecting to Firebase: {str(e)}"
+                detail="Firebase URL not configured"
             )
+            
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
+        print(f"🔥 Fetching from Firebase: {firebase_path}")
         
-        if response.status_code != 200:
-            print(f"Firebase error content: {response.text}")
-
-        if response.status_code != 200:
-            print(f"Firebase error: {response.status_code} {response.text}")
+        # Make request to Firebase
+        try:
+            response = requests.get(firebase_path, timeout=10)
+            print(f"📡 Firebase response status: {response.status_code}")
+            
+        except requests.exceptions.Timeout:
             raise HTTPException(
-                status_code=500, 
-                detail=f"Failed to fetch profiles from Firebase: {response.status_code}"
+                status_code=504,
+                detail="Firebase request timed out"
+            )
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Firebase"
+            )
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Firebase request failed: {str(e)}"
             )
         
-        profiles_data = response.json()
+        # Check Firebase response
+        if response.status_code != 200:
+            print(f"❌ Firebase error: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Firebase returned error: {response.status_code}"
+            )
         
+        # Parse Firebase data
+        try:
+            profiles_data = response.json()
+        except ValueError as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid JSON response from Firebase"
+            )
+        
+        # Handle empty or null response
         if not profiles_data:
-            return JSONResponse({"profiles": []})
+            print("📝 No profiles found in Firebase")
+            return {
+                "success": True,
+                "profiles": [],
+                "total_count": 0,
+                "message": "No intern profiles found"
+            }
         
-        # Convert Firebase data to list format
+        # Convert Firebase object to list
         profiles_list = []
         for email_key, profile_data in profiles_data.items():
             if profile_data and isinstance(profile_data, dict):
-                # Add the email key to the profile data for reference
-                profile_data['email_key'] = email_key
+                # Clean and validate profile data
+                clean_profile = {
+                    'email_key': email_key,
+                    'name': profile_data.get('name', 'Anonymous'),
+                    'headline': profile_data.get('headline', ''),
+                    'bio': profile_data.get('bio', ''),
+                    'location': profile_data.get('location', ''),
+                    'profilePicture': profile_data.get('profilePicture', ''),
+                    'resume': profile_data.get('resume', ''),
+                    'skills': [],
+                    'education': profile_data.get('education', ''),
+                    'experience': profile_data.get('experience', ''),
+                    'projects': profile_data.get('projects', ''),
+                    'linkedin': profile_data.get('linkedin', ''),
+                    'github': profile_data.get('github', ''),
+                    'portfolio': profile_data.get('portfolio', '')
+                }
                 
-                # Ensure skills is a list
-                if 'skills' in profile_data:
-                    if isinstance(profile_data['skills'], str):
-                        # If skills is a string, convert to list
-                        profile_data['skills'] = [skill.strip() for skill in profile_data['skills'].split(',') if skill.strip()]
-                    elif not isinstance(profile_data['skills'], list):
-                        profile_data['skills'] = []
-                else:
-                    profile_data['skills'] = []
+                # Handle skills - ensure it's always a list
+                raw_skills = profile_data.get('skills', '')
+                if isinstance(raw_skills, str):
+                    if raw_skills.strip():
+                        clean_profile['skills'] = [
+                            skill.strip() 
+                            for skill in raw_skills.split(',') 
+                            if skill.strip()
+                        ]
+                elif isinstance(raw_skills, list):
+                    clean_profile['skills'] = [
+                        str(skill).strip() 
+                        for skill in raw_skills 
+                        if skill and str(skill).strip()
+                    ]
                 
-                profiles_list.append(profile_data)
+                profiles_list.append(clean_profile)
         
-        print(f"Successfully fetched {len(profiles_list)} intern profiles")
+        print(f"✅ Successfully processed {len(profiles_list)} intern profiles")
         
-        return JSONResponse({
+        return {
+            "success": True,
             "profiles": profiles_list,
             "total_count": len(profiles_list)
-        })
+        }
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching intern profiles: {str(e)}")
+        print(f"💥 Unexpected error in get_intern_profiles: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(
-            status_code=500, 
-            detail=f"Internal server error while fetching profiles: {str(e)}"
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
         )
-
 
 
 
