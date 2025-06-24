@@ -685,9 +685,9 @@ posts_imagekit = ImageKit(
 )
 
 
-@app.get("/api/get_intern_profiles/")
+@app.get("/get_intern_profiles/")
 async def get_intern_profiles(current_user: User = Depends(get_current_user)):
-    print("✅ Inside /api/get_intern_profiles handler")
+    print("✅ Inside /get_intern_profiles handler")
     try:
         # Only allow startups to access intern profiles
         if current_user.role != "startup":
