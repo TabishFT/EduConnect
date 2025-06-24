@@ -28,7 +28,6 @@ from fastapi.templating import Jinja2Templates
 templates = Jinja2Templates(directory="templates")
 # Load environment variables
 load_dotenv()
-app = FastAPI()
 
 # Determine if running in production
 IS_PRODUCTION = os.getenv("APP_ENV", "development") == "production"
@@ -51,14 +50,6 @@ db = client["startup_intern_db"]
 users_collection = db["users"]
 
 
-#-------------------------------ISKO REMOVE KRNA RAHEGA
-@app.middleware("http")
-async def debug_request(request: Request, call_next):
-    print(f"➡️ INCOMING: {request.method} {request.url.path}")
-    response = await call_next(request)
-    print(f"⬅️ STATUS: {response.status_code}")
-    return response
-#----------------------------------------------------------
 # Create indexes for better query performance
 users_collection.create_index([("email", ASCENDING)], unique=True)
 users_collection.create_index([("role", ASCENDING)])
@@ -68,6 +59,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # FastAPI app setup
+app = FastAPI()
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 FIREBASE_STARTUP_DATABASE = os.getenv("FIREBASE_STARTUP_DATABASE")
 FIREBASE_POSTS_DATABASE = os.getenv("FIREBASE_POSTS_DATABASE")
@@ -98,6 +90,16 @@ app.add_middleware(
 
 # Static files with caching
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+
+
+#-------------------------------ISKO REMOVE KRNA RAHEGA
+@app.middleware("http")
+async def debug_request(request: Request, call_next):
+    print(f"➡️ INCOMING: {request.method} {request.url.path}")
+    response = await call_next(request)
+    print(f"⬅️ STATUS: {response.status_code}")
+    return response
+#----------------------------------------------------------
 
 # OAuth configurations
 google_sso = GoogleSSO(
