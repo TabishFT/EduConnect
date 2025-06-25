@@ -1076,6 +1076,40 @@ async def view_post(
         )
 
 
+@app.get("/api/auth/check")
+async def check_authentication(request: Request):
+    """
+    Check if user is authenticated and return user info
+    """
+    try:
+        current_user = await get_current_user(request)
+        
+        return JSONResponse({
+            "authenticated": True,
+            "user": {
+                "email": current_user.email,
+                "name": current_user.name,
+                "role": current_user.role,
+                "auth_provider": current_user.auth_provider,
+                "created_at": current_user.created_at.isoformat() if current_user.created_at else None
+            }
+        })
+        
+    except HTTPException as e:
+        if e.status_code == 401:
+            return JSONResponse({
+                "authenticated": False,
+                "detail": "Not authenticated"
+            }, status_code=401)
+        raise e
+    except Exception as e:
+        print(f"Authentication check error: {str(e)}")
+        return JSONResponse({
+            "authenticated": False,
+            "detail": "Authentication check failed"
+        }, status_code=500)
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
