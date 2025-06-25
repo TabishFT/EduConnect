@@ -713,13 +713,13 @@ async def upload_file(
 
 
 
-@app.get("/{full_path:path}")
-async def handle_external_links(full_path: str):
-    # if it’s an API path, let FastAPI return 404 (or whatever)
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="Not found")
-    # otherwise treat it as an external-URL redirect
-    return RedirectResponse(f"https://{full_path}")
+# @app.get("/{full_path:path}")
+# async def handle_external_links(full_path: str):
+#     # if it’s an API path, let FastAPI return 404 (or whatever)
+#     if full_path.startswith("api/"):
+#         raise HTTPException(status_code=404, detail="Not found")
+#     # otherwise treat it as an external-URL redirect
+#     return RedirectResponse(f"https://{full_path}")
 
 
 
