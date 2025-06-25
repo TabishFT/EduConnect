@@ -307,6 +307,15 @@
             white-space: pre-wrap; /* Preserve line breaks from textarea */
             font-size: 0.95rem;
         }
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -317,36 +326,46 @@
                 <p>Design a compelling job posting to attract the perfect candidates.</p>
             </div>
 
-            <div class="image_upload_area" id="uploadArea">
-                <p>Click to upload or drag and drop</p>
-                <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
-                    SVG, PNG, JPG or GIF (max. 2MB)
-                </p>
-            </div>
-            <div class="image_preview" id="imagePreview">
-                <img id="uploadedImage" src="" alt="Form Upload Preview">
-            </div>
-            <input type="file" id="fileInput" style="display: none;" accept="image/*">
+            <!-- Error Message Container -->
+            <div class="error-message" id="errorMessage"></div>
 
-            <div class="details_tag">Startup Name</div>
-            <textarea class="details" id="name" rows="1" placeholder="Your company's name"></textarea>
+            <!-- Form Element -->
+            <form id="postForm" enctype="multipart/form-data">
+                
+                <div class="image_upload_area" id="uploadArea">
+                    <p>Click to upload or drag and drop</p>
+                    <p style="color: #64748b; font-size: 0.875rem; margin-top: 0.5rem;">
+                        PNG (max. 2MB)
+                    </p>
+                </div>
+                <div class="image_preview" id="imagePreview">
+                    <img id="uploadedImage" src="" alt="Form Upload Preview">
+                </div>
+                <input type="file" id="fileInput" name="image" style="display: none;" accept=".PNG">
 
-            <div class="details_tag">Tagline</div>
-            <textarea class="details" id="tagline" rows="2" placeholder="A short, catchy phrase that sums up your brand"></textarea>
+                <div class="details_tag">Startup Name</div>
+                <textarea class="details" id="name" name="name" rows="1" placeholder="Your company's name" required></textarea>
 
-            <div class="details_tag">Job Title</div>
-            <textarea class="details" id="title" rows="1" placeholder="Position you're hiring for"></textarea>
+                <div class="details_tag">Tagline</div>
+                <textarea class="details" id="tagline" name="tagline" rows="2" placeholder="A short, catchy phrase that sums up your brand"></textarea>
 
-            <div class="details_tag">Required Skills</div>
-            <textarea class="details" id="skills" rows="3" placeholder="Skills needed for this role (comma-separated)"></textarea>
+                <div class="details_tag">Job Title</div>
+                <textarea class="details" id="title" name="title" rows="1" placeholder="Position you're hiring for" required></textarea>
 
-            <div class="details_tag">Job Description</div>
-            <textarea class="details" id="body" rows="5" placeholder="Detailed description of the job responsibilities and expectations"></textarea>
+                <div class="details_tag">Required Skills</div>
+                <textarea class="details" id="skills" name="skills" rows="3" placeholder="Skills needed for this role (comma-separated)"></textarea>
 
-            <div class="post_preview_buttons">
-                <button class="button preview_button" onclick="togglePreview()">Show Preview</button>
-                <button class="button post_button" onclick="submitPost()">Publish Post</button>
-            </div>
+                <div class="details_tag">Job Description</div>
+                <textarea class="details" id="body" name="description" rows="5" placeholder="Detailed description of the job responsibilities and expectations"></textarea>
+
+                <div class="post_preview_buttons">
+                    <button type="button" class="button preview_button" onclick="togglePreview()">Show Preview</button>
+                    <button type="submit" class="button post_button" id="submitButton">
+                        <span class="loading-spinner" id="loadingSpinner"></span>
+                        Publish Post
+                    </button>
+                </div>
+            </form>
         </div>
 
         <div class="preview_wrapper">
@@ -376,228 +395,336 @@
                     </div>
                 </div>
             </div>
-        </div> </div> <script>
+        </div> 
+    </div>
+
+    <!-- Success Popup -->
+    <div class="popup-overlay" id="successPopup">
+        <div class="popup-content">
+            <div class="popup-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <div class="popup-title">Published Successfully!</div>
+            <div class="popup-message">Your job post has been published and is now live for candidates to view.</div>
+            <div class="popup-buttons">
+                <button class="popup-button secondary" onclick="goBack()">Back to Home</button>
+                <button class="popup-button primary" onclick="viewPost()">View Post</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Authentication Check on Page Load ---
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/auth/check', {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                const authData = await response.json();
+                if (!authData.authenticated) {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                // Initialize preview state after authentication
+                initializePreviewState();
+                
+            } catch (error) {
+                console.error('Authentication check failed:', error);
+                window.location.href = '/login';
+            }
+        });
+        
         // --- DOM Element References ---
         const fileInput = document.getElementById('fileInput');
         const uploadArea = document.getElementById('uploadArea');
-        const imagePreviewInForm = document.getElementById('imagePreview'); // Div containing image preview in form
-        const uploadedImage = document.getElementById('uploadedImage'); // Image tag inside imagePreviewInForm
-        const previewImageContainer = document.getElementById('previewImageContainer'); // Div containing image in the actual post card preview
-        const previewImage = document.getElementById('previewImage'); // Image tag inside previewImageContainer
-        const previewWindow = document.getElementById('previewWindow'); // The actual preview content area (inside wrapper)
-        const previewButton = document.querySelector('.preview_button'); // The "Show/Hide Preview" button
-
+        const imagePreviewInForm = document.getElementById('imagePreview');
+        const uploadedImage = document.getElementById('uploadedImage');
+        const previewImageContainer = document.getElementById('previewImageContainer');
+        const previewImage = document.getElementById('previewImage');
+        const previewWindow = document.getElementById('previewWindow');
+        const previewButton = document.querySelector('.preview_button');
+        const postForm = document.getElementById('postForm');
+        const submitButton = document.getElementById('submitButton');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const successPopup = document.getElementById('successPopup');
+        const errorMessage = document.getElementById('errorMessage');
+        
+        // --- Global Variables ---
+        let isPreviewLogicallyVisible = false;
+        let currentPostId = null;
+        let uploadedImageFile = null;
+        
         // --- Input Fields for Real-time Update ---
         const fields = ['name', 'tagline', 'title', 'skills', 'body'];
         fields.forEach(field => {
             const element = document.getElementById(field);
             if (element) {
-                // Add input listener to update preview in real-time
                 element.addEventListener('input', updatePreview);
             }
-            // Set placeholder data attribute on corresponding preview elements for fallback
             const previewElement = document.getElementById(`preview${field.charAt(0).toUpperCase() + field.slice(1)}`);
             if (previewElement && !previewElement.hasAttribute('data-placeholder')) {
                 previewElement.setAttribute('data-placeholder', previewElement.textContent);
             }
         });
-
-        // --- State Variable ---
-        let isPreviewLogicallyVisible = false; // Tracks the *intended* state (shown/hidden)
-
+        
+        // --- Error Handling ---
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
         // --- Image Upload Handling ---
-        // Trigger file input click when upload area is clicked
         uploadArea.addEventListener('click', () => fileInput.click());
-
-        // Drag and Drop Listeners for upload area styling
+        
         uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault(); // Necessary to allow drop
+            e.preventDefault();
             uploadArea.style.borderColor = '#f59e0b';
             uploadArea.style.backgroundColor = 'rgba(245, 158, 11, 0.1)';
         });
+        
         uploadArea.addEventListener('dragleave', () => {
             uploadArea.style.borderColor = '#475569';
             uploadArea.style.backgroundColor = 'transparent';
         });
+        
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadArea.style.borderColor = '#475569';
             uploadArea.style.backgroundColor = 'transparent';
-            // Process dropped file if present
             if (e.dataTransfer.files.length) {
                 handleImageUpload(e.dataTransfer.files[0]);
             }
         });
-
-        // File Input Change Listener
+        
         fileInput.addEventListener('change', (e) => {
-            // Process selected file if present
             if (e.target.files.length) {
                 handleImageUpload(e.target.files[0]);
             }
         });
-
-        // Function to process the uploaded image file
+        
         function handleImageUpload(file) {
-            // Basic validation: Check if it's an image file
+            // Validate file type
             if (!file.type.startsWith('image/')){
-                alert('Please upload an image file (SVG, PNG, JPG, GIF).');
+                showError('Please upload an image file (SVG, PNG, JPG, GIF).');
                 return;
             }
-
+        
+            // Validate file size (2MB)
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                showError('Image file too large. Maximum size is 2MB.');
+                return;
+            }
+        
+            uploadedImageFile = file;
+            
             const reader = new FileReader();
-            // Define what happens when the file is successfully read
             reader.onload = (e) => {
-                const imageUrl = e.target.result; // Get the data URL
-
-                // Update image preview within the form section
+                const imageUrl = e.target.result;
+        
+                // Update form preview
                 uploadedImage.src = imageUrl;
                 imagePreviewInForm.style.display = 'block';
                 uploadArea.style.display = 'none';
-
-                // Update image in the actual post preview card
+        
+                // Update post preview
                 previewImage.src = imageUrl;
                 previewImageContainer.style.display = 'block';
-
-                // Call updatePreview after image is loaded and displayed
+        
                 updatePreview();
             };
-            // Define what happens on file reading error
             reader.onerror = () => {
-                alert('Error reading the image file.');
+                showError('Error reading the image file.');
             };
-            // Read the file as a Data URL
             reader.readAsDataURL(file);
         }
-
+        
         // --- Preview Functionality ---
-
-        /**
-         * Toggles the visibility state of the preview content area (.preview_post)
-         * and updates the button text. Works for both mobile and desktop.
-         */
         function togglePreview() {
-            const isMobile = window.innerWidth < 1024; // Check mobile state inside the function
-
-            // 1. Toggle the logical visibility state
+            const isMobile = window.innerWidth < 1024;
             isPreviewLogicallyVisible = !isPreviewLogicallyVisible;
-
-            // 2. Update display style for the preview content window
             previewWindow.style.display = isPreviewLogicallyVisible ? 'block' : 'none';
-
-            // Add mobile min-height adjustment
+        
             if (isMobile) {
-                 if (isPreviewLogicallyVisible) {
-                     previewWindow.style.minHeight = '1px'; // Add a minimal height hint
-                 } else {
-                     previewWindow.style.minHeight = ''; // Remove min-height when hidden
-                 }
+                if (isPreviewLogicallyVisible) {
+                    previewWindow.style.minHeight = '1px';
+                } else {
+                    previewWindow.style.minHeight = '';
+                }
             } else {
-                // Ensure no min-height on desktop if it was accidentally applied
-                 previewWindow.style.minHeight = '';
+                previewWindow.style.minHeight = '';
             }
-            // End mobile min-height adjustment
-
-
-            // 3. Update button text based on the new logical state
+        
             previewButton.textContent = isPreviewLogicallyVisible ? 'Hide Preview' : 'Show Preview';
-
-            // 4. Ensure preview content is up-to-date when shown
+        
             if (isPreviewLogicallyVisible) {
-                 updatePreview();
+                updatePreview();
             }
         }
-
-        /**
-         * Updates the text content of the preview elements based on the current form input values.
-         * Uses data-placeholder attributes as fallbacks if inputs are empty.
-         */
+        
         function updatePreview() {
             fields.forEach(field => {
                 const inputElement = document.getElementById(field);
                 const previewElement = document.getElementById(`preview${field.charAt(0).toUpperCase() + field.slice(1)}`);
                 if (inputElement && previewElement) {
-                    const value = inputElement.value.trim(); // Get trimmed input value
-                    // Set preview text to input value, or fallback to placeholder attribute, or empty string
+                    const value = inputElement.value.trim();
                     previewElement.textContent = value || previewElement.getAttribute('data-placeholder') || '';
                 }
             });
-            // Note: Image preview is updated separately in handleImageUpload
         }
-
-        // --- Initialization ---
-
-        /**
-         * Sets the initial state of the preview content area (visibility) and the preview button (visibility and text)
-         * based on the screen size when the page loads or resizes.
-         */
+        
         function initializePreviewState() {
             const isMobile = window.innerWidth < 1024;
-
+        
             if (isMobile) {
-                // Mobile: Preview content starts hidden, button visible with "Show Preview"
                 previewWindow.style.display = 'none';
                 isPreviewLogicallyVisible = false;
                 previewButton.textContent = 'Show Preview';
-                previewButton.style.display = 'inline-block'; // Ensure button is visible
-                previewWindow.style.minHeight = ''; // Ensure no min-height initially on mobile
-
+                previewButton.style.display = 'inline-block';
+                previewWindow.style.minHeight = '';
             } else {
-                // Desktop: Preview content starts VISIBLE, button visible with "Hide Preview"
-                previewWindow.style.display = 'block'; // Show preview content by default
+                previewWindow.style.display = 'block';
                 isPreviewLogicallyVisible = true;
-                previewButton.textContent = 'Hide Preview'; // Reflect visible state
-                previewButton.style.display = 'inline-block'; // Ensure button is visible
-                 previewWindow.style.minHeight = ''; // Ensure no min-height on desktop
+                previewButton.textContent = 'Hide Preview';
+                previewButton.style.display = 'inline-block';
+                previewWindow.style.minHeight = '';
             }
-
-            // Populate preview with initial form values or placeholders if it's initially visible
-             if (isPreviewLogicallyVisible) {
-                 updatePreview();
-                 // If preview is initially visible on mobile (shouldn't happen with current logic, but as a safeguard)
-                 if (isMobile) {
-                      previewWindow.style.minHeight = '1px';
-                 }
+        
+            if (isPreviewLogicallyVisible) {
+                updatePreview();
+                if (isMobile) {
+                    previewWindow.style.minHeight = '1px';
+                }
             }
         }
-
+        
         // --- Form Submission ---
-        /**
-         * Handles the "Publish Post" button click.
-         * Includes basic validation.
-         */
-        function submitPost() {
-            // Basic validation example: Check if name and title are filled
-            const name = document.getElementById('name').value.trim();
-            const title = document.getElementById('title').value.trim();
-            if (!name || !title) {
-                alert('Please fill in at least the Startup Name and Job Title before publishing.');
-                return; // Stop submission if validation fails
+        postForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Show loading state
+            submitButton.disabled = true;
+            loadingSpinner.style.display = 'inline-block';
+            submitButton.innerHTML = '<span class="loading-spinner" style="display: inline-block;"></span>Publishing...';
+        
+            try {
+                // Basic validation
+                const name = document.getElementById('name').value.trim();
+                const title = document.getElementById('title').value.trim();
+                
+                if (!name || !title) {
+                    throw new Error('Please fill in at least the Startup Name and Job Title before publishing.');
+                }
+        
+                // Prepare FormData exactly as backend expects
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('tagline', document.getElementById('tagline').value.trim());
+                formData.append('title', title);
+                formData.append('skills', document.getElementById('skills').value.trim());
+                formData.append('description', document.getElementById('body').value.trim());
+                
+                // Add image if uploaded
+                if (uploadedImageFile) {
+                    formData.append('image', uploadedImageFile);
+                }
+        
+                // Submit to backend endpoint
+                const response = await fetch('/api/create_post', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+        
+                const result = await response.json();
+        
+                if (response.ok && result.success) {
+                    // Success - show popup
+                    currentPostId = result.post_id;
+                    showSuccessPopup();
+                    
+                    // Reset form
+                    postForm.reset();
+                    if (imagePreviewInForm) {
+                        imagePreviewInForm.style.display = 'none';
+                    }
+                    if (uploadArea) {
+                        uploadArea.style.display = 'block';
+                    }
+                    if (previewImageContainer) {
+                        previewImageContainer.style.display = 'none';
+                    }
+                    uploadedImageFile = null;
+                    
+                } else {
+                    // Error from server
+                    throw new Error(result.detail || result.message || 'Failed to publish post');
+                }
+        
+            } catch (error) {
+                console.error('Error publishing post:', error);
+                showError(error.message || 'Failed to publish post. Please try again.');
+            } finally {
+                // Reset button state
+                submitButton.disabled = false;
+                loadingSpinner.style.display = 'none';
+                submitButton.innerHTML = '<span class="loading-spinner" id="loadingSpinner"></span>Publish Post';
             }
-
-            // --- Data Collection (Example) ---
-            const postData = {
-                name: name,
-                tagline: document.getElementById('tagline').value.trim(),
-                title: title,
-                skills: document.getElementById('skills').value.trim(),
-                description: document.getElementById('body').value.trim(),
-                // imageUrl: previewImage.src // Example
-            };
-            console.log("Submitting Post Data:", postData);
-
-            // --- API Call (Simulation) ---
-            alert('Post published successfully! (Simulation)');
-
-            // Optionally clear form or redirect
+        });
+        
+        // --- Success Popup Functions ---
+        function showSuccessPopup() {
+            successPopup.style.display = 'flex';
+            successPopup.classList.add('show');
         }
-
-        // --- Event Listeners Setup ---
-        // Initialize the preview state when the page finishes loading
-        window.addEventListener('load', initializePreviewState);
-        // Re-initialize the preview state if the window is resized
-        window.addEventListener('resize', initializePreviewState);
-
-    </script>
+        
+        function hideSuccessPopup() {
+            successPopup.classList.remove('show');
+            setTimeout(() => {
+                successPopup.style.display = 'none';
+            }, 300);
+        }
+        
+        function goBack() {
+            hideSuccessPopup();
+            window.location.href = '/startups/home';
+        }
+        
+        function viewPost() {
+            hideSuccessPopup();
+            if (currentPostId) {
+                // Use the backend endpoint to view post
+                window.location.href = `/startups/post/view/${currentPostId}`;
+            } else {
+                window.location.href = '/startups/home';
+            }
+        }
+        
+        // --- Window Resize Handler ---
+        window.addEventListener('resize', () => {
+            initializePreviewState();
+        });
+        
+        // --- Close popup on outside click ---
+        successPopup.addEventListener('click', (e) => {
+            if (e.target === successPopup) {
+                hideSuccessPopup();
+            }
+        });
+        </script>
+        
 </body>
 </html>

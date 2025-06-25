@@ -56,6 +56,62 @@ body {
   box-shadow: var(--shadow);
 }
 
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--success);
+  color: white;
+  padding: 15px 20px;
+  border-radius: var(--radius);
+  display: none;
+  z-index: 1000;
+  box-shadow: var(--shadow);
+}
+
+.toast.error {
+  background: var(--error);
+}
+
+.toast.show {
+  display: block;
+}
+
+/* Floating Action Button */
+.fab {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  background: var(--accent);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(230, 165, 94, 0.4);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.fab:hover {
+  background: var(--accent-hover);
+  transform: scale(1.1);
+  box-shadow: 0 6px 25px rgba(230, 165, 94, 0.6);
+}
+
+.fab:active {
+  transform: scale(0.95);
+}
+
+
 .nav-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -1072,5 +1128,10 @@ async function checkAuth() {
       }, 3000);
     }
   </script>
+
+<a href="/startups/post" class="fab" title="Create New Post">
+  +
+</a>
+
 </body>
 </html>

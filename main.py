@@ -25,6 +25,8 @@ from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSON
 from dotenv import load_dotenv
 from functools import wraps
 from fastapi.templating import Jinja2Templates
+from uuid import uuid4
+import json
 templates = Jinja2Templates(directory="templates")
 # Load environment variables
 load_dotenv()
@@ -60,6 +62,8 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # FastAPI app setup
 app = FastAPI()
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
+STARTUP_FIREBASE_URL = os.getenv("FIREBASE_STARTUP_DATABASE")
+POSTS_FIREBASE_URL = os.getenv("FIREBASE_POSTS_DATABASE")
 
 # CORS middleware
 app.add_middleware(
@@ -318,7 +322,7 @@ async def save_startup_profile(
                 profile[key] = None
 
         # Use the same path format as intern endpoint
-        firebase_path = f"{FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+        firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
         print("Firebase path:", firebase_path)
         print("Profile data:", profile)
 
@@ -635,6 +639,12 @@ imagekit = ImageKit(
     url_endpoint="https://ik.imagekit.io/iupyun2hd"
 )
 
+posts_imagekit = ImageKit(
+    private_key=os.getenv("POSTS_IMAGEKIT_PRIVATE_KEY"),
+    public_key=os.getenv("POSTS_IMAGEKIT_PUBLIC_KEY"),
+    url_endpoint="https://ik.imagekit.io/educonnect"
+)
+
 
 
 
@@ -841,6 +851,228 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
         raise HTTPException(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
+        )
+
+@app.get("/startups/post")
+async def startup_post_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    Post creation page - accessible only to authenticated startups
+    """
+    try:
+        # Check if user is authenticated startup
+        if current_user.role != "startup":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only startups can create posts."
+            )
+        
+        return templates.TemplateResponse("startups/post.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
+
+@app.post("/api/create_post")
+async def create_post(
+    request: Request,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create a new post - accessible only to authenticated startups
+    """
+    try:
+        # Check if user is authenticated startup
+        if current_user.role != "startup":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only startups can create posts."
+            )
+        
+        # Get form data
+        form_data = await request.form()
+        
+        # Extract post data
+        post_data = {
+            "name": form_data.get("name", "").strip(),
+            "tagline": form_data.get("tagline", "").strip(),
+            "title": form_data.get("title", "").strip(),
+            "skills": form_data.get("skills", "").strip(),
+            "description": form_data.get("description", "").strip()
+        }
+        
+        # Basic validation
+        if not post_data["name"] or not post_data["title"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Startup name and job title are required"
+            )
+        
+        # Handle image upload if present
+        image_url = ""
+        image_file = form_data.get("image")
+        
+        if image_file and hasattr(image_file, 'filename') and image_file.filename:
+            try:
+                # Read image file
+                image_contents = await image_file.read()
+                
+                # Validate file size (max 2MB as per frontend)
+                MAX_IMAGE_SIZE = 4 * 1024 * 1024  # 2MB
+                if len(image_contents) > MAX_IMAGE_SIZE:
+                    raise HTTPException(
+                        status_code=413,
+                        detail="Image file too large. Maximum size is 2MB."
+                    )
+                
+                # Validate file type
+                if not image_file.content_type.startswith('image/'):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Only image files are allowed"
+                    )
+                
+                # Create unique filename
+                file_extension = image_file.filename.split('.')[-1].lower()
+                post_id = str(uuid4())
+                safe_startup_name = re.sub(r"[^A-Za-z0-9]", "_", post_data["name"])
+                unique_filename = f"post_{safe_startup_name}_{post_id}.{file_extension}"
+                
+                # Encode image for ImageKit
+                image_base64 = base64.b64encode(image_contents).decode("utf-8")
+                
+                # Upload to posts_imagekit
+                upload_options = UploadFileRequestOptions(
+                    folder="/posts/",
+                    use_unique_file_name=False,
+                    overwrite_file=False,
+                    is_private_file=False,
+                    tags=["post", "startup", safe_startup_name]
+                )
+                
+                result = posts_imagekit.upload(
+                    file=image_base64,
+                    file_name=unique_filename,
+                    options=upload_options
+                )
+                
+                if result and hasattr(result, 'url') and result.url:
+                    image_url = result.url
+                    print(f"✅ Image uploaded successfully: {image_url}")
+                else:
+                    print("❌ ImageKit upload failed")
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Failed to upload image"
+                    )
+                    
+            except HTTPException:
+                raise
+            except Exception as e:
+                print(f"❌ Image upload error: {str(e)}")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Image upload failed: {str(e)}"
+                )
+        
+        # Create post object with all details
+        post_object = {
+            "id": str(uuid4()),
+            "startup_name": post_data["name"],
+            "tagline": post_data["tagline"],
+            "job_title": post_data["title"],
+            "skills": post_data["skills"],
+            "description": post_data["description"],
+            "image_url": image_url,
+            "created_at": datetime.utcnow().isoformat(),
+            "status": "published"
+        }
+        
+        # Store in Firebase (POSTS_FIREBASE_URL)
+        try:
+            if not POSTS_FIREBASE_URL:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Posts Firebase URL not configured"
+                )
+            
+            # Create unique path for the post
+            firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_object['id']}.json"
+            print(f"🔥 Storing post in Firebase: {firebase_path}")
+            
+            response = requests.put(firebase_path, json=post_object, timeout=10)
+            
+            if response.status_code in (200, 204):
+                print("✅ Post stored successfully in Firebase")
+                return JSONResponse({
+                    "success": True,
+                    "message": "Post published successfully!",
+                    "post_id": post_object["id"],
+                    "redirect_url": "/startups/home"
+                })
+            else:
+                print(f"❌ Firebase storage failed: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to store post in database"
+                )
+                
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Firebase request error: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection error"
+            )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"💥 Unexpected error in create_post: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@app.get("/api/view_post/{post_id}")
+async def view_post(
+    post_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    View a specific post by ID
+    """
+    try:
+        if not POSTS_FIREBASE_URL:
+            raise HTTPException(
+                status_code=500,
+                detail="Posts Firebase URL not configured"
+            )
+        
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code == 200:
+            post_data = response.json()
+            if post_data:
+                return JSONResponse({
+                    "success": True,
+                    "post": post_data
+                })
+            else:
+                raise HTTPException(status_code=404, detail="Post not found")
+        else:
+            raise HTTPException(status_code=404, detail="Post not found")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error viewing post: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve post"
         )
 
 
