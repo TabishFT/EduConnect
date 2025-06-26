@@ -1328,7 +1328,7 @@ async def interns_home_page(request: Request, current_user: User = Depends(get_c
             return RedirectResponse(url="/login", status_code=302)
         
         # Return the HTML template (assuming you have the HTML file in templates directory)
-        return templates.TemplateResponse("interns_home.html", {
+        return templates.TemplateResponse("interns/home.html", {
             "request": request,
             "user": current_user
         })
