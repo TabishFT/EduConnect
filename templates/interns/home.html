@@ -54,7 +54,7 @@
 
         .nav-links a:hover,
         .nav-links a.active {
-            color: #ff6b6b;
+            color: #f59e0b;
         }
 
         /* Main Container */
@@ -75,7 +75,7 @@
         }
 
         .view-profile-btn {
-            background: #ff6b6b;
+            background: #f59e0b;
             color: white;
             border: none;
             padding: 12px 24px;
@@ -144,7 +144,7 @@
             width: 100%;
             height: 300px;
             object-fit: contain; /* Changed from cover to contain */
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            background: linear-gradient(45deg, #f59e0b, #ffa500);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -161,7 +161,7 @@
         .placeholder-image {
             width: 100%;
             height: 300px;
-            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            background: linear-gradient(45deg, #f59e0b, #ffa500);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -191,7 +191,7 @@
         }
 
         .startup-name {
-            color: #ff6b6b;
+            color: #f59e0b;
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
@@ -211,7 +211,7 @@
         }
 
         .section-title {
-            color: #ff6b6b;
+            color: #f59e0b;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
@@ -283,7 +283,7 @@
         }
 
         .like-btn.liked {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+            background: linear-gradient(135deg, #f59e0b 0%, #ff8e8e 100%);
             animation: pulse 0.3s ease;
         }
 
@@ -298,7 +298,7 @@
         }
 
         .message-btn {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%);
+            background: linear-gradient(135deg, #f59e0b 0%, #ffa500 100%);
             color: white;
         }
 
@@ -331,7 +331,7 @@
         }
 
         .indicator.active {
-            background: #ff6b6b;
+            background: #f59e0b;
         }
 
         /* Loading and Error States */
@@ -344,7 +344,7 @@
         .error {
             text-align: center;
             padding: 50px;
-            color: #ff6b6b;
+            color: #f59e0b;
         }
 
         .no-posts {
@@ -435,7 +435,7 @@
             .mobile-nav-btn:hover,
             .mobile-nav-btn.active {
                 background: rgba(255, 107, 107, 0.2);
-                color: #ff6b6b;
+                color: #f59e0b;
                 transform: translateY(-2px);
             }
 
@@ -543,7 +543,7 @@
             </div>
             <div class="error" id="errorState" style="display: none;">
                 <div>Failed to load posts. Please try again.</div>
-                <button onclick="loadPosts()" style="margin-top: 15px; padding: 10px 20px; background: #ff6b6b; color: white; border: none; border-radius: 5px; cursor: pointer;">Retry</button>
+                <button onclick="loadPosts()" style="margin-top: 15px; padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 5px; cursor: pointer;">Retry</button>
             </div>
             <div class="no-posts" id="noPostsState" style="display: none;">
                 <div>No posts found. Check back later!</div>
@@ -577,7 +577,6 @@
     </div>
 
     <!-- Success Message -->
-    <div class="success-message" id="successMessage"></div>
 
     <script>
        
@@ -759,7 +758,7 @@ function createPostCard(post, index) {
                     </svg>
                 </button>
                 <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message"
-                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
+                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #f59e0b 0%, #ffa500 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
                     <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
                         <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v6l4-6h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
                     </svg>
@@ -906,7 +905,6 @@ function likePost(postId, button) {
         button.style.transform = '';
     }, 200);
     
-    showSuccessMessage('Post liked!');
 }
 
 function sharePost(postId) {
@@ -920,7 +918,7 @@ function sharePost(postId) {
             text: post.description,
             url: window.location.href
         }).then(() => {
-            showSuccessMessage('Post shared successfully!');
+            console.log('Shared successfully');
         }).catch(err => {
             console.error('Error sharing:', err);
             fallbackShare(postId);
@@ -936,30 +934,17 @@ function fallbackShare(postId) {
     const shareText = `Check out this internship at ${post.startup_name}: ${post.job_title}\n${window.location.href}`;
     
     navigator.clipboard.writeText(shareText).then(() => {
-        showSuccessMessage('Link copied to clipboard!');
+        console.log('Copied to clipboard');
     }).catch(err => {
         console.error('Error copying to clipboard:', err);
-        showSuccessMessage('Post shared!');
     });
 }
 
 function messageStartup(startupName) {
     console.log('Message startup:', startupName);
-    showSuccessMessage(`Message sent to ${startupName}!`);
     
     // In a real app, this would open a message composer or navigate to messages
     // For now, we'll just show a success message
-}
-
-// Show success message
-function showSuccessMessage(message) {
-    const successDiv = document.getElementById('successMessage');
-    successDiv.textContent = message;
-    successDiv.classList.add('show');
-    
-    setTimeout(() => {
-        successDiv.classList.remove('show');
-    }, 3000);
 }
 
 // Filter posts
@@ -993,7 +978,6 @@ function filterPosts() {
 // View profile function
 function viewProfile() {
     console.log('View profile clicked');
-    showSuccessMessage('Profile view coming soon!');
     // In a real app, this would navigate to the profile page
 }
 
@@ -1061,7 +1045,7 @@ document.addEventListener('touchstart', resetInactivityTimer);
 document.addEventListener('keydown', resetInactivityTimer);
 
 // Initialize auto-advance
-setTimeout(startAutoAdvance, 30000);
+setTimeout(startAutoAdvance, 60000);
 
 
 
