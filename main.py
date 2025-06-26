@@ -417,10 +417,6 @@ async def startup_preview_page(request: Request):
     return templates.TemplateResponse("preview2.html", {"request": request})
 
 
-@app.get("/interns/home")
-async def intern_home(request: Request):
-    return templates.TemplateResponse("interns/home.html", {"request": request})
-
 @app.get("/startups/home")
 async def startup_home(request: Request, current_user: User = Depends(get_current_user)):
     # Check if user is a startup
@@ -1108,6 +1104,282 @@ async def check_authentication(request: Request):
             "authenticated": False,
             "detail": "Authentication check failed"
         }, status_code=500)
+
+
+@app.get("/api/get_all_posts")
+async def get_all_posts(current_user: User = Depends(get_current_user)):
+    """
+    Get all posts from Firebase - accessible to authenticated users
+    """
+    try:
+        # Check if user is authenticated
+        if not current_user:
+            raise HTTPException(
+                status_code=401, 
+                detail="Authentication required"
+            )
+        
+        # Construct Firebase URL
+        if not POSTS_FIREBASE_URL:
+            raise HTTPException(
+                status_code=500,
+                detail="Posts Firebase URL not configured"
+            )
+            
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
+        print(f"🔥 Fetching posts from Firebase: {firebase_path}")
+        
+        # Make request to Firebase
+        try:
+            response = requests.get(firebase_path, timeout=10)
+            print(f"📡 Firebase response status: {response.status_code}")
+            
+        except requests.exceptions.Timeout:
+            raise HTTPException(
+                status_code=504,
+                detail="Firebase request timed out"
+            )
+        except requests.exceptions.ConnectionError:
+            raise HTTPException(
+                status_code=503,
+                detail="Cannot connect to Firebase"
+            )
+        except requests.exceptions.RequestException as e:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Firebase request failed: {str(e)}"
+            )
+        
+        # Check Firebase response
+        if response.status_code != 200:
+            print(f"❌ Firebase error: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Firebase returned error: {response.status_code}"
+            )
+        
+        # Parse Firebase data
+        try:
+            posts_data = response.json()
+        except ValueError as e:
+            raise HTTPException(
+                status_code=500,
+                detail="Invalid JSON response from Firebase"
+            )
+        
+        # Handle empty or null response
+        if not posts_data:
+            print("📝 No posts found in Firebase")
+            return {
+                "success": True,
+                "posts": [],
+                "total_count": 0,
+                "message": "No posts found"
+            }
+        
+        # Convert Firebase object to list
+        posts_list = []
+        for post_id, post_data in posts_data.items():
+            if post_data and isinstance(post_data, dict):
+                # Clean and validate post data
+                clean_post = {
+                    'id': post_data.get('id', post_id),
+                    'startup_name': post_data.get('startup_name', 'Unknown Startup'),
+                    'tagline': post_data.get('tagline', ''),
+                    'job_title': post_data.get('job_title', 'Position Available'),
+                    'skills': post_data.get('skills', ''),
+                    'description': post_data.get('description', ''),
+                    'image_url': post_data.get('image_url', ''),
+                    'created_at': post_data.get('created_at', ''),
+                    'status': post_data.get('status', 'published'),
+                    'startup_profile': post_data.get('startup_profile', {}),
+                    'location': post_data.get('location', ''),
+                    'duration': post_data.get('duration', ''),
+                    'stipend': post_data.get('stipend', ''),
+                    'application_count': post_data.get('application_count', 0),
+                    'likes_count': post_data.get('likes_count', 0),
+                    'shares_count': post_data.get('shares_count', 0)
+                }
+                
+                # Only include published posts
+                if clean_post['status'] == 'published':
+                    posts_list.append(clean_post)
+        
+        # Sort posts by creation date (newest first)
+        posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        print(f"✅ Successfully processed {len(posts_list)} posts")
+        
+        return {
+            "success": True,
+            "posts": posts_list,
+            "total_count": len(posts_list)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"💥 Unexpected error in get_all_posts: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching posts"
+        )
+
+
+@app.post("/api/like_post/{post_id}")
+async def like_post(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Like/Unlike a post
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Get current post data
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        post_data = response.json()
+        if not post_data:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Update likes count
+        current_likes = post_data.get('likes_count', 0)
+        updated_likes = current_likes + 1
+        
+        # Update Firebase
+        update_data = {'likes_count': updated_likes}
+        update_response = requests.patch(firebase_path, json=update_data, timeout=10)
+        
+        if update_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to update likes")
+        
+        return {
+            "success": True,
+            "message": "Post liked successfully",
+            "likes_count": updated_likes
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error liking post: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/share_post/{post_id}")
+async def share_post(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Share a post (increment share count)
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Get current post data
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        post_data = response.json()
+        if not post_data:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Update shares count
+        current_shares = post_data.get('shares_count', 0)
+        updated_shares = current_shares + 1
+        
+        # Update Firebase
+        update_data = {'shares_count': updated_shares}
+        update_response = requests.patch(firebase_path, json=update_data, timeout=10)
+        
+        if update_response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to update shares")
+        
+        return {
+            "success": True,
+            "message": "Post shared successfully",
+            "shares_count": updated_shares,
+            "share_url": f"{request.base_url}post/{post_id}"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error sharing post: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/interns/home")
+async def interns_home_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    Serve the interns home page
+    """
+    try:
+        if not current_user:
+            # Redirect to login if not authenticated
+            return RedirectResponse(url="/login", status_code=302)
+        
+        # Return the HTML template (assuming you have the HTML file in templates directory)
+        return templates.TemplateResponse("interns_home.html", {
+            "request": request,
+            "user": current_user
+        })
+        
+    except Exception as e:
+        print(f"Error serving interns home page: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/message_startup")
+async def message_startup(
+    startup_name: str = Form(...),
+    message: str = Form(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Send message to startup
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Create message data
+        message_data = {
+            'id': str(uuid.uuid4()),
+            'from_user': current_user.email,
+            'from_name': getattr(current_user, 'name', current_user.email),
+            'to_startup': startup_name,
+            'message': message,
+            'timestamp': datetime.now().isoformat(),
+            'status': 'sent'
+        }
+        
+        # Save to Firebase messages collection
+        messages_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/messages/{message_data['id']}.json"
+        response = requests.put(messages_path, json=message_data, timeout=10)
+        
+        if response.status_code not in [200, 201]:
+            raise HTTPException(status_code=500, detail="Failed to send message")
+        
+        return {
+            "success": True,
+            "message": f"Message sent to {startup_name} successfully",
+            "message_id": message_data['id']
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error sending message: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 if __name__ == "__main__":
