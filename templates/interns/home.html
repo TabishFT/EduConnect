@@ -184,9 +184,10 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            overflow-y: auto;
-            /* Ye add karo: */
-            touch-action: pan-y; 
+            overflow-y: auto; /* Ye rakho */
+            /* Ye add karo for better mobile scroll: */
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
         }
 
         .startup-info {
@@ -378,17 +379,11 @@
 
             .posts-container {
                 min-height: 600px;
-                overflow-y: visible; /* Ye add karo */
+                overflow: hidden; /* Ye add karo */
             }
             .post-card {
-                position: relative; /* absolute se change karo */
-                transform: none; /* Remove transforms on mobile */
-                margin-bottom: 20px; /* Cards ke beech space */
+                position: absolute; 
                 }
-                .post-card.active,
-                .post-card.prev {
-                    transform: none; /* Mobile par transforms disable */
-                     }
 
             .post-content {
                 padding: 15px 20px;
@@ -835,22 +830,22 @@ function handleMove(e) {
     
     const deltaX = currentX - startX;
     const deltaY = currentY - startY;
+    const isScrollingInContent = e.target.closest('.post-content');
 
-    if (Math.abs(deltaY) > Math.abs(deltaX)) {
-        return; // Vertical scroll allow karo
+    if (isScrollingInContent && Math.abs(deltaY) > Math.abs(deltaX)) {
+        return; // Allow vertical scroll
     }
     
-    // Horizontal swipe ke liye preventDefault
+    // For horizontal swipes, prevent default and show feedback
     if (Math.abs(deltaX) > 10) {
         e.preventDefault();
-
-    // Visual feedback during drag
-    const currentCard = document.querySelector('.post-card.active');
-    if (currentCard && Math.abs(deltaX) > 10) {
-        currentCard.style.transform = `translateX(${deltaX * 0.3}px)`;
+        const currentCard = document.querySelector('.post-card.active');
+        if (currentCard && Math.abs(deltaX) > Math.abs(deltaY)) {
+            currentCard.style.transform = `translateX(${deltaX * 0.3}px)`;
+        }
     }
 }
-}
+
 
 // Handle end of swipe/drag
 function handleEnd(e) {
