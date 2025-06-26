@@ -201,7 +201,7 @@
             -webkit-box-orient: vertical;
         }
 
-        /* Action Buttons */
+        /* Action Buttons - Fixed Icons */
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -221,6 +221,14 @@
             font-size: 24px;
             transition: all 0.3s;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        /* SVG Icon Styles */
+        .action-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
         }
 
         .like-btn {
@@ -339,38 +347,71 @@
                 font-size: 20px;
             }
 
-            /* Mobile Navigation */
+            .action-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+
+            /* Mobile Navigation - Professional Icons */
             .mobile-nav {
                 display: flex;
                 justify-content: space-around;
                 align-items: center;
-                background: rgba(0, 0, 0, 0.8);
-                padding: 15px;
+                background: rgba(0, 0, 0, 0.9);
+                padding: 12px;
                 position: fixed;
                 bottom: 0;
                 left: 0;
                 right: 0;
-                backdrop-filter: blur(10px);
+                backdrop-filter: blur(15px);
                 z-index: 100;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
             }
 
             .mobile-nav-btn {
                 background: none;
                 border: none;
-                color: white;
-                font-size: 24px;
+                color: rgba(255, 255, 255, 0.7);
                 cursor: pointer;
-                padding: 10px;
-                border-radius: 10px;
-                transition: background 0.3s;
+                padding: 12px;
+                border-radius: 12px;
+                transition: all 0.3s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+                min-width: 60px;
             }
 
-            .mobile-nav-btn:hover {
-                background: rgba(255, 255, 255, 0.1);
+            .mobile-nav-btn:hover,
+            .mobile-nav-btn.active {
+                background: rgba(255, 107, 107, 0.2);
+                color: #ff6b6b;
+                transform: translateY(-2px);
+            }
+
+            .mobile-nav-btn svg {
+                width: 24px;
+                height: 24px;
+                fill: currentColor;
+            }
+
+            .mobile-nav-btn span {
+                font-size: 10px;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
 
             body {
                 padding-bottom: 80px;
+            }
+        }
+
+        /* Desktop - Hide Mobile Nav */
+        @media (min-width: 769px) {
+            .mobile-nav {
+                display: none;
             }
         }
 
@@ -464,11 +505,26 @@
         <div class="post-indicators" id="postIndicators"></div>
     </div>
 
-    <!-- Mobile Navigation -->
+    <!-- Mobile Navigation - Professional Icons -->
     <div class="mobile-nav">
-        <button class="mobile-nav-btn">🏠</button>
-        <button class="mobile-nav-btn">💬</button>
-        <button class="mobile-nav-btn">⚙️</button>
+        <button class="mobile-nav-btn active">
+            <svg viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            <span>Home</span>
+        </button>
+        <button class="mobile-nav-btn">
+            <svg viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+            <span>Messages</span>
+        </button>
+        <button class="mobile-nav-btn">
+            <svg viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>Profile</span>
+        </button>
     </div>
 
     <!-- Success Message -->
@@ -574,7 +630,11 @@
 
             const imageHtml = post.image_url ? 
                 `<img src="${post.image_url}" alt="${post.startup_name}" class="post-image" onerror="this.style.display='none'">` :
-                `<div class="post-image" style="background: linear-gradient(45deg, #ff6b6b, #ffa500); display: flex; align-items: center; justify-content: center; font-size: 24px; color: white;">📸</div>`;
+                `<div class="post-image" style="background: linear-gradient(45deg, #ff6b6b, #ffa500); display: flex; align-items: center; justify-content: center; font-size: 48px; color: white;">
+                    <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: currentColor;">
+                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                    </svg>
+                </div>`;
 
             card.innerHTML = `
                 ${imageHtml}
@@ -599,13 +659,19 @@
                     
                     <div class="action-buttons">
                         <button class="action-btn like-btn" onclick="likePost('${post.id}', this)" title="Like">
-                            👍
+                            <svg viewBox="0 0 24 24">
+                                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
+                            </svg>
                         </button>
                         <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share">
-                            📤
+                            <svg viewBox="0 0 24 24">
+                                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                            </svg>
                         </button>
                         <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message">
-                            💬
+                            <svg viewBox="0 0 24 24">
+                                <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v6l4-6h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -828,6 +894,31 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // Mobile navigation functionality
+        document.querySelectorAll('.mobile-nav-btn').forEach((btn, index) => {
+            btn.addEventListener('click', function() {
+                // Remove active class from all buttons
+                document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+                // Add active class to clicked button
+                this.classList.add('active');
+                
+                // Handle navigation based on index
+                switch(index) {
+                    case 0: // Home
+                        // Already on home page
+                        break;
+                    case 1: // Messages
+                        showSuccessMessage('Opening Messages...');
+                        // window.location.href = '/messages';
+                        break;
+                    case 2: // Profile
+                        showSuccessMessage('Opening Profile...');
+                        // window.location.href = '/profile';
+                        break;
+                }
+            });
+        });
 
         // Keyboard navigation
         document.addEventListener('keydown', function(e) {

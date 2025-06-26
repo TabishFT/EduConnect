@@ -30,6 +30,85 @@
             gap: 2rem;
         }
 
+
+        /* Popup overlay ko poore viewport pe cover kare, by default hidden */
+    .popup-overlay {
+    display: none;            /* hide by default */
+    position: fixed;
+    inset: 0;                 /* top:0; right:0; bottom:0; left:0 */
+    background: rgba(0, 0, 0, 0.5);
+    align-items: center;      /* vertically centre content */
+    justify-content: center;  /* horizontally centre content */
+    z-index: 1000;            /* upar rakhne ke liye */
+    }
+
+    /* Jab JS show karega */
+    .popup-overlay.show {
+    display: flex;
+    }
+
+    /* Popup box ka styling */
+    .popup-content {
+    background: #1e293b;      /* dark bg to match theme */
+    color: #fff;
+    padding: 2rem;
+    border-radius: 1rem;
+    max-width: 90%;
+    width: 400px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    text-align: center;
+    }
+
+    /* Icon ko thoda bada kare */
+    .popup-icon svg {
+    width: 3rem;
+    height: 3rem;
+    color: #f59e0b;
+    margin-bottom: 1rem;
+    }
+
+    /* Title and message */
+    .popup-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    }
+    .popup-message {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+    }
+
+    /* Buttons wrapper */
+    .popup-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    }
+
+    /* Buttons styling */
+    .popup-button {
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    }
+    .popup-button.primary {
+    background: #f59e0b;
+    color: #000;
+    }
+    .popup-button.secondary {
+    background: #334155;
+    color: #fff;
+    }
+    .popup-button.primary:hover {
+    background: #d97706;
+    }
+    .popup-button.secondary:hover {
+    background: #475569;
+    }
+
+        /* --- Preview Area --- */
+
         /* Desktop layout: side-by-side */
         @media (min-width: 1024px) {
             .main {
@@ -163,6 +242,7 @@
             font-size: 1rem;
             white-space: nowrap; /* Prevent text wrapping */
         }
+        
 
         @media (max-width: 640px) {
             .button {
