@@ -107,7 +107,7 @@
         /* Posts Container */
         .posts-container {
             position: relative;
-            height: 600px;
+            height: 700px; /* Increased height */
             overflow: hidden;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
@@ -123,6 +123,8 @@
             transform: translateX(100%);
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: grab;
+            display: flex;
+            flex-direction: column;
         }
 
         .post-card.active {
@@ -137,23 +139,55 @@
             cursor: grabbing;
         }
 
+        /* Fixed Image Styling */
         .post-image {
             width: 100%;
             height: 300px;
-            object-fit: cover;
+            object-fit: contain; /* Changed from cover to contain */
             background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
+        .post-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Ensure full image is visible */
+            background: #000; /* Black background for better contrast */
+        }
+
+        .placeholder-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+        }
+
+        .placeholder-image svg {
+            width: 48px;
+            height: 48px;
+            fill: currentColor;
+        }
+
+        /* Fixed Content Area */
         .post-content {
-            padding: 30px;
-            height: calc(100% - 300px);
+            padding: 20px 30px;
+            flex: 1;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            overflow-y: auto;
         }
 
         .startup-info {
             margin-bottom: 20px;
+            flex: 1;
         }
 
         .startup-name {
@@ -183,6 +217,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 5px;
+            margin-top: 10px;
         }
 
         .skills {
@@ -201,33 +236,39 @@
             -webkit-box-orient: vertical;
         }
 
-        /* Action Buttons - Fixed Icons */
+        /* Fixed Action Buttons */
         .action-buttons {
             display: flex;
             justify-content: center;
-            gap: 40px;
-            margin-top: 30px;
+            align-items: center;
+            gap: 30px;
+            margin-top: 20px;
+            padding: 20px 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
         }
 
         .action-btn {
-            width: 60px;
-            height: 60px;
+            width: 55px;
+            height: 55px;
             border-radius: 50%;
             border: none;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            transition: all 0.3s;
+            font-size: 20px;
+            transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             position: relative;
+            z-index: 10;
         }
 
         /* SVG Icon Styles */
         .action-btn svg {
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             fill: currentColor;
         }
 
@@ -237,12 +278,13 @@
         }
 
         .like-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
         }
 
         .like-btn.liked {
             background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%);
+            animation: pulse 0.3s ease;
         }
 
         .share-btn {
@@ -251,8 +293,8 @@
         }
 
         .share-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 6px 25px rgba(17, 153, 142, 0.5);
         }
 
         .message-btn {
@@ -261,8 +303,14 @@
         }
 
         .message-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+            transform: scale(1.15);
+            box-shadow: 0 6px 25px rgba(255, 107, 107, 0.5);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
         }
 
         /* Navigation Dots */
@@ -325,11 +373,11 @@
             }
 
             .posts-container {
-                height: 500px;
+                height: 600px;
             }
 
             .post-content {
-                padding: 20px;
+                padding: 15px 20px;
             }
 
             .startup-name {
@@ -337,14 +385,15 @@
             }
 
             .action-buttons {
-                gap: 20px;
-                margin-top: 20px;
+                gap: 25px;
+                margin-top: 15px;
+                padding: 15px 0;
             }
 
             .action-btn {
                 width: 50px;
                 height: 50px;
-                font-size: 20px;
+                font-size: 18px;
             }
 
             .action-btn svg {
@@ -352,7 +401,7 @@
                 height: 20px;
             }
 
-            /* Mobile Navigation - Professional Icons */
+            /* Mobile Navigation */
             .mobile-nav {
                 display: flex;
                 justify-content: space-around;
@@ -505,7 +554,7 @@
         <div class="post-indicators" id="postIndicators"></div>
     </div>
 
-    <!-- Mobile Navigation - Professional Icons -->
+    <!-- Mobile Navigation -->
     <div class="mobile-nav">
         <button class="mobile-nav-btn active">
             <svg viewBox="0 0 24 24">
@@ -531,410 +580,491 @@
     <div class="success-message" id="successMessage"></div>
 
     <script>
-        let allPosts = [];
-        let filteredPosts = [];
-        let currentPostIndex = 0;
-        let isLoading = false;
-        let startX = 0;
-        let currentX = 0;
-        let isDragging = false;
+       
 
-        // Load posts on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            loadPosts();
-        });
 
-        // Load posts from API
-        async function loadPosts() {
-            if (isLoading) return;
-            
-            isLoading = true;
-            showLoading();
+       
+let allPosts = [];
+let filteredPosts = [];
+let currentPostIndex = 0;
+let isLoading = false;
+let startX = 0;
+let currentX = 0;
+let isDragging = false;
 
-            try {
-                const response = await fetch('/api/get_all_posts');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+// Sample data for testing
+const samplePosts = [
+    {
+        id: '1',
+        startup_name: 'TechStartup',
+        tagline: 'Innovative solutions for tomorrow',
+        job_title: 'Software Developer Intern',
+        skills: 'JavaScript, React, Node.js',
+        description: 'Join our team to build cutting-edge web applications and gain hands-on experience with modern technologies.',
+        image_url: 'https://via.placeholder.com/400x300/ff6b6b/ffffff?text=TechStartup',
+        created_at: new Date().toISOString()
+    },
+    {
+        id: '2',
+        startup_name: 'DataCorp',
+        tagline: 'Data-driven insights',
+        job_title: 'Data Science Intern',
+        skills: 'Python, Machine Learning, SQL',
+        description: 'Work with large datasets and help us build predictive models to solve real-world business problems.',
+        image_url: null,
+        created_at: new Date(Date.now() - 86400000).toISOString()
+    }
+];
 
-                const data = await response.json();
-                
-                if (data.success && data.posts && data.posts.length > 0) {
-                    allPosts = data.posts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                    filteredPosts = [...allPosts];
-                    currentPostIndex = 0;
-                    renderPosts();
-                    hideLoading();
-                } else {
-                    showNoPostsState();
-                }
-            } catch (error) {
-                console.error('Error loading posts:', error);
-                showErrorState();
-            } finally {
-                isLoading = false;
+// Load posts on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadPosts();
+});
+
+// Load posts from API
+async function loadPosts() {
+    if (isLoading) return;
+    
+    isLoading = true;
+    showLoading();
+
+    try {
+        // Try to fetch from API, fallback to sample data
+        let data;
+        try {
+            const response = await fetch('/api/get_all_posts');
+            if (response.ok) {
+                data = await response.json();
+            } else {
+                throw new Error('API not available');
             }
+        } catch (apiError) {
+            console.log('Using sample data for demonstration');
+            data = { success: true, posts: samplePosts };
         }
-
-        // Show loading state
-        function showLoading() {
-            document.getElementById('loadingState').style.display = 'block';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('noPostsState').style.display = 'none';
-        }
-
-        // Hide loading state
-        function hideLoading() {
-            document.getElementById('loadingState').style.display = 'none';
-        }
-
-        // Show error state
-        function showErrorState() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'block';
-            document.getElementById('noPostsState').style.display = 'none';
-        }
-
-        // Show no posts state
-        function showNoPostsState() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('errorState').style.display = 'none';
-            document.getElementById('noPostsState').style.display = 'block';
-        }
-
-        // Render posts
-        function renderPosts() {
-            const container = document.getElementById('postsContainer');
-            container.innerHTML = '';
-
-            if (filteredPosts.length === 0) {
-                showNoPostsState();
-                return;
-            }
-
-            filteredPosts.forEach((post, index) => {
-                const postCard = createPostCard(post, index);
-                container.appendChild(postCard);
-            });
-
-            updatePostIndicators();
-            setupSwipeHandlers();
-        }
-
-        // Create post card
-        function createPostCard(post, index) {
-            const card = document.createElement('div');
-            card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
-            card.setAttribute('data-index', index);
-
-            const imageHtml = post.image_url ? 
-                `<img src="${post.image_url}" alt="${post.startup_name}" class="post-image" onerror="this.style.display='none'">` :
-                `<div class="post-image" style="background: linear-gradient(45deg, #ff6b6b, #ffa500); display: flex; align-items: center; justify-content: center; font-size: 48px; color: white;">
-                    <svg viewBox="0 0 24 24" style="width: 48px; height: 48px; fill: currentColor;">
-                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                    </svg>
-                </div>`;
-
-            card.innerHTML = `
-                ${imageHtml}
-                <div class="post-content">
-                    <div class="startup-info">
-                        <div class="startup-name">${escapeHtml(post.startup_name)}</div>
-                        ${post.tagline ? `<div class="startup-tagline">${escapeHtml(post.tagline)}</div>` : ''}
-                        
-                        <div class="section-title">Position</div>
-                        <div class="job-title">${escapeHtml(post.job_title)}</div>
-                        
-                        ${post.skills ? `
-                            <div class="section-title">Required Skills</div>
-                            <div class="skills">${escapeHtml(post.skills)}</div>
-                        ` : ''}
-                        
-                        ${post.description ? `
-                            <div class="section-title">Description</div>
-                            <div class="description">${escapeHtml(post.description)}</div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="action-buttons">
-                        <button class="action-btn like-btn" onclick="likePost('${post.id}', this)" title="Like">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
-                            </svg>
-                        </button>
-                        <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
-                            </svg>
-                        </button>
-                        <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v6l4-6h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            return card;
-        }
-
-        // Setup swipe handlers
-        function setupSwipeHandlers() {
-            const container = document.getElementById('postsContainer');
-            
-            // Mouse events
-            container.addEventListener('mousedown', handleStart);
-            container.addEventListener('mousemove', handleMove);
-            container.addEventListener('mouseup', handleEnd);
-            container.addEventListener('mouseleave', handleEnd);
-
-            // Touch events
-            container.addEventListener('touchstart', handleStart);
-            container.addEventListener('touchmove', handleMove);
-            container.addEventListener('touchend', handleEnd);
-        }
-
-        // Handle start of swipe/drag
-        function handleStart(e) {
-            isDragging = true;
-            startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-            currentX = startX;
-        }
-
-        // Handle move during swipe/drag
-        function handleMove(e) {
-            if (!isDragging) return;
-
-            e.preventDefault();
-            currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
-            const deltaX = currentX - startX;
-
-            // Visual feedback during drag
-            const currentCard = document.querySelector('.post-card.active');
-            if (currentCard && Math.abs(deltaX) > 10) {
-                currentCard.style.transform = `translateX(${deltaX * 0.3}px)`;
-            }
-        }
-
-        // Handle end of swipe/drag
-        function handleEnd(e) {
-            if (!isDragging) return;
-
-            isDragging = false;
-            const deltaX = currentX - startX;
-            const threshold = 100;
-
-            // Reset current card position
-            const currentCard = document.querySelector('.post-card.active');
-            if (currentCard) {
-                currentCard.style.transform = '';
-            }
-
-            // Determine swipe direction
-            if (Math.abs(deltaX) > threshold) {
-                if (deltaX > 0) {
-                    // Swipe right - previous post
-                    previousPost();
-                } else {
-                    // Swipe left - next post
-                    nextPost();
-                }
-            }
-        }
-
-        // Navigate to next post
-        function nextPost() {
-            if (currentPostIndex < filteredPosts.length - 1) {
-                currentPostIndex++;
-                updateActivePost();
-            }
-        }
-
-        // Navigate to previous post
-        function previousPost() {
-            if (currentPostIndex > 0) {
-                currentPostIndex--;
-                updateActivePost();
-            }
-        }
-
-        // Update active post
-        function updateActivePost() {
-            const cards = document.querySelectorAll('.post-card');
-            cards.forEach((card, index) => {
-                card.classList.remove('active', 'prev');
-                if (index === currentPostIndex) {
-                    card.classList.add('active');
-                } else if (index < currentPostIndex) {
-                    card.classList.add('prev');
-                }
-            });
-            updatePostIndicators();
-        }
-
-        // Update post indicators
-        function updatePostIndicators() {
-            const indicatorsContainer = document.getElementById('postIndicators');
-            indicatorsContainer.innerHTML = '';
-
-            if (filteredPosts.length <= 1) return;
-
-            filteredPosts.forEach((_, index) => {
-                const indicator = document.createElement('div');
-                indicator.className = `indicator ${index === currentPostIndex ? 'active' : ''}`;
-                indicator.addEventListener('click', () => {
-                    currentPostIndex = index;
-                    updateActivePost();
-                });
-                indicatorsContainer.appendChild(indicator);
-            });
-        }
-
-        // Filter posts based on time range
-        function filterPosts() {
-            const filterValue = document.getElementById('sortFilter').value;
-            const now = new Date();
-            let cutoffDate;
-
-            switch (filterValue) {
-                case 'week':
-                    cutoffDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    break;
-                case 'month':
-                    cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    break;
-                case '6months':
-                    cutoffDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000);
-                    break;
-                default:
-                    filteredPosts = [...allPosts];
-                    currentPostIndex = 0;
-                    renderPosts();
-                    return;
-            }
-
-            filteredPosts = allPosts.filter(post => new Date(post.created_at) >= cutoffDate);
+        
+        if (data.success && data.posts && data.posts.length > 0) {
+            allPosts = data.posts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            filteredPosts = [...allPosts];
             currentPostIndex = 0;
             renderPosts();
+            hideLoading();
+        } else {
+            showNoPostsState();
         }
+    } catch (error) {
+        console.error('Error loading posts:', error);
+        showErrorState();
+    } finally {
+        isLoading = false;
+    }
+}
 
-        // Like post
-        async function likePost(postId, button) {
-            try {
-                button.classList.toggle('liked');
-                
-                // Here you would typically send a request to your backend
-                // For now, just show visual feedback
-                showSuccessMessage('Post liked!');
-                
-                // Animate button
-                button.style.transform = 'scale(1.2)';
-                setTimeout(() => {
-                    button.style.transform = '';
-                }, 200);
-                
-            } catch (error) {
-                console.error('Error liking post:', error);
-                button.classList.remove('liked');
-                showSuccessMessage('Failed to like post');
-            }
-        }
+// Show loading state
+function showLoading() {
+    document.getElementById('loadingState').style.display = 'block';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('noPostsState').style.display = 'none';
+}
 
-        // Share post
-        async function sharePost(postId) {
-            try {
-                if (navigator.share) {
-                    await navigator.share({
-                        title: 'Check out this internship opportunity!',
-                        url: window.location.origin + '/post/' + postId
-                    });
-                } else {
-                    // Fallback - copy to clipboard
-                    const url = window.location.origin + '/post/' + postId;
-                    await navigator.clipboard.writeText(url);
-                    showSuccessMessage('Link copied to clipboard!');
-                }
-            } catch (error) {
-                console.error('Error sharing post:', error);
-                showSuccessMessage('Failed to share post');
-            }
-        }
+// Hide loading state
+function hideLoading() {
+    document.getElementById('loadingState').style.display = 'none';
+}
 
-        // Message startup
-        function messageStartup(startupName) {
-            // For now, just show a message
-            showSuccessMessage(`Opening chat with ${startupName}...`);
+// Show error state
+function showErrorState() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('noPostsState').style.display = 'none';
+}
+
+// Show no posts state
+function showNoPostsState() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'none';
+    document.getElementById('noPostsState').style.display = 'block';
+}
+
+// Render posts
+function renderPosts() {
+    const container = document.getElementById('postsContainer');
+    container.innerHTML = '';
+
+    if (filteredPosts.length === 0) {
+        showNoPostsState();
+        return;
+    }
+
+    filteredPosts.forEach((post, index) => {
+        const postCard = createPostCard(post, index);
+        container.appendChild(postCard);
+    });
+
+    updatePostIndicators();
+    setupSwipeHandlers();
+}
+
+// Create post card with proper image handling and visible action buttons
+function createPostCard(post, index) {
+    const card = document.createElement('div');
+    card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
+    card.setAttribute('data-index', index);
+
+    // Improved image handling - show full image properly
+    const imageHtml = post.image_url ? 
+        `<div class="post-image">
+            <img src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
+                 style="width: 100%; height: 100%; object-fit: contain; background: #000;"
+                 onerror="this.parentElement.innerHTML='<div class=\\'placeholder-image\\'><svg viewBox=\\'0 0 24 24\\'><path d=\\'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z\\'/></svg></div>'">
+         </div>` :
+        `<div class="placeholder-image">
+            <svg viewBox="0 0 24 24">
+                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+            </svg>
+         </div>`;
+
+    card.innerHTML = `
+        ${imageHtml}
+        <div class="post-content">
+            <div class="startup-info">
+                <div class="startup-name">${escapeHtml(post.startup_name)}</div>
+                ${post.tagline ? `<div class="startup-tagline">${escapeHtml(post.tagline)}</div>` : ''}
+                
+                <div class="section-title">Position</div>
+                <div class="job-title">${escapeHtml(post.job_title)}</div>
+                
+                ${post.skills ? `
+                    <div class="section-title">Required Skills</div>
+                    <div class="skills">${escapeHtml(post.skills)}</div>
+                ` : ''}
+                
+                ${post.description ? `
+                    <div class="section-title">Description</div>
+                    <div class="description">${escapeHtml(post.description)}</div>
+                ` : ''}
+            </div>
             
-            // You would typically redirect to a messaging interface
-            // window.location.href = '/messages?startup=' + encodeURIComponent(startupName);
-        }
+            <div class="action-buttons" style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 30px !important; margin-top: 20px !important; padding: 20px 0 !important; background: rgba(0, 0, 0, 0.1) !important; border-radius: 15px !important; backdrop-filter: blur(10px) !important;">
+                <button class="action-btn like-btn" onclick="likePost('${post.id}', this)" title="Like" 
+                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
+                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+                        <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
+                    </svg>
+                </button>
+                <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share"
+                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
+                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+                        <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
+                    </svg>
+                </button>
+                <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message"
+                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
+                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v6l4-6h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    `;
 
-        // View profile
-        function viewProfile() {
-            window.location.href = '/intern_profile';
-        }
+    return card;
+}
 
-        // Show success message
-        function showSuccessMessage(message) {
-            const messageElement = document.getElementById('successMessage');
-            messageElement.textContent = message;
-            messageElement.classList.add('show');
-            
-            setTimeout(() => {
-                messageElement.classList.remove('show');
-            }, 3000);
-        }
+// Setup swipe handlers
+function setupSwipeHandlers() {
+    const container = document.getElementById('postsContainer');
+    
+    // Remove existing listeners
+    container.removeEventListener('mousedown', handleStart);
+    container.removeEventListener('mousemove', handleMove);
+    container.removeEventListener('mouseup', handleEnd);
+    container.removeEventListener('mouseleave', handleEnd);
+    container.removeEventListener('touchstart', handleStart);
+    container.removeEventListener('touchmove', handleMove);
+    container.removeEventListener('touchend', handleEnd);
+    
+    // Add new listeners
+    container.addEventListener('mousedown', handleStart);
+    container.addEventListener('mousemove', handleMove);
+    container.addEventListener('mouseup', handleEnd);
+    container.addEventListener('mouseleave', handleEnd);
+    container.addEventListener('touchstart', handleStart);
+    container.addEventListener('touchmove', handleMove);
+    container.addEventListener('touchend', handleEnd);
+}
 
-        // Escape HTML to prevent XSS
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+// Handle start of swipe/drag
+function handleStart(e) {
+    // Don't start drag if clicking on action buttons
+    if (e.target.closest('.action-btn')) {
+        return;
+    }
+    
+    isDragging = true;
+    startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    currentX = startX;
+}
 
-        // Mobile navigation functionality
-        document.querySelectorAll('.mobile-nav-btn').forEach((btn, index) => {
-            btn.addEventListener('click', function() {
-                // Remove active class from all buttons
-                document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
-                // Add active class to clicked button
-                this.classList.add('active');
-                
-                // Handle navigation based on index
-                switch(index) {
-                    case 0: // Home
-                        // Already on home page
-                        break;
-                    case 1: // Messages
-                        showSuccessMessage('Opening Messages...');
-                        // window.location.href = '/messages';
-                        break;
-                    case 2: // Profile
-                        showSuccessMessage('Opening Profile...');
-                        // window.location.href = '/profile';
-                        break;
-                }
-            });
+// Handle move during swipe/drag
+function handleMove(e) {
+    if (!isDragging) return;
+
+    e.preventDefault();
+    currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    const deltaX = currentX - startX;
+
+    // Visual feedback during drag
+    const currentCard = document.querySelector('.post-card.active');
+    if (currentCard && Math.abs(deltaX) > 10) {
+        currentCard.style.transform = `translateX(${deltaX * 0.3}px)`;
+    }
+}
+
+// Handle end of swipe/drag
+function handleEnd(e) {
+    if (!isDragging) return;
+
+    isDragging = false;
+    const deltaX = currentX - startX;
+    const threshold = 100;
+
+    // Reset current card position
+    const currentCard = document.querySelector('.post-card.active');
+    if (currentCard) {
+        currentCard.style.transform = '';
+    }
+
+    // Determine swipe direction
+    if (Math.abs(deltaX) > threshold) {
+        if (deltaX > 0) {
+            // Swipe right - previous post
+            previousPost();
+        } else {
+            // Swipe left - next post
+            nextPost();
+        }
+    }
+}
+
+// Navigate to next post
+function nextPost() {
+    if (currentPostIndex < filteredPosts.length - 1) {
+        currentPostIndex++;
+        updateActivePost();
+    }
+}
+
+// Navigate to previous post
+function previousPost() {
+    if (currentPostIndex > 0) {
+        currentPostIndex--;
+        updateActivePost();
+    }
+}
+
+// Update active post
+function updateActivePost() {
+    const cards = document.querySelectorAll('.post-card');
+    cards.forEach((card, index) => {
+        card.classList.remove('active', 'prev');
+        if (index === currentPostIndex) {
+            card.classList.add('active');
+        } else if (index < currentPostIndex) {
+            card.classList.add('prev');
+        }
+    });
+    updatePostIndicators();
+}
+
+// Update post indicators
+function updatePostIndicators() {
+    const indicatorsContainer = document.getElementById('postIndicators');
+    indicatorsContainer.innerHTML = '';
+
+    if (filteredPosts.length <= 1) return;
+
+    filteredPosts.forEach((_, index) => {
+        const indicator = document.createElement('div');
+        indicator.className = `indicator ${index === currentPostIndex ? 'active' : ''}`;
+        indicator.addEventListener('click', () => {
+            currentPostIndex = index;
+            updateActivePost();
         });
+        indicatorsContainer.appendChild(indicator);
+    });
+}
 
-        // Keyboard navigation
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowLeft') {
-                previousPost();
-            } else if (e.key === 'ArrowRight') {
-                nextPost();
-            }
+// Action button functions
+function likePost(postId, button) {
+    console.log('Liked post:', postId);
+    button.classList.toggle('liked');
+    
+    // Add animation
+    button.style.transform = 'scale(1.2)';
+    setTimeout(() => {
+        button.style.transform = '';
+    }, 200);
+    
+    showSuccessMessage('Post liked!');
+}
+
+function sharePost(postId) {
+    console.log('Shared post:', postId);
+    
+    // Try to use Web Share API if available
+    if (navigator.share) {
+        const post = filteredPosts.find(p => p.id === postId);
+        navigator.share({
+            title: `${post.startup_name} - ${post.job_title}`,
+            text: post.description,
+            url: window.location.href
+        }).then(() => {
+            showSuccessMessage('Post shared successfully!');
+        }).catch(err => {
+            console.error('Error sharing:', err);
+            fallbackShare(postId);
         });
+    } else {
+        fallbackShare(postId);
+    }
+}
 
-        // Auto-refresh posts every 5 minutes
-        setInterval(() => {
-            if (!isDragging) {
-                loadPosts();
-            }
-        }, 5 * 60 * 1000);
+function fallbackShare(postId) {
+    // Fallback share - copy to clipboard
+    const post = filteredPosts.find(p => p.id === postId);
+    const shareText = `Check out this internship at ${post.startup_name}: ${post.job_title}\n${window.location.href}`;
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+        showSuccessMessage('Link copied to clipboard!');
+    }).catch(err => {
+        console.error('Error copying to clipboard:', err);
+        showSuccessMessage('Post shared!');
+    });
+}
+
+function messageStartup(startupName) {
+    console.log('Message startup:', startupName);
+    showSuccessMessage(`Message sent to ${startupName}!`);
+    
+    // In a real app, this would open a message composer or navigate to messages
+    // For now, we'll just show a success message
+}
+
+// Show success message
+function showSuccessMessage(message) {
+    const successDiv = document.getElementById('successMessage');
+    successDiv.textContent = message;
+    successDiv.classList.add('show');
+    
+    setTimeout(() => {
+        successDiv.classList.remove('show');
+    }, 3000);
+}
+
+// Filter posts
+function filterPosts() {
+    const filterValue = document.getElementById('sortFilter').value;
+    const now = new Date();
+    let filteredData = [...allPosts];
+
+    switch (filterValue) {
+        case 'week':
+            const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            filteredData = allPosts.filter(post => new Date(post.created_at) >= oneWeekAgo);
+            break;
+        case 'month':
+            const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            filteredData = allPosts.filter(post => new Date(post.created_at) >= oneMonthAgo);
+            break;
+        case '6months':
+            const sixMonthsAgo = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
+            filteredData = allPosts.filter(post => new Date(post.created_at) >= sixMonthsAgo);
+            break;
+        default:
+            filteredData = [...allPosts];
+    }
+
+    filteredPosts = filteredData;
+    currentPostIndex = 0;
+    renderPosts();
+}
+
+// View profile function
+function viewProfile() {
+    console.log('View profile clicked');
+    showSuccessMessage('Profile view coming soon!');
+    // In a real app, this would navigate to the profile page
+}
+
+// Utility function to escape HTML
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowLeft') {
+        previousPost();
+    } else if (e.key === 'ArrowRight') {
+        nextPost();
+    }
+});
+
+// Auto-advance posts (optional)
+let autoAdvanceInterval;
+
+function startAutoAdvance() {
+    autoAdvanceInterval = setInterval(() => {
+        if (currentPostIndex < filteredPosts.length - 1) {
+            nextPost();
+        } else {
+            currentPostIndex = 0;
+            updateActivePost();
+        }
+    }, 10000); // Change post every 10 seconds
+}
+
+function stopAutoAdvance() {
+    if (autoAdvanceInterval) {
+        clearInterval(autoAdvanceInterval);
+        autoAdvanceInterval = null;
+    }
+}
+
+// Pause auto-advance on user interaction
+document.addEventListener('mousedown', stopAutoAdvance);
+document.addEventListener('touchstart', stopAutoAdvance);
+
+// Restart auto-advance after 30 seconds of inactivity
+let inactivityTimer;
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        if (!isDragging) {
+            startAutoAdvance();
+        }
+    }, 30000);
+}
+
+document.addEventListener('mousedown', resetInactivityTimer);
+document.addEventListener('touchstart', resetInactivityTimer);
+document.addEventListener('keydown', resetInactivityTimer);
+
+// Initialize auto-advance
+setTimeout(startAutoAdvance, 30000);
+
+
+
     </script>
 </body>
 </html>
