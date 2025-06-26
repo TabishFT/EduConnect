@@ -108,9 +108,11 @@
         .posts-container {
             position: relative;
             height: 700px;
-            overflow-y: auto; /* Ye add karo */
+            overflow: hidden;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            /* Ye add karo: */
+            touch-action: pan-y pinch-zoom;
         }
 
         .post-card {
@@ -184,8 +186,7 @@
             justify-content: space-between;
             overflow-y: auto;
             /* Ye add karo: */
-            touch-action: pan-y;
-            -webkit-overflow-scrolling: touch;
+            touch-action: pan-y; 
         }
 
         .startup-info {
@@ -592,6 +593,8 @@
     <!-- Success Message -->
 
     <script>
+        let startY = 0;
+        let currentY = 0;
        
 
 
@@ -816,28 +819,37 @@ function handleStart(e) {
         return;
     }
 
-    if (window.innerWidth <= 768) {
-        return; // Mobile par swipe disable karo
-    }
-    
     isDragging = true;
     startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    startY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY; // Y coordinate bhi track karo
     currentX = startX;
+    currentY = startY;
 }
 
 // Handle move during swipe/drag
 function handleMove(e) {
-    if (!isDragging || window.innerWidth <= 768) return;
+    if (!isDragging) return;
 
-    e.preventDefault();
     currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+    currentY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+    
     const deltaX = currentX - startX;
+    const deltaY = currentY - startY;
+
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        return; // Vertical scroll allow karo
+    }
+    
+    // Horizontal swipe ke liye preventDefault
+    if (Math.abs(deltaX) > 10) {
+        e.preventDefault();
 
     // Visual feedback during drag
     const currentCard = document.querySelector('.post-card.active');
     if (currentCard && Math.abs(deltaX) > 10) {
         currentCard.style.transform = `translateX(${deltaX * 0.3}px)`;
     }
+}
 }
 
 // Handle end of swipe/drag
@@ -846,6 +858,7 @@ function handleEnd(e) {
 
     isDragging = false;
     const deltaX = currentX - startX;
+    const deltaY = currentY - startY;
     const threshold = 100;
 
     // Reset current card position
@@ -855,7 +868,7 @@ function handleEnd(e) {
     }
 
     // Determine swipe direction
-    if (Math.abs(deltaX) > threshold) {
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
         if (deltaX > 0) {
             // Swipe right - previous post
             previousPost();
