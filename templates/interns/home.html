@@ -107,8 +107,8 @@
         /* Posts Container */
         .posts-container {
             position: relative;
-            height: 700px; /* Increased height */
-            overflow: hidden;
+            height: 700px;
+            overflow-y: auto; /* Ye add karo */
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
@@ -183,6 +183,9 @@
             flex-direction: column;
             justify-content: space-between;
             overflow-y: auto;
+            /* Ye add karo: */
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
         }
 
         .startup-info {
@@ -373,8 +376,18 @@
             }
 
             .posts-container {
-                height: 600px;
+                min-height: 600px;
+                overflow-y: visible; /* Ye add karo */
             }
+            .post-card {
+                position: relative; /* absolute se change karo */
+                transform: none; /* Remove transforms on mobile */
+                margin-bottom: 20px; /* Cards ke beech space */
+                }
+                .post-card.active,
+                .post-card.prev {
+                    transform: none; /* Mobile par transforms disable */
+                     }
 
             .post-content {
                 padding: 15px 20px;
@@ -772,6 +785,9 @@ function createPostCard(post, index) {
 
 // Setup swipe handlers
 function setupSwipeHandlers() {
+    if (window.innerWidth <= 768) {
+        return;
+    }
     const container = document.getElementById('postsContainer');
     
     // Remove existing listeners
@@ -799,6 +815,10 @@ function handleStart(e) {
     if (e.target.closest('.action-btn')) {
         return;
     }
+
+    if (window.innerWidth <= 768) {
+        return; // Mobile par swipe disable karo
+    }
     
     isDragging = true;
     startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
@@ -807,7 +827,7 @@ function handleStart(e) {
 
 // Handle move during swipe/drag
 function handleMove(e) {
-    if (!isDragging) return;
+    if (!isDragging || window.innerWidth <= 768) return;
 
     e.preventDefault();
     currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
