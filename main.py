@@ -1112,7 +1112,7 @@ async def check_authentication(request: Request):
 @app.get("/api/get_all_posts")
 async def get_all_posts(
     current_user: User = Depends(get_current_user),
-    limit: int = 5,  # Number of posts to return per page
+    limit: int = 10,  # Number of posts to return per page
     start_after: Optional[str] = None
 ):
     """
@@ -1131,25 +1131,18 @@ async def get_all_posts(
             raise HTTPException(
                 status_code=500,
                 detail="Posts Firebase URL not configured"
-            ) [cite: 56]
+            )
             
         firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
-        fetch_limit = limit + 1
-        params = {
-        'orderBy': '"$key"',  # Order by the unique key of each post
-        'limitToFirst': fetch_limit
-    }
-
-        # If start_after is provided, use it as the starting point for the query
-        if start_after:
-            # The key must be in quotes for the Firebase REST API
-            params['startAt'] = f'"{start_after}"'
         print(f"🔥 Fetching posts from Firebase: {firebase_path}")
+        
+        # Firebase REST API doesn't support complex pagination like orderBy + startAt + limitToFirst
+        # So we'll fetch all posts and implement pagination in memory
         
         # Make request to Firebase
         try:
             response = requests.get(firebase_path, timeout=10)
-            print(f"📡 Firebase response status: {response.status_code}") [cite: 57]
+            print(f"📡 Firebase response status: {response.status_code}")
             
         except requests.exceptions.Timeout:
             raise HTTPException(
@@ -1182,24 +1175,21 @@ async def get_all_posts(
             raise HTTPException(
                 status_code=500,
                 detail="Invalid JSON response from Firebase"
-            ) [cite: 62]
+            )
         
         # Handle empty or null response
         if not posts_data:
             print("📝 No posts found in Firebase")
-            return {"success": True, "posts": [], "next_cursor": None}
+            return {
+                "success": True,
+                "posts": [],
+                "total_count": 0,
+                "next_cursor": None,
+                "message": "No posts found"
+            }
         
         # Convert Firebase object to list
         posts_list = []
-        if start_after and start_after in posts_data:
-            # Create an iterator and skip the first element
-            data_iterator = iter(posts_data.items())
-            next(data_iterator) 
-            posts_to_process = dict(data_iterator)
-        else:
-            posts_to_process = posts_data
-
-
         for post_id, post_data in posts_data.items():
             if post_data and isinstance(post_data, dict):
                 # Clean and validate post data
@@ -1225,25 +1215,38 @@ async def get_all_posts(
                 # Only include published posts
                 if clean_post['status'] == 'published':
                     posts_list.append(clean_post)
-
-        next_cursor = None
-        if len(posts_list) > limit:
-            # We fetched one extra item, so there are more posts.
-            # The key of the last item in our intended batch is the next cursor.
-            # Pop the extra item off the list.
-            last_item = posts_list.pop(limit) 
-            next_cursor = last_item['id']
         
         # Sort posts by creation date (newest first)
         posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         
-        print(f"✅ Successfully processed {len(posts_list)} posts")
+        # Implement pagination
+        start_index = 0
+        if start_after:
+            # Find the index of the post with start_after ID
+            for i, post in enumerate(posts_list):
+                if post['id'] == start_after:
+                    start_index = i + 1
+                    break
+        
+        # Get the slice of posts for this page
+        end_index = start_index + limit
+        paginated_posts = posts_list[start_index:end_index]
+        
+        # Determine next cursor
+        next_cursor = None
+        if end_index < len(posts_list):
+            # There are more posts available
+            next_cursor = paginated_posts[-1]['id'] if paginated_posts else None
+        
+        print(f"✅ Successfully processed {len(paginated_posts)} posts (total: {len(posts_list)})")
         
         return {
             "success": True,
-            "posts": posts_list,
+            "posts": paginated_posts,
             "total_count": len(posts_list),
-            "next_cursor": next_cursor
+            "returned_count": len(paginated_posts),
+            "next_cursor": next_cursor,
+            "has_more": next_cursor is not None
         }
         
     except HTTPException:
@@ -1256,7 +1259,6 @@ async def get_all_posts(
             status_code=500,
             detail="Internal server error while fetching posts"
         )
-
 
 @app.post("/api/like_post/{post_id}")
 async def like_post(post_id: str, current_user: User = Depends(get_current_user)):

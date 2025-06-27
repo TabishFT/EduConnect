@@ -589,16 +589,17 @@
 
     <script>
         let startY = 0;
-        let currentY = 0;
-        let allPosts = [];
-        let filteredPosts = [];
-        let currentPostIndex = 0;
-        let isLoading = false;
-        let startX = 0;
-        let currentX = 0;
-        let isDragging = false;
-        let nextCursor = null;
-        const postsContainer = document.getElementById('postsContainer');
+let currentY = 0;
+let allPosts = [];
+let filteredPosts = [];
+let currentPostIndex = 0;
+let isLoading = false;
+let startX = 0;
+let currentX = 0;
+let isDragging = false;
+let nextCursor = null;
+let hasMorePosts = true;
+const postsContainer = document.getElementById('postsContainer');
 
 // Sample data for testing
 const samplePosts = [
@@ -631,94 +632,109 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // This is the complete and final loadPosts function.
 // Replace the old function in your HTML file with this one.
-
 async function loadPosts() {
-    // Prevent another request if one is already in progress.
-    if (isLoading) {
+    // Prevent multiple simultaneous requests
+    if (isLoading || !hasMorePosts) {
         return;
     }
 
-    // Set loading state to true and show the loading indicator.
+    // Set loading state
     isLoading = true;
-    showLoading(); // [cite: 101, 112]
+    showLoading();
 
-    // Build the API URL for pagination.
-    // It will always request up to 10 posts.
+    // Build API URL with pagination
     let apiUrl = `/api/get_all_posts?limit=10`;
-
-    // If 'nextCursor' has a value, it means we are fetching the next page.
-    // Add it to the URL so the server knows where to start from.
+    
     if (nextCursor) {
         apiUrl += `&start_after=${nextCursor}`;
     }
 
-    try {
-        // Fetch the data from the backend.
-        const response = await fetch(apiUrl); // [cite: 103]
+    console.log('🔄 Loading posts from:', apiUrl);
 
-        // If the request was not successful, throw an error.
-         if (!response.ok) { // [cite: 104]
-            throw new Error('API request failed');
+    try {
+        // Fetch data from backend
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include' // Important for authentication
+        });
+
+        console.log('📡 Response status:', response.status);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error:', errorText);
+            throw new Error(`API request failed: ${response.status} - ${errorText}`);
         }
 
-        // Parse the JSON data from the response.
-        const data = await response.json(); // [cite: 104]
+        const data = await response.json();
+        console.log('📊 Received data:', data);
 
-        // Check if the request was successful and if any posts were returned.
-        if (data.success && data.posts && data.posts.length > 0) {
-            
-            // **THIS IS THE NEW LOGIC**
-            // Append the newly fetched posts to our main 'allPosts' array.
-            // We use .concat() to add the new items to the end of the list.
-            allPosts = allPosts.concat(data.posts);
-
-            // Update the 'nextCursor' with the value from the API.
-            // If the API returns null, it means there are no more posts to load.
-            nextCursor = data.next_cursor;
-
-            // Now, call the filterPosts() function. This function will apply the
-            // current filter to the updated list and then call renderPosts()
-            // to display them on the screen.
-            filterPosts(); // [cite: 88, 176]
-
-        } else {
-            // If no posts were returned, it means we have reached the end.
-            // Set the cursor to null to stop future requests.
-            nextCursor = null;
-
-            // If this was the very first fetch and the 'allPosts' array is still empty,
-            // it means there are no posts in the database at all. Show the "No Posts" message.
-            if (allPosts.length === 0) {
-                showNoPostsState(); // [cite: 109, 115]
+        if (data.success) {
+            if (data.posts && data.posts.length > 0) {
+                // Append new posts to existing ones
+                allPosts = allPosts.concat(data.posts);
+                
+                // Update pagination info
+                nextCursor = data.next_cursor;
+                hasMorePosts = data.has_more || false;
+                
+                console.log(`✅ Loaded ${data.posts.length} posts. Total: ${allPosts.length}`);
+                console.log('🔄 Next cursor:', nextCursor);
+                console.log('📄 Has more posts:', hasMorePosts);
+                
+                // Apply current filter and render
+                filterPosts();
+                
+            } else {
+                // No more posts available
+                hasMorePosts = false;
+                nextCursor = null;
+                
+                if (allPosts.length === 0) {
+                    console.log('📝 No posts found in database');
+                    showNoPostsState();
+                } else {
+                    console.log('📝 No more posts to load');
+                }
             }
+        } else {
+            console.error('❌ Server returned success=false:', data);
+            throw new Error(data.message || 'Failed to load posts');
         }
 
     } catch (error) {
-  console.error('Error loading posts:', error);
-  // Fallback only if we've loaded *nothing* yet
-  if (allPosts.length === 0) {
-    allPosts = samplePosts;
-    nextCursor = null;
-    filterPosts();
-  } else {
-    showErrorState();
-  }
-} finally {
-  hideLoading();
-  isLoading = false;
+        console.error('💥 Error loading posts:', error);
+        
+        // Only show error if we don't have any posts yet
+        if (allPosts.length === 0) {
+            showErrorState();
+        }
+        
+        // Don't fallback to sample data - show actual error
+        hasMorePosts = false;
+        
+    } finally {
+        hideLoading();
+        isLoading = false;
+    }
 }
-}
-
 // Show loading state
 function showLoading() {
-    document.getElementById('loadingState').style.display = 'block';
-    document.getElementById('errorState').style.display = 'none';
-    document.getElementById('noPostsState').style.display = 'none';
+    const loadingElement = document.getElementById('loadingState');
+    const errorElement = document.getElementById('errorState');
+    const noPostsElement = document.getElementById('noPostsState');
+    
+    if (loadingElement) loadingElement.style.display = 'block';
+    if (errorElement) errorElement.style.display = 'none';
+    if (noPostsElement) noPostsElement.style.display = 'none';
 }
-
 // Hide loading state
 function hideLoading() {
-    document.getElementById('loadingState').style.display = 'none';
+    const loadingElement = document.getElementById('loadingState');
+    if (loadingElement) loadingElement.style.display = 'none';
 }
 
 // Show error state
@@ -738,12 +754,24 @@ function showNoPostsState() {
 // Render posts
 function renderPosts() {
     const container = document.getElementById('postsContainer');
+    if (!container) {
+        console.error('Posts container not found');
+        return;
+    }
+
     container.innerHTML = '';
 
     if (filteredPosts.length === 0) {
         showNoPostsState();
         return;
     }
+
+    // Hide other states
+    hideLoading();
+    const errorElement = document.getElementById('errorState');
+    const noPostsElement = document.getElementById('noPostsState');
+    if (errorElement) errorElement.style.display = 'none';
+    if (noPostsElement) noPostsElement.style.display = 'none';
 
     filteredPosts.forEach((post, index) => {
         const postCard = createPostCard(post, index);
@@ -754,13 +782,12 @@ function renderPosts() {
     setupSwipeHandlers();
 }
 
-// Create post card with proper image handling and visible action buttons
 function createPostCard(post, index) {
     const card = document.createElement('div');
     card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
     card.setAttribute('data-index', index);
 
-    // Improved image handling - show full image properly
+    // Handle image display
     const imageHtml = post.image_url ? 
         `<div class="post-image">
             <img src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
@@ -792,24 +819,27 @@ function createPostCard(post, index) {
                     <div class="section-title">Description</div>
                     <div class="description">${escapeHtml(post.description)}</div>
                 ` : ''}
+                
+                ${post.created_at ? `
+                    <div class="post-date">Posted: ${formatDate(post.created_at)}</div>
+                ` : ''}
             </div>
             
-            <div class="action-buttons" style="display: flex !important; justify-content: center !important; align-items: center !important; gap: 30px !important; margin-top: 20px !important; padding: 20px 0 !important; background: rgba(0, 0, 0, 0.1) !important; border-radius: 15px !important; backdrop-filter: blur(10px) !important;">
-                <button class="action-btn like-btn" onclick="likePost('${post.id}', this)" title="Like" 
-                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
-                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+            <div class="action-buttons">
+                <button class="action-btn like-btn" onclick="likePost('${post.id}', this)" title="Like">
+                    <svg viewBox="0 0 24 24">
                         <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
                     </svg>
+                    <span class="likes-count">${post.likes_count || 0}</span>
                 </button>
-                <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share"
-                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
-                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+                <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share">
+                    <svg viewBox="0 0 24 24">
                         <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
                     </svg>
+                    <span class="shares-count">${post.shares_count || 0}</span>
                 </button>
-                <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message"
-                        style="display: flex !important; width: 55px !important; height: 55px !important; border-radius: 50% !important; border: none !important; cursor: pointer !important; align-items: center !important; justify-content: center !important; font-size: 20px !important; background: linear-gradient(135deg, #f59e0b 0%, #ffa500 100%) !important; color: white !important; transition: all 0.3s ease !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; position: relative !important; z-index: 10 !important;">
-                    <svg viewBox="0 0 24 24" style="width: 22px !important; height: 22px !important; fill: currentColor !important;">
+                <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}')" title="Message">
+                    <svg viewBox="0 0 24 24">
                         <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4v6l4-6h8c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/>
                     </svg>
                 </button>
@@ -819,6 +849,20 @@ function createPostCard(post, index) {
 
     return card;
 }
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    } catch (error) {
+        return 'Unknown';
+    }
+}
+
 
 // Setup swipe handlers
 function setupSwipeHandlers() {
@@ -1013,30 +1057,54 @@ function messageStartup(startupName) {
 
 // Filter posts
 function filterPosts() {
-    const filterValue = document.getElementById('sortFilter').value;
+    const filterElement = document.getElementById('sortFilter');
+    const filterValue = filterElement ? filterElement.value : 'all';
     const now = new Date();
     let filteredData = [...allPosts];
 
     switch (filterValue) {
         case 'week':
             const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-            filteredData = allPosts.filter(post => new Date(post.created_at) >= oneWeekAgo);
+            filteredData = allPosts.filter(post => {
+                const postDate = new Date(post.created_at);
+                return postDate >= oneWeekAgo;
+            });
             break;
         case 'month':
             const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-            filteredData = allPosts.filter(post => new Date(post.created_at) >= oneMonthAgo);
+            filteredData = allPosts.filter(post => {
+                const postDate = new Date(post.created_at);
+                return postDate >= oneMonthAgo;
+            });
             break;
         case '6months':
             const sixMonthsAgo = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
-            filteredData = allPosts.filter(post => new Date(post.created_at) >= sixMonthsAgo);
+            filteredData = allPosts.filter(post => {
+                const postDate = new Date(post.created_at);
+                return postDate >= sixMonthsAgo;
+            });
             break;
         default:
             filteredData = [...allPosts];
     }
 
+    // Sort by creation date (newest first)
+    filteredData.sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        return dateB - dateA;
+    });
+
     filteredPosts = filteredData;
     currentPostIndex = 0;
     renderPosts();
+}
+
+function retryLoadPosts() {
+    console.log('🔄 Retrying to load posts...');
+    isLoading = false;
+    hasMorePosts = true;
+    loadPosts();
 }
 
 // View profile function
@@ -1108,13 +1176,13 @@ document.addEventListener('mousedown', resetInactivityTimer);
 document.addEventListener('touchstart', resetInactivityTimer);
 document.addEventListener('keydown', resetInactivityTimer);
 window.addEventListener('scroll', () => {
-        // Check if user is near the bottom of the page
-        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-            if (!isLoading && nextCursor) {
-                loadPosts();
-            }
+    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+        if (!isLoading && hasMorePosts && nextCursor) {
+            console.log('🔄 Loading more posts due to scroll...');
+            loadPosts();
         }
-    });
+    }
+});
 
 // Initialize auto-advance
 setTimeout(startAutoAdvance, 60000);
