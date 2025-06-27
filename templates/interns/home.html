@@ -783,9 +783,6 @@ function createPostCard(post, index) {
 
 // Setup swipe handlers
 function setupSwipeHandlers() {
-    if (window.innerWidth <= 768) {
-        return;
-    }
     const container = document.getElementById('postsContainer');
     
     // Remove existing listeners
@@ -797,13 +794,13 @@ function setupSwipeHandlers() {
     container.removeEventListener('touchmove', handleMove);
     container.removeEventListener('touchend', handleEnd);
     
-    // Add new listeners
+    // Add new listeners - mobile ke liye bhi enable karo
     container.addEventListener('mousedown', handleStart);
     container.addEventListener('mousemove', handleMove);
     container.addEventListener('mouseup', handleEnd);
     container.addEventListener('mouseleave', handleEnd);
-    container.addEventListener('touchstart', handleStart);
-    container.addEventListener('touchmove', handleMove);
+    container.addEventListener('touchstart', handleStart, { passive: false });
+    container.addEventListener('touchmove', handleMove, { passive: false });
     container.addEventListener('touchend', handleEnd);
 }
 

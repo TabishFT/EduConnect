@@ -797,19 +797,22 @@ async def get_intern_profiles(current_user: User = Depends(get_current_user)):
                 # Clean and validate profile data
                 clean_profile = {
                     'email_key': email_key,
-                    'name': profile_data.get('name', 'Anonymous'),
+                    'fullName': profile_data.get('fullName', 'Anonymous'),
                     'headline': profile_data.get('headline', ''),
                     'bio': profile_data.get('bio', ''),
                     'location': profile_data.get('location', ''),
                     'profilePicture': profile_data.get('profilePicture', ''),
-                    'resume': profile_data.get('resume', ''),
+                    'resumeUrl': profile_data.get('resumeUrl', ''),
                     'skills': [],
                     'education': profile_data.get('education', ''),
-                    'experience': profile_data.get('experience', ''),
-                    'projects': profile_data.get('projects', ''),
                     'linkedin': profile_data.get('linkedin', ''),
                     'github': profile_data.get('github', ''),
-                    'portfolio': profile_data.get('portfolio', '')
+                    'website': profile_data.get('website', ''),
+                    'field' : profile_data.get('field', ''),
+                    'industry' : profile_data.get('industry', ''),
+                    'phone' : profile_data.get('phone', ''),
+                    'profession' : profile_data.get('profession', ''),
+                    'twitter' : profile_data.get('twitter', '')
                 }
                 
                 # Handle skills - ensure it's always a list
