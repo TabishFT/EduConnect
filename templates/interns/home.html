@@ -590,17 +590,15 @@
     <script>
         let startY = 0;
         let currentY = 0;
-       
-
-
-       
-let allPosts = [];
-let filteredPosts = [];
-let currentPostIndex = 0;
-let isLoading = false;
-let startX = 0;
-let currentX = 0;
-let isDragging = false;
+        let allPosts = [];
+        let filteredPosts = [];
+        let currentPostIndex = 0;
+        let isLoading = false;
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        let nextCursor = null;
+        const postsContainer = document.getElementById('postsContainer');
 
 // Sample data for testing
 const samplePosts = [
@@ -631,43 +629,84 @@ document.addEventListener('DOMContentLoaded', function() {
     loadPosts();
 });
 
-// Load posts from API
+// This is the complete and final loadPosts function.
+// Replace the old function in your HTML file with this one.
+
 async function loadPosts() {
-    if (isLoading) return;
-    
+    // Prevent another request if one is already in progress.
+    if (isLoading) {
+        return;
+    }
+
+    // Set loading state to true and show the loading indicator.
     isLoading = true;
-    showLoading();
+    showLoading(); // [cite: 101, 112]
+
+    // Build the API URL for pagination.
+    // It will always request up to 10 posts.
+    let apiUrl = `/api/get_all_posts?limit=10`;
+
+    // If 'nextCursor' has a value, it means we are fetching the next page.
+    // Add it to the URL so the server knows where to start from.
+    if (nextCursor) {
+        apiUrl += `&start_after=${nextCursor}`;
+    }
 
     try {
-        // Try to fetch from API, fallback to sample data
-        let data;
-        try {
-            const response = await fetch('/api/get_all_posts');
-            if (response.ok) {
-                data = await response.json();
-            } else {
-                throw new Error('API not available');
-            }
-        } catch (apiError) {
-            console.log('Using sample data for demonstration');
-            data = { success: true, posts: samplePosts };
+        // Fetch the data from the backend.
+        const response = await fetch(apiUrl); // [cite: 103]
+
+        // If the request was not successful, throw an error.
+         if (!response.ok) { // [cite: 104]
+            throw new Error('API request failed');
         }
-        
+
+        // Parse the JSON data from the response.
+        const data = await response.json(); // [cite: 104]
+
+        // Check if the request was successful and if any posts were returned.
         if (data.success && data.posts && data.posts.length > 0) {
-            allPosts = data.posts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            filteredPosts = [...allPosts];
-            currentPostIndex = 0;
-            renderPosts();
-            hideLoading();
+            
+            // **THIS IS THE NEW LOGIC**
+            // Append the newly fetched posts to our main 'allPosts' array.
+            // We use .concat() to add the new items to the end of the list.
+            allPosts = allPosts.concat(data.posts);
+
+            // Update the 'nextCursor' with the value from the API.
+            // If the API returns null, it means there are no more posts to load.
+            nextCursor = data.next_cursor;
+
+            // Now, call the filterPosts() function. This function will apply the
+            // current filter to the updated list and then call renderPosts()
+            // to display them on the screen.
+            filterPosts(); // [cite: 88, 176]
+
         } else {
-            showNoPostsState();
+            // If no posts were returned, it means we have reached the end.
+            // Set the cursor to null to stop future requests.
+            nextCursor = null;
+
+            // If this was the very first fetch and the 'allPosts' array is still empty,
+            // it means there are no posts in the database at all. Show the "No Posts" message.
+            if (allPosts.length === 0) {
+                showNoPostsState(); // [cite: 109, 115]
+            }
         }
+
     } catch (error) {
-        console.error('Error loading posts:', error);
-        showErrorState();
-    } finally {
-        isLoading = false;
-    }
+  console.error('Error loading posts:', error);
+  // Fallback only if we've loaded *nothing* yet
+  if (allPosts.length === 0) {
+    allPosts = samplePosts;
+    nextCursor = null;
+    filterPosts();
+  } else {
+    showErrorState();
+  }
+} finally {
+  hideLoading();
+  isLoading = false;
+}
 }
 
 // Show loading state
@@ -1068,6 +1107,14 @@ function resetInactivityTimer() {
 document.addEventListener('mousedown', resetInactivityTimer);
 document.addEventListener('touchstart', resetInactivityTimer);
 document.addEventListener('keydown', resetInactivityTimer);
+window.addEventListener('scroll', () => {
+        // Check if user is near the bottom of the page
+        if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+            if (!isLoading && nextCursor) {
+                loadPosts();
+            }
+        }
+    });
 
 // Initialize auto-advance
 setTimeout(startAutoAdvance, 60000);

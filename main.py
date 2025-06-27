@@ -1110,7 +1110,11 @@ async def check_authentication(request: Request):
 
 
 @app.get("/api/get_all_posts")
-async def get_all_posts(current_user: User = Depends(get_current_user)):
+async def get_all_posts(
+    current_user: User = Depends(get_current_user),
+    limit: int = 5,  # Number of posts to return per page
+    start_after: Optional[str] = None
+):
     """
     Get all posts from Firebase - accessible to authenticated users
     """
@@ -1127,15 +1131,25 @@ async def get_all_posts(current_user: User = Depends(get_current_user)):
             raise HTTPException(
                 status_code=500,
                 detail="Posts Firebase URL not configured"
-            )
+            ) [cite: 56]
             
         firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
+        fetch_limit = limit + 1
+        params = {
+        'orderBy': '"$key"',  # Order by the unique key of each post
+        'limitToFirst': fetch_limit
+    }
+
+        # If start_after is provided, use it as the starting point for the query
+        if start_after:
+            # The key must be in quotes for the Firebase REST API
+            params['startAt'] = f'"{start_after}"'
         print(f"🔥 Fetching posts from Firebase: {firebase_path}")
         
         # Make request to Firebase
         try:
             response = requests.get(firebase_path, timeout=10)
-            print(f"📡 Firebase response status: {response.status_code}")
+            print(f"📡 Firebase response status: {response.status_code}") [cite: 57]
             
         except requests.exceptions.Timeout:
             raise HTTPException(
@@ -1168,20 +1182,24 @@ async def get_all_posts(current_user: User = Depends(get_current_user)):
             raise HTTPException(
                 status_code=500,
                 detail="Invalid JSON response from Firebase"
-            )
+            ) [cite: 62]
         
         # Handle empty or null response
         if not posts_data:
             print("📝 No posts found in Firebase")
-            return {
-                "success": True,
-                "posts": [],
-                "total_count": 0,
-                "message": "No posts found"
-            }
+            return {"success": True, "posts": [], "next_cursor": None}
         
         # Convert Firebase object to list
         posts_list = []
+        if start_after and start_after in posts_data:
+            # Create an iterator and skip the first element
+            data_iterator = iter(posts_data.items())
+            next(data_iterator) 
+            posts_to_process = dict(data_iterator)
+        else:
+            posts_to_process = posts_data
+
+
         for post_id, post_data in posts_data.items():
             if post_data and isinstance(post_data, dict):
                 # Clean and validate post data
@@ -1207,6 +1225,14 @@ async def get_all_posts(current_user: User = Depends(get_current_user)):
                 # Only include published posts
                 if clean_post['status'] == 'published':
                     posts_list.append(clean_post)
+
+        next_cursor = None
+        if len(posts_list) > limit:
+            # We fetched one extra item, so there are more posts.
+            # The key of the last item in our intended batch is the next cursor.
+            # Pop the extra item off the list.
+            last_item = posts_list.pop(limit) 
+            next_cursor = last_item['id']
         
         # Sort posts by creation date (newest first)
         posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -1216,7 +1242,8 @@ async def get_all_posts(current_user: User = Depends(get_current_user)):
         return {
             "success": True,
             "posts": posts_list,
-            "total_count": len(posts_list)
+            "total_count": len(posts_list),
+            "next_cursor": next_cursor
         }
         
     except HTTPException:

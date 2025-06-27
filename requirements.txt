@@ -14,3 +14,4 @@ cloudinary
 httpx
 imagekitio
 jinja2
+typing
