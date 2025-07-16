@@ -740,7 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadPosts() {
     // Prevent multiple simultaneous requests
     if (isLoading || !hasMorePosts) {
-        return;
+        return Promise.resolve();
     }
 
     // Set loading state
@@ -817,6 +817,81 @@ async function loadPosts() {
     }
 }
 
+
+    // Set loading state
+    isLoading = true;
+    showLoading();
+
+    // Build API URL with pagination (limit changed to 5)
+    let apiUrl = `/api/get_all_posts?limit=5`;
+    
+    if (nextCursor) {
+        apiUrl += `&start_after=${nextCursor}`;
+    }
+
+    console.log('🔄 Loading posts from:', apiUrl);
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error:', errorText);
+            throw new Error(`API request failed: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('📊 Received data:', data);
+
+        if (data.success) {
+            if (data.posts && data.posts.length > 0) {
+                // Append new posts to existing ones
+                allPosts = allPosts.concat(data.posts);
+                
+                // Update pagination info
+                nextCursor = data.next_cursor;
+                hasMorePosts = data.has_more || false;
+                
+                console.log(`✅ Loaded ${data.posts.length} posts. Total: ${allPosts.length}`);
+                
+                // Apply current filter and render
+                filterPosts();
+                
+            } else {
+                hasMorePosts = false;
+                nextCursor = null;
+                
+                if (allPosts.length === 0) {
+                    console.log('📝 No posts found in database');
+                    showNoPostsState();
+                }
+            }
+        } else {
+            console.error('❌ Server returned success=false:', data);
+            throw new Error(data.message || 'Failed to load posts');
+        }
+
+    } catch (error) {
+        console.error('💥 Error loading posts:', error);
+        
+        if (allPosts.length === 0) {
+            showErrorState();
+        }
+        
+        hasMorePosts = false;
+        
+    } finally {
+        hideLoading();
+        isLoading = false;
+    }
+
+
 // Show loading state
 function showLoading() {
     const loadingElement = document.getElementById('loadingState');
@@ -875,8 +950,11 @@ function renderPosts() {
         container.appendChild(postCard);
     });
 
-    // Add "Load more posts" card if there are more posts to load
-    if (hasMorePosts && nextCursor) {
+    // Add "Load more posts" card only if:
+    // 1. There are more posts to load
+    // 2. User has reached the last post (currentPostIndex is at the end)
+    // 3. We have at least one post loaded
+    if (hasMorePosts && nextCursor && filteredPosts.length > 0 && currentPostIndex >= filteredPosts.length - 1) {
         const loadMoreCard = createLoadMoreCard();
         container.appendChild(loadMoreCard);
     }
@@ -884,6 +962,7 @@ function renderPosts() {
     updatePostIndicators();
     setupSwipeHandlers();
 }
+
 
 function createLoadMoreCard() {
     const card = document.createElement('div');
@@ -912,9 +991,19 @@ function createLoadMoreCard() {
 function loadMorePosts() {
     if (hasMorePosts && nextCursor && !isLoading) {
         console.log('🔄 Loading more posts...');
-        loadPosts();
+        
+        // Remember current position
+        const currentPosition = currentPostIndex;
+        
+        // Load more posts
+        loadPosts().then(() => {
+            // Keep user at the same position after loading
+            currentPostIndex = currentPosition;
+            updateActivePost();
+        });
     }
 }
+
 
 function createPostCard(post, index) {
     const card = document.createElement('div');
@@ -1090,9 +1179,14 @@ function handleEnd(e) {
 
 // Navigate to next post
 function nextPost() {
-    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
-    
-    if (currentPostIndex < totalItems - 1) {
+    // Check if we're at the last regular post and need to show load more
+    if (currentPostIndex === filteredPosts.length - 1 && hasMorePosts && nextCursor) {
+        // Show load more card
+        renderPosts();
+        currentPostIndex = filteredPosts.length; // Move to load more card
+        updateActivePost();
+    } else if (currentPostIndex < filteredPosts.length - 1) {
+        // Normal navigation
         currentPostIndex++;
         updateActivePost();
     }
@@ -1109,7 +1203,7 @@ function previousPost() {
 // Update active post
 function updateActivePost() {
     const cards = document.querySelectorAll('.post-card');
-    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
+    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1 ? 1 : 0);
     
     cards.forEach((card, index) => {
         card.classList.remove('active', 'prev');
@@ -1123,13 +1217,14 @@ function updateActivePost() {
 }
 
 
+
 // Update post indicators
 function updatePostIndicators() {
     const indicatorsContainer = document.getElementById('postIndicators');
     indicatorsContainer.innerHTML = '';
 
-    // Total items including load more card
-    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
+    // Total items including load more card only if it's currently shown
+    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1 ? 1 : 0);
     
     if (totalItems <= 1) return;
 
@@ -1143,6 +1238,7 @@ function updatePostIndicators() {
         indicatorsContainer.appendChild(indicator);
     }
 }
+
 
 // Action button functions
 function likePost(postId, button) {
