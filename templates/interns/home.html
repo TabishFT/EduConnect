@@ -519,6 +519,112 @@
         .success-message.show {
             transform: translateX(0);
         }
+
+        
+.load-more-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    min-height: 400px;
+}
+
+.load-more-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.load-more-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.load-more-icon {
+    animation: bounce 2s infinite;
+}
+
+.load-more-icon svg {
+    fill: white;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.load-more-text {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+.load-more-subtext {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 20px;
+}
+
+.load-more-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.load-more-btn:hover {
+    background: white;
+    color: #667eea;
+    transform: translateY(-2px);
+}
+
+.load-more-btn:active {
+    transform: translateY(0);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+/* Responsive design for load more card */
+@media (max-width: 768px) {
+    .load-more-card {
+        padding: 30px 15px;
+        min-height: 350px;
+    }
+    
+    .load-more-text {
+        font-size: 20px;
+    }
+    
+    .load-more-subtext {
+        font-size: 14px;
+    }
+    
+    .load-more-btn {
+        padding: 10px 25px;
+        font-size: 14px;
+    }
+}
+
+
     </style>
 </head>
 <body>
@@ -631,7 +737,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // This is the complete and final loadPosts function.
-// Replace the old function in your HTML file with this one.
 async function loadPosts() {
     // Prevent multiple simultaneous requests
     if (isLoading || !hasMorePosts) {
@@ -642,8 +747,8 @@ async function loadPosts() {
     isLoading = true;
     showLoading();
 
-    // Build API URL with pagination
-    let apiUrl = `/api/get_all_posts?limit=10`;
+    // Build API URL with pagination (limit changed to 5)
+    let apiUrl = `/api/get_all_posts?limit=5`;
     
     if (nextCursor) {
         apiUrl += `&start_after=${nextCursor}`;
@@ -652,16 +757,13 @@ async function loadPosts() {
     console.log('🔄 Loading posts from:', apiUrl);
 
     try {
-        // Fetch data from backend
         const response = await fetch(apiUrl, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
-            credentials: 'include' // Important for authentication
+            credentials: 'include'
         });
-
-        console.log('📡 Response status:', response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -682,22 +784,17 @@ async function loadPosts() {
                 hasMorePosts = data.has_more || false;
                 
                 console.log(`✅ Loaded ${data.posts.length} posts. Total: ${allPosts.length}`);
-                console.log('🔄 Next cursor:', nextCursor);
-                console.log('📄 Has more posts:', hasMorePosts);
                 
                 // Apply current filter and render
                 filterPosts();
                 
             } else {
-                // No more posts available
                 hasMorePosts = false;
                 nextCursor = null;
                 
                 if (allPosts.length === 0) {
                     console.log('📝 No posts found in database');
                     showNoPostsState();
-                } else {
-                    console.log('📝 No more posts to load');
                 }
             }
         } else {
@@ -708,12 +805,10 @@ async function loadPosts() {
     } catch (error) {
         console.error('💥 Error loading posts:', error);
         
-        // Only show error if we don't have any posts yet
         if (allPosts.length === 0) {
             showErrorState();
         }
         
-        // Don't fallback to sample data - show actual error
         hasMorePosts = false;
         
     } finally {
@@ -721,6 +816,7 @@ async function loadPosts() {
         isLoading = false;
     }
 }
+
 // Show loading state
 function showLoading() {
     const loadingElement = document.getElementById('loadingState');
@@ -773,13 +869,51 @@ function renderPosts() {
     if (errorElement) errorElement.style.display = 'none';
     if (noPostsElement) noPostsElement.style.display = 'none';
 
+    // Render regular posts
     filteredPosts.forEach((post, index) => {
         const postCard = createPostCard(post, index);
         container.appendChild(postCard);
     });
 
+    // Add "Load more posts" card if there are more posts to load
+    if (hasMorePosts && nextCursor) {
+        const loadMoreCard = createLoadMoreCard();
+        container.appendChild(loadMoreCard);
+    }
+
     updatePostIndicators();
     setupSwipeHandlers();
+}
+
+function createLoadMoreCard() {
+    const card = document.createElement('div');
+    card.className = 'post-card load-more-card';
+    card.setAttribute('data-index', filteredPosts.length);
+
+    card.innerHTML = `
+        <div class="load-more-content">
+            <div class="load-more-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48">
+                    <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
+                </svg>
+            </div>
+            <div class="load-more-text">Load More Posts</div>
+            <div class="load-more-subtext">Tap to load 5 more posts</div>
+            <button class="load-more-btn" onclick="loadMorePosts()">
+                Load More
+            </button>
+        </div>
+    `;
+
+    return card;
+}
+
+// New function to handle "Load more posts" action
+function loadMorePosts() {
+    if (hasMorePosts && nextCursor && !isLoading) {
+        console.log('🔄 Loading more posts...');
+        loadPosts();
+    }
 }
 
 function createPostCard(post, index) {
@@ -956,7 +1090,9 @@ function handleEnd(e) {
 
 // Navigate to next post
 function nextPost() {
-    if (currentPostIndex < filteredPosts.length - 1) {
+    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
+    
+    if (currentPostIndex < totalItems - 1) {
         currentPostIndex++;
         updateActivePost();
     }
@@ -973,6 +1109,8 @@ function previousPost() {
 // Update active post
 function updateActivePost() {
     const cards = document.querySelectorAll('.post-card');
+    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
+    
     cards.forEach((card, index) => {
         card.classList.remove('active', 'prev');
         if (index === currentPostIndex) {
@@ -984,22 +1122,26 @@ function updateActivePost() {
     updatePostIndicators();
 }
 
+
 // Update post indicators
 function updatePostIndicators() {
     const indicatorsContainer = document.getElementById('postIndicators');
     indicatorsContainer.innerHTML = '';
 
-    if (filteredPosts.length <= 1) return;
+    // Total items including load more card
+    const totalItems = filteredPosts.length + (hasMorePosts && nextCursor ? 1 : 0);
+    
+    if (totalItems <= 1) return;
 
-    filteredPosts.forEach((_, index) => {
+    for (let i = 0; i < totalItems; i++) {
         const indicator = document.createElement('div');
-        indicator.className = `indicator ${index === currentPostIndex ? 'active' : ''}`;
+        indicator.className = `indicator ${i === currentPostIndex ? 'active' : ''}`;
         indicator.addEventListener('click', () => {
-            currentPostIndex = index;
+            currentPostIndex = i;
             updateActivePost();
         });
         indicatorsContainer.appendChild(indicator);
-    });
+    }
 }
 
 // Action button functions
@@ -1175,14 +1317,15 @@ function resetInactivityTimer() {
 document.addEventListener('mousedown', resetInactivityTimer);
 document.addEventListener('touchstart', resetInactivityTimer);
 document.addEventListener('keydown', resetInactivityTimer);
-window.addEventListener('scroll', () => {
-    if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
-        if (!isLoading && hasMorePosts && nextCursor) {
-            console.log('🔄 Loading more posts due to scroll...');
-            loadPosts();
-        }
-    }
-});
+
+// window.addEventListener('scroll', () => {
+//     if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200) {
+//         if (!isLoading && hasMorePosts && nextCursor) {
+//             console.log('🔄 Loading more posts due to scroll...');
+//             loadPosts();
+//         }
+//     }
+// });
 
 // Initialize auto-advance
 setTimeout(startAutoAdvance, 60000);
