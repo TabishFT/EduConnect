@@ -802,6 +802,8 @@ async function loadPosts() {
             throw new Error(data.message || 'Failed to load posts');
         }
 
+        return Promise.resolve();
+
     } catch (error) {
         console.error('💥 Error loading posts:', error);
         
@@ -810,6 +812,7 @@ async function loadPosts() {
         }
         
         hasMorePosts = false;
+        return Promise.reject(error);
         
     } finally {
         hideLoading();
@@ -950,11 +953,8 @@ function renderPosts() {
         container.appendChild(postCard);
     });
 
-    // Add "Load more posts" card only if:
-    // 1. There are more posts to load
-    // 2. User has reached the last post (currentPostIndex is at the end)
-    // 3. We have at least one post loaded
-    if (hasMorePosts && nextCursor && filteredPosts.length > 0 && currentPostIndex >= filteredPosts.length - 1) {
+    // Add "Load more posts" card only if there are more posts and we're at the last post
+    if (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1) {
         const loadMoreCard = createLoadMoreCard();
         container.appendChild(loadMoreCard);
     }
@@ -962,6 +962,8 @@ function renderPosts() {
     updatePostIndicators();
     setupSwipeHandlers();
 }
+
+
 
 
 function createLoadMoreCard() {
@@ -995,14 +997,17 @@ function loadMorePosts() {
         // Remember current position
         const currentPosition = currentPostIndex;
         
-        // Load more posts
-        loadPosts().then(() => {
-            // Keep user at the same position after loading
+        // Load more posts and then restore position
+        loadPosts();
+        
+        // Use setTimeout to ensure posts are loaded before updating position
+        setTimeout(() => {
             currentPostIndex = currentPosition;
             updateActivePost();
-        });
+        }, 100);
     }
 }
+
 
 
 function createPostCard(post, index) {
