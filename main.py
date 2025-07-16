@@ -1108,6 +1108,7 @@ async def check_authentication(request: Request):
             "detail": "Authentication check failed"
         }, status_code=500)
 
+
 @app.get("/api/get_all_posts")
 async def get_all_posts(
     current_user: User = Depends(get_current_user),
@@ -1256,7 +1257,7 @@ async def get_all_posts(
             detail="Internal server error while fetching posts"
         )
 
-        
+
 @app.post("/api/like_post/{post_id}")
 async def like_post(post_id: str, current_user: User = Depends(get_current_user)):
     """
