@@ -541,6 +541,110 @@ body {
     text-align: center;
   }
 }
+
+/* Load More Card Styles */
+.load-more-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px dashed #8b94d6;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.load-more-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+  border-color: #667eea;
+}
+
+.load-more-content {
+  text-align: center;
+  color: white;
+  z-index: 2;
+}
+
+.load-more-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.8;
+}
+
+.load-more-content h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.load-more-content p {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.9;
+}
+
+.load-more-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.load-more-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: scale(1.05);
+}
+
+.load-more-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.load-more-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* Match Score Styling */
+.match-score {
+  background: linear-gradient(135deg, #00d4aa, #00b894);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Matched Skills Highlighting */
+.profile-skill.matched {
+  background: linear-gradient(135deg, #00d4aa, #00b894);
+  color: white;
+  font-weight: 600;
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 212, 170, 0.3);
+}
   </style>
 </head>
 <body>
@@ -672,9 +776,12 @@ body {
   <script>
     // Global variables
     let allProfiles = [];
-    let filteredProfiles = [];
+    let currentPage = 1;
+    let hasMore = true;
     let selectedSkills = [];
-    let allSkills = [];
+    let isLoading = false;
+    let totalCount = 0;
+
 
     // Initialize page
     document.addEventListener('DOMContentLoaded', async function() {
@@ -749,32 +856,41 @@ async function handleResponse(response) {
     }
 
 
-    async function loadProfiles() {
+
+    async function loadProfiles(page = 1, append = false) {
+  if (isLoading) return;
+  
   const profilesGrid = document.getElementById('profiles-grid');
   
   try {
-    console.log('🔄 Starting to load profiles...');
-    showToast('Loading profiles...', 'info');
+    isLoading = true;
     
-    // Show loading state
-    profilesGrid.innerHTML = '<div class="loading">Loading intern profiles...</div>';
+    if (!append) {
+      profilesGrid.innerHTML = '<div class="loading">Loading intern profiles...</div>';
+      currentPage = 1;
+      allProfiles = [];
+    }
     
-    // Make request to backend with absolute path
-    const response = await fetch('/get_intern_profiles', {
+    // Prepare URL with pagination params
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: '5'
+    });
+    
+    // Add skills filter if any selected
+    if (selectedSkills.length > 0) {
+      params.append('skills', selectedSkills.join(','));
+    }
+    
+    const response = await fetch(`/get_intern_profiles?${params}`, {
       method: 'GET',
       credentials: 'include',
       headers: {
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache'
+        'Content-Type': 'application/json'
       }
     });
 
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response ok:', response.ok);
-    console.log('📡 Response URL:', response.url);
-
-    // Handle different response statuses
     if (response.status === 401) {
       showToast('Please login to access profiles', 'error');
       window.location.href = '/login';
@@ -787,48 +903,48 @@ async function handleResponse(response) {
       return;
     }
 
-    if (response.status === 307 || response.status === 308) {
-      // Handle redirect - try the redirected URL
-      const redirectUrl = response.headers.get('Location') || '/get_intern_profiles/';
-      console.log('📡 Redirecting to:', redirectUrl);
-      
-      const redirectResponse = await fetch(redirectUrl, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      return handleResponse(redirectResponse);
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}`);
     }
 
-    return handleResponse(response);
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to load profiles');
+    }
+
+    // Update global state
+    if (append) {
+      allProfiles = [...allProfiles, ...data.profiles];
+    } else {
+      allProfiles = data.profiles;
+    }
+    
+    totalCount = data.total_count;
+    hasMore = data.has_more;
+    currentPage = data.current_page;
+
+    // Display profiles
+    displayProfiles(append);
+    updateResultsCount();
+    
+    if (!append && data.profiles.length > 0) {
+      showToast(`Loaded ${data.profiles.length} profiles!`, 'success');
+    }
 
   } catch (error) {
-    console.error('💥 Error loading profiles:', error);
+    console.error('Error loading profiles:', error);
+    showToast(error.message || 'Failed to load profiles', 'error');
     
-    // Show user-friendly error message
-    let errorMessage = 'Failed to load profiles. ';
-    
-    if (error.message.includes('Failed to fetch') || error.message.includes('ERR_NAME_NOT_RESOLVED')) {
-      errorMessage += 'Please check your internet connection and try again.';
-    } else if (error.message.includes('401')) {
-      errorMessage += 'Please login to continue.';
-      setTimeout(() => window.location.href = '/login', 2000);
-    } else if (error.message.includes('403')) {
-      errorMessage += 'Access denied.';
-    } else if (error.message.includes('500')) {
-      errorMessage += 'Server error. Please try again later.';
-    } else {
-      errorMessage += error.message;
+    if (!append) {
+      showNoResults(error.message || 'Failed to load profiles');
     }
-    
-    showToast(errorMessage, 'error');
-    showNoResults(errorMessage);
+  } finally {
+    isLoading = false;
   }
 }
+
+
 async function checkAuth() {
   try {
     // Instead of checking /startups/home, check a simpler endpoint
@@ -897,42 +1013,43 @@ async function checkAuth() {
 
     // Add skill from dropdown
     function addSkillFromDropdown() {
-      const dropdown = document.getElementById('skills-dropdown');
-      const selectedSkill = dropdown.value;
-      
-      if (selectedSkill && !selectedSkills.includes(selectedSkill)) {
-        selectedSkills.push(selectedSkill);
-        
-        // Create and add skill tag
-        const skillsFilter = document.getElementById('skills-filter');
-        const skillTag = document.createElement('div');
-        skillTag.className = 'skill-tag selected';
-        skillTag.textContent = selectedSkill;
-        skillTag.onclick = () => removeSkillFilter(selectedSkill, skillTag);
-        skillsFilter.appendChild(skillTag);
-        
-        // Reset dropdown
-        dropdown.value = '';
-        
-        // Filter profiles
-        filterProfiles();
-      }
-    }
+  const dropdown = document.getElementById('skills-dropdown');
+  const selectedSkill = dropdown.value;
+  
+  if (selectedSkill && !selectedSkills.includes(selectedSkill)) {
+    selectedSkills.push(selectedSkill);
+    
+    // Create and add skill tag
+    const skillsFilter = document.getElementById('skills-filter');
+    const skillTag = document.createElement('div');
+    skillTag.className = 'skill-tag selected';
+    skillTag.textContent = selectedSkill;
+    skillTag.onclick = () => removeSkillFilter(selectedSkill, skillTag);
+    skillsFilter.appendChild(skillTag);
+    
+    // Reset dropdown
+    dropdown.value = '';
+    
+    // Filter profiles with new API call
+    filterProfiles();
+  }
+}
+
     
     // Remove skill filter
     function removeSkillFilter(skill, element) {
-      selectedSkills = selectedSkills.filter(s => s !== skill);
-      element.remove();
-      filterProfiles();
-    }
+  selectedSkills = selectedSkills.filter(s => s !== skill);
+  element.remove();
+  filterProfiles();
+}
     
     // Update the clear all filters function
     function clearAllFilters() {
-      selectedSkills = [];
-      document.getElementById('skills-filter').innerHTML = '';
-      document.getElementById('skills-dropdown').value = '';
-      filterProfiles();
-    }
+  selectedSkills = [];
+  document.getElementById('skills-filter').innerHTML = '';
+  document.getElementById('skills-dropdown').value = '';
+  filterProfiles();
+}
     
     // Update the initialize skills filter function
     function initializeSkillsFilter() {
@@ -941,14 +1058,7 @@ async function checkAuth() {
       selectedSkills = [];
     }
 
-    // Clear all filters
-    function clearAllFilters() {
-      selectedSkills = [];
-      document.querySelectorAll('.skill-tag').forEach(tag => {
-        tag.classList.remove('selected');
-      });
-      filterProfiles();
-    }
+    
 
     // Filter profiles based on selected skills
     function filterProfiles() {
@@ -1019,66 +1129,71 @@ async function checkAuth() {
     }
 
     // Display profiles
-    function displayProfiles() {
-      const profilesGrid = document.getElementById('profiles-grid');
-      
-      if (filteredProfiles.length === 0) {
-        showNoResults('No interns match your selected skills. Try adjusting your filters.');
-        return;
-      }
-      
-      profilesGrid.innerHTML = '';
-      
-      filteredProfiles.forEach(profile => {
-        const profileCard = createProfileCard(profile);
-        profilesGrid.appendChild(profileCard);
-      });
+    function displayProfiles(append = false) {
+  const profilesGrid = document.getElementById('profiles-grid');
+  
+  if (!append) {
+    profilesGrid.innerHTML = '';
+  } else {
+    // Remove existing load more button
+    const existingLoadMore = profilesGrid.querySelector('.load-more-card');
+    if (existingLoadMore) {
+      existingLoadMore.remove();
     }
+  }
+  
+  if (allProfiles.length === 0) {
+    showNoResults('No interns match your selected skills. Try adjusting your filters.');
+    return;
+  }
+  
+  // Add profile cards
+  allProfiles.forEach(profile => {
+    if (!append || !profilesGrid.querySelector(`[data-profile-id="${profile.id}"]`)) {
+      const profileCard = createProfileCard(profile);
+      profilesGrid.appendChild(profileCard);
+    }
+  });
+  
+  // Add load more button if there are more profiles
+  if (hasMore) {
+    const loadMoreCard = createLoadMoreCard();
+    profilesGrid.appendChild(loadMoreCard);
+  }
+}
+
+
+function createLoadMoreCard() {
+  const loadMoreCard = document.createElement('div');
+  loadMoreCard.className = 'profile-card load-more-card';
+  loadMoreCard.innerHTML = `
+    <div class="load-more-content">
+      <div class="load-more-icon">📄</div>
+      <h3>Load More Profiles</h3>
+      <p>View more talented interns</p>
+      <button class="load-more-btn" onclick="loadMoreProfiles()" ${isLoading ? 'disabled' : ''}>
+        ${isLoading ? 'Loading...' : 'Load More'}
+      </button>
+    </div>
+  `;
+  
+  return loadMoreCard;
+}
+
+
+async function loadMoreProfiles() {
+  if (isLoading || !hasMore) return;
+  
+  const nextPage = currentPage + 1;
+  await loadProfiles(nextPage, true);
+}
+
+
 
     // Create profile card
-    function createProfileCard(profile) {
-      const card = document.createElement('div');
-      card.className = 'profile-card';
-      card.onclick = () => viewProfile(profile);
-      
-      const profilePicture = profile.profilePicture ? 
-        `<img src="${profile.profilePicture}" alt="${profile.name || 'Profile'}" class="profile-picture">` :
-        `<div class="profile-picture-placeholder">👤</div>`;
-      
-      const skills = profile.skills && Array.isArray(profile.skills) ? 
-        profile.skills.slice(0, 5).map(skill => {
-          const isMatched = selectedSkills.some(selectedSkill => 
-            skill.toLowerCase().includes(selectedSkill.toLowerCase())
-          );
-          return `<span class="profile-skill ${isMatched ? 'matched' : ''}">${skill}</span>`;
-        }).join('') : '';
-      
-      const matchScore = selectedSkills.length > 0 && profile.matchScore > 0 ? 
-        `<div class="match-score">${profile.matchScore}% match</div>` : '';
-      
-      card.innerHTML = `
-        <div class="profile-header">
-          ${profilePicture}
-          <div class="profile-info">
-            <h3>${profile.fullName || 'Anonymous'}</h3>
-            <p class="profile-headline">${profile.headline || 'Aspiring Professional'}</p>
-          </div>
-        </div>
-        
-        ${skills ? `
-        <div class="profile-skills">
-          ${skills}
-          ${profile.skills && profile.skills.length > 5 ? `<span class="profile-skill">+${profile.skills.length - 5} more</span>` : ''}
-        </div>` : ''}
-        
-        <div class="profile-footer">
-          ${matchScore}
-          <button class="view-profile-btn" onclick="event.stopPropagation(); viewProfile(profile)">View Profile</button>
-        </div>
-      `;
-      
-      return card;
-    }
+    async function filterProfiles() {
+  await loadProfiles(1, false); // Reset to page 1 when filtering
+}
 
     // View individual profile
     function viewProfile(profile) {
@@ -1091,16 +1206,15 @@ async function checkAuth() {
 
     // Update results count
     function updateResultsCount() {
-      const resultsCount = document.getElementById('results-count');
-      const total = allProfiles.length;
-      const filtered = filteredProfiles.length;
-      
-      if (selectedSkills.length > 0) {
-        resultsCount.textContent = `Showing ${filtered} of ${total} interns`;
-      } else {
-        resultsCount.textContent = `${total} interns available`;
-      }
-    }
+  const resultsCount = document.getElementById('results-count');
+  
+  if (selectedSkills.length > 0) {
+    resultsCount.textContent = `Showing ${allProfiles.length} of ${totalCount} matching interns`;
+  } else {
+    resultsCount.textContent = `Showing ${allProfiles.length} of ${totalCount} interns`;
+  }
+}
+
 
     // Show no results message
     function showNoResults(message) {

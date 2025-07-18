@@ -720,137 +720,120 @@ async def upload_file(
 
 @app.get("/get_intern_profiles")
 @app.get("/get_intern_profiles/")  # Handle both with and without trailing slash
-async def get_intern_profiles(current_user: User = Depends(get_current_user)):
+async def get_intern_profiles(
+    current_user: User = Depends(get_current_user),
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(5, ge=1, le=20, description="Profiles per page"),
+    skills: Optional[str] = Query(None, description="Comma-separated skills to filter by")
+):
     """
-    Get all intern profiles from Firebase - accessible only to startups
+    Get intern profiles with pagination and skill filtering
     """
     try:
-        # Only allow startups to access intern profiles
+        # Check if user is authenticated startup
         if current_user.role != "startup":
             raise HTTPException(
-                status_code=403, 
+                status_code=403,
                 detail="Access denied. Only startups can view intern profiles."
             )
         
-        # Construct Firebase URL
-        if not FIREBASE_URL:
-            raise HTTPException(
-                status_code=500,
-                detail="Firebase URL not configured"
-            )
-            
-        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
-        print(f"🔥 Fetching from Firebase: {firebase_path}")
+        # Construct Firebase URL for profiles
+        firebase_path = f"{PROFILES_FIREBASE_URL.rstrip('/')}/profiles.json"
         
-        # Make request to Firebase
-        try:
-            response = requests.get(firebase_path, timeout=10)
-            print(f"📡 Firebase response status: {response.status_code}")
-            
-        except requests.exceptions.Timeout:
-            raise HTTPException(
-                status_code=504,
-                detail="Firebase request timed out"
-            )
-        except requests.exceptions.ConnectionError:
-            raise HTTPException(
-                status_code=503,
-                detail="Cannot connect to Firebase"
-            )
-        except requests.exceptions.RequestException as e:
-            raise HTTPException(
-                status_code=500,
-                detail=f"Firebase request failed: {str(e)}"
-            )
+        # Fetch all profiles from Firebase
+        response = requests.get(firebase_path, timeout=10)
         
-        # Check Firebase response
         if response.status_code != 200:
-            print(f"❌ Firebase error: {response.status_code} - {response.text}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Firebase returned error: {response.status_code}"
+                detail="Failed to fetch profiles from Firebase"
             )
         
-        # Parse Firebase data
-        try:
-            profiles_data = response.json()
-        except ValueError as e:
-            raise HTTPException(
-                status_code=500,
-                detail="Invalid JSON response from Firebase"
-            )
+        profiles_data = response.json()
         
-        # Handle empty or null response
         if not profiles_data:
-            print("📝 No profiles found in Firebase")
             return {
                 "success": True,
                 "profiles": [],
                 "total_count": 0,
-                "message": "No intern profiles found"
+                "current_page": page,
+                "total_pages": 0,
+                "has_more": False
             }
         
         # Convert Firebase object to list
         profiles_list = []
-        for email_key, profile_data in profiles_data.items():
+        for profile_id, profile_data in profiles_data.items():
             if profile_data and isinstance(profile_data, dict):
-                # Clean and validate profile data
-                clean_profile = {
-                    'email_key': email_key,
-                    'fullName': profile_data.get('fullName', 'Anonymous'),
-                    'headline': profile_data.get('headline', ''),
-                    'bio': profile_data.get('bio', ''),
-                    'location': profile_data.get('location', ''),
-                    'profilePicture': profile_data.get('profilePicture', ''),
-                    'resumeUrl': profile_data.get('resumeUrl', ''),
-                    'skills': [],
-                    'education': profile_data.get('education', ''),
-                    'linkedin': profile_data.get('linkedin', ''),
-                    'github': profile_data.get('github', ''),
-                    'website': profile_data.get('website', ''),
-                    'field' : profile_data.get('field', ''),
-                    'industry' : profile_data.get('industry', ''),
-                    'phone' : profile_data.get('phone', ''),
-                    'profession' : profile_data.get('profession', ''),
-                    'twitter' : profile_data.get('twitter', '')
-                }
-                
-                # Handle skills - ensure it's always a list
-                raw_skills = profile_data.get('skills', '')
-                if isinstance(raw_skills, str):
-                    if raw_skills.strip():
-                        clean_profile['skills'] = [
-                            skill.strip() 
-                            for skill in raw_skills.split(',') 
-                            if skill.strip()
-                        ]
-                elif isinstance(raw_skills, list):
-                    clean_profile['skills'] = [
-                        str(skill).strip() 
-                        for skill in raw_skills 
-                        if skill and str(skill).strip()
-                    ]
-                
-                profiles_list.append(clean_profile)
+                profile_data['id'] = profile_id
+                profiles_list.append(profile_data)
         
-        print(f"✅ Successfully processed {len(profiles_list)} intern profiles")
+        # Filter by skills if provided
+        if skills:
+            skill_filters = [s.strip().lower() for s in skills.split(',') if s.strip()]
+            
+            # Calculate match scores for each profile
+            for profile in profiles_list:
+                profile_skills = profile.get('skills', [])
+                if not isinstance(profile_skills, list):
+                    profile_skills = []
+                
+                # Convert profile skills to lowercase for matching
+                profile_skills_lower = [skill.lower() for skill in profile_skills if skill]
+                
+                # Calculate match score
+                matched_skills = 0
+                for filter_skill in skill_filters:
+                    if any(filter_skill in profile_skill for profile_skill in profile_skills_lower):
+                        matched_skills += 1
+                
+                profile['match_score'] = (matched_skills / len(skill_filters)) * 100 if skill_filters else 0
+                profile['matched_skills_count'] = matched_skills
+            
+            # Sort by match score (highest first), then by number of total skills
+            profiles_list.sort(key=lambda x: (
+                -x.get('match_score', 0),
+                -len(x.get('skills', [])),
+                x.get('fullName', '').lower()
+            ))
+            
+            # Filter out profiles with 0% match if skills filter is applied
+            profiles_list = [p for p in profiles_list if p.get('match_score', 0) > 0]
+        else:
+            # If no skill filter, sort by name or creation date
+            profiles_list.sort(key=lambda x: x.get('fullName', '').lower())
+        
+        # Calculate pagination
+        total_count = len(profiles_list)
+        total_pages = (total_count + limit - 1) // limit
+        start_index = (page - 1) * limit
+        end_index = start_index + limit
+        
+        # Get profiles for current page
+        paginated_profiles = profiles_list[start_index:end_index]
+        
+        # Check if there are more pages
+        has_more = page < total_pages
         
         return {
             "success": True,
-            "profiles": profiles_list,
-            "total_count": len(profiles_list)
+            "profiles": paginated_profiles,
+            "total_count": total_count,
+            "current_page": page,
+            "total_pages": total_pages,
+            "has_more": has_more,
+            "profiles_per_page": limit
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        print(f"💥 Unexpected error in get_intern_profiles: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        print(f"Error fetching intern profiles: {str(e)}")
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            detail="Internal server error while fetching profiles"
         )
+
 
 @app.get("/startups/post")
 async def startup_post_page(request: Request, current_user: User = Depends(get_current_user)):
