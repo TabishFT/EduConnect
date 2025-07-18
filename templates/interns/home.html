@@ -1012,26 +1012,6 @@ async function loadMorePosts() {
             console.error('Error loading more posts:', error);
         }
     }
-}async function loadMorePosts() {
-    if (hasMorePosts && nextCursor && !isLoading) {
-        console.log('🔄 Loading more posts...');
-        
-        // Remember current position
-        const currentPosition = currentPostIndex;
-        
-        try {
-            // Load more posts
-            await loadPosts();
-            
-            // After loading, restore position and re-render
-            currentPostIndex = currentPosition;
-            renderPosts();
-            updateActivePost();
-            
-        } catch (error) {
-            console.error('Error loading more posts:', error);
-        }
-    }
 }
 
 
