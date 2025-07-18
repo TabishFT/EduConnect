@@ -740,6 +740,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadPosts() {
     // Prevent multiple simultaneous requests
     if (isLoading || !hasMorePosts) {
+        console.log('⏸️ Skipping load - already loading or no more posts');
         return;
     }
 
@@ -747,7 +748,7 @@ async function loadPosts() {
     isLoading = true;
     showLoading();
 
-    // Build API URL with pagination (limit changed to 5)
+    // Build API URL with pagination
     let apiUrl = `/api/get_all_posts?limit=5`;
     
     if (nextCursor) {
@@ -784,14 +785,10 @@ async function loadPosts() {
                 hasMorePosts = data.has_more || false;
                 
                 console.log(`✅ Loaded ${data.posts.length} posts. Total: ${allPosts.length}`);
+                console.log(`📄 Pagination - Next cursor: ${nextCursor}, Has more: ${hasMorePosts}`);
                 
-                // Apply current filter - only if this is the initial load
-                if (allPosts.length === data.posts.length) {
-                    filterPosts();
-                } else {
-                    // For subsequent loads, just update filteredPosts
-                    filteredPosts = filteredPosts.concat(data.posts);
-                }
+                // Apply current filter and render
+                filterPosts();
                 
             } else {
                 hasMorePosts = false;
@@ -815,13 +812,14 @@ async function loadPosts() {
         }
         
         hasMorePosts = false;
-        throw error; // Re-throw to handle in loadMorePosts
+        throw error;
         
     } finally {
         hideLoading();
         isLoading = false;
     }
 }
+
 
     // Set loading state
     isLoading = true;
@@ -967,7 +965,6 @@ function renderPosts() {
 
 
 
-
 function createLoadMoreCard() {
     const card = document.createElement('div');
     card.className = 'post-card load-more-card';
@@ -991,10 +988,11 @@ function createLoadMoreCard() {
     return card;
 }
 
+
 // New function to handle "Load more posts" action
 async function loadMorePosts() {
     if (hasMorePosts && nextCursor && !isLoading) {
-        console.log('🔄 Loading more posts...');
+        console.log('🔄 Loading more posts via Load More button...');
         
         // Remember current position
         const currentPosition = currentPostIndex;
@@ -1008,11 +1006,16 @@ async function loadMorePosts() {
             renderPosts();
             updateActivePost();
             
+            console.log(`✅ Load more completed. Current position: ${currentPostIndex}`);
+            
         } catch (error) {
             console.error('Error loading more posts:', error);
         }
+    } else {
+        console.log('❌ Cannot load more posts:', { hasMorePosts, nextCursor, isLoading });
     }
 }
+
 
 
 
