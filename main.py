@@ -775,6 +775,7 @@ async def get_intern_profiles(
                 # Clean profile data
                 clean_profile = {
                     'id': profile_id,
+                    'profilePicture': profile_data.get('profilePicture', ''),
                     'fullName': profile_data.get('fullName', 'Unknown'),
                     'email': profile_data.get('email', ''),
                     'skills': profile_data.get('skills', []),
