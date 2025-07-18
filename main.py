@@ -738,7 +738,7 @@ async def get_intern_profiles(
             )
         
         # Construct Firebase URL for profiles
-        firebase_path = f"{PROFILES_FIREBASE_URL.rstrip('/')}/profiles.json"
+        firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
         
         # Fetch all profiles from Firebase
         response = requests.get(firebase_path, timeout=10)
