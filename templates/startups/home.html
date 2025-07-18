@@ -1154,6 +1154,52 @@ async function checkAuth() {
       profilesGrid.appendChild(profileCard);
     }
   });
+
+  function createProfileCard(profile) {
+  const card = document.createElement('div');
+  card.className = 'profile-card';
+  card.setAttribute('data-profile-id', profile.id);
+  card.onclick = () => viewProfile(profile);
+  
+  const profilePicture = profile.profilePicture ? 
+    `<img src="${profile.profilePicture}" alt="${profile.fullName || 'Profile'}" class="profile-picture">` :
+    `<div class="profile-picture-placeholder">👤</div>`;
+  
+  const skills = profile.skills && Array.isArray(profile.skills) ? 
+    profile.skills.slice(0, 5).map(skill => {
+      const isMatched = selectedSkills.some(selectedSkill => 
+        skill.toLowerCase().includes(selectedSkill.toLowerCase())
+      );
+      return `<span class="profile-skill ${isMatched ? 'matched' : ''}">${skill}</span>`;
+    }).join('') : '';
+  
+  const matchScore = selectedSkills.length > 0 && profile.match_score > 0 ? 
+    `<div class="match-score">${Math.round(profile.match_score)}% match</div>` : '';
+  
+  card.innerHTML = `
+    <div class="profile-header">
+      ${profilePicture}
+      <div class="profile-info">
+        <h3>${profile.fullName || 'Anonymous'}</h3>
+        <p class="profile-headline">${profile.headline || 'Aspiring Professional'}</p>
+      </div>
+    </div>
+    
+    ${skills ? `
+    <div class="profile-skills">
+      ${skills}
+      ${profile.skills && profile.skills.length > 5 ? `<span class="profile-skill">+${profile.skills.length - 5} more</span>` : ''}
+    </div>` : ''}
+    
+    <div class="profile-footer">
+      ${matchScore}
+      <button class="view-profile-btn" onclick="event.stopPropagation(); viewProfile(profile)">View Profile</button>
+    </div>
+  `;
+  
+  return card;
+}
+
   
   // Add load more button if there are more profiles
   if (hasMore) {
