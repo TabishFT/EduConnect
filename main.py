@@ -718,16 +718,18 @@ async def upload_file(
 
 
 
+
 @app.get("/get_intern_profiles")
-@app.get("/get_intern_profiles/")  # Handle both with and without trailing slash
+@app.get("/get_intern_profiles/")
 async def get_intern_profiles(
     current_user: User = Depends(get_current_user),
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(5, ge=1, le=20, description="Profiles per page"),
-    skills: Optional[str] = Query(None, description="Comma-separated skills to filter by")
+    skills: Optional[str] = Query(None, description="Comma-separated skills to filter by"),
+    start_after: Optional[str] = Query(None, description="Cursor for pagination")
 ):
     """
-    Get intern profiles with pagination and skill filtering
+    Get intern profiles with true Firebase pagination and skill filtering
     """
     try:
         # Check if user is authenticated startup
@@ -740,48 +742,48 @@ async def get_intern_profiles(
         # Construct Firebase URL for profiles
         firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
         
-        # Fetch all profiles from Firebase
-        response = requests.get(firebase_path, timeout=10)
-        
-        if response.status_code != 200:
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to fetch profiles from Firebase"
-            )
-        
-        profiles_data = response.json()
-        
-        if not profiles_data:
-            return {
-                "success": True,
-                "profiles": [],
-                "total_count": 0,
-                "current_page": page,
-                "total_pages": 0,
-                "has_more": False
-            }
-        
-        # Convert Firebase object to list
-        profiles_list = []
-        for profile_id, profile_data in profiles_data.items():
-            if profile_data and isinstance(profile_data, dict):
-                profile_data['id'] = profile_id
-                profiles_list.append(profile_data)
-        
-        # Filter by skills if provided
+        # If skills filtering is requested, we need to fetch more data
+        # because Firebase doesn't support complex filtering with pagination
         if skills:
+            # For skill filtering, we still need to fetch all profiles
+            # but we can optimize by using Firebase's indexing
+            response = requests.get(firebase_path, timeout=10)
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to fetch profiles from Firebase"
+                )
+            
+            profiles_data = response.json()
+            
+            if not profiles_data:
+                return {
+                    "success": True,
+                    "profiles": [],
+                    "total_count": 0,
+                    "current_page": page,
+                    "total_pages": 0,
+                    "has_more": False
+                }
+            
+            # Convert Firebase object to list and apply skill filtering
+            profiles_list = []
+            for profile_id, profile_data in profiles_data.items():
+                if profile_data and isinstance(profile_data, dict):
+                    profile_data['id'] = profile_id
+                    profiles_list.append(profile_data)
+            
+            # Apply skill filtering logic (same as before)
             skill_filters = [s.strip().lower() for s in skills.split(',') if s.strip()]
             
-            # Calculate match scores for each profile
             for profile in profiles_list:
                 profile_skills = profile.get('skills', [])
                 if not isinstance(profile_skills, list):
                     profile_skills = []
                 
-                # Convert profile skills to lowercase for matching
                 profile_skills_lower = [skill.lower() for skill in profile_skills if skill]
                 
-                # Calculate match score
                 matched_skills = 0
                 for filter_skill in skill_filters:
                     if any(filter_skill in profile_skill for profile_skill in profile_skills_lower):
@@ -790,30 +792,71 @@ async def get_intern_profiles(
                 profile['match_score'] = (matched_skills / len(skill_filters)) * 100 if skill_filters else 0
                 profile['matched_skills_count'] = matched_skills
             
-            # Sort by match score (highest first), then by number of total skills
+            # Sort and filter
             profiles_list.sort(key=lambda x: (
                 -x.get('match_score', 0),
                 -len(x.get('skills', [])),
                 x.get('fullName', '').lower()
             ))
             
-            # Filter out profiles with 0% match if skills filter is applied
             profiles_list = [p for p in profiles_list if p.get('match_score', 0) > 0]
+            
+            # Apply pagination after filtering
+            total_count = len(profiles_list)
+            total_pages = (total_count + limit - 1) // limit
+            start_index = (page - 1) * limit
+            end_index = start_index + limit
+            
+            paginated_profiles = profiles_list[start_index:end_index]
+            has_more = page < total_pages
+            
         else:
-            # If no skill filter, sort by name or creation date
-            profiles_list.sort(key=lambda x: x.get('fullName', '').lower())
-        
-        # Calculate pagination
-        total_count = len(profiles_list)
-        total_pages = (total_count + limit - 1) // limit
-        start_index = (page - 1) * limit
-        end_index = start_index + limit
-        
-        # Get profiles for current page
-        paginated_profiles = profiles_list[start_index:end_index]
-        
-        # Check if there are more pages
-        has_more = page < total_pages
+            # For non-filtered requests, use true Firebase pagination
+            params = {
+                'orderBy': '"fullName"',
+                'limitToFirst': limit + 1,  # Fetch one extra to check if there are more
+            }
+            
+            if start_after:
+                params['startAt'] = f'"{start_after}"'
+            
+            response = requests.get(firebase_path, params=params, timeout=10)
+            
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to fetch profiles from Firebase"
+                )
+            
+            profiles_data = response.json()
+            
+            if not profiles_data:
+                return {
+                    "success": True,
+                    "profiles": [],
+                    "total_count": 0,
+                    "current_page": page,
+                    "total_pages": 0,
+                    "has_more": False
+                }
+            
+            # Convert Firebase object to list
+            profiles_list = []
+            for profile_id, profile_data in profiles_data.items():
+                if profile_data and isinstance(profile_data, dict):
+                    profile_data['id'] = profile_id
+                    profiles_list.append(profile_data)
+            
+            # Check if we have more profiles than requested
+            has_more = len(profiles_list) > limit
+            
+            # Remove the extra profile we fetched for pagination check
+            if has_more:
+                profiles_list = profiles_list[:limit]
+            
+            paginated_profiles = profiles_list
+            total_count = len(profiles_list)  # This is approximate for true pagination
+            total_pages = 1 if not has_more else 2  # Simplified calculation
         
         return {
             "success": True,
@@ -822,7 +865,8 @@ async def get_intern_profiles(
             "current_page": page,
             "total_pages": total_pages,
             "has_more": has_more,
-            "profiles_per_page": limit
+            "profiles_per_page": limit,
+            "next_cursor": paginated_profiles[-1].get('fullName') if paginated_profiles and not skills else None
         }
         
     except HTTPException:
@@ -833,7 +877,6 @@ async def get_intern_profiles(
             status_code=500,
             detail="Internal server error while fetching profiles"
         )
-
 
 @app.get("/startups/post")
 async def startup_post_page(request: Request, current_user: User = Depends(get_current_user)):
@@ -1095,11 +1138,12 @@ async def check_authentication(request: Request):
 @app.get("/api/get_all_posts")
 async def get_all_posts(
     current_user: User = Depends(get_current_user),
-    limit: int = 5,  # Changed from 10 to 5
-    start_after: Optional[str] = None
+    limit: int = Query(5, ge=1, le=20, description="Number of posts per page"),
+    start_after: Optional[str] = Query(None, description="Cursor for pagination"),
+    order_by: str = Query("created_at", description="Field to order by")
 ):
     """
-    Get all posts from Firebase - accessible to authenticated users
+    Get posts from Firebase with true pagination to save bandwidth
     """
     try:
         # Check if user is authenticated
@@ -1119,10 +1163,21 @@ async def get_all_posts(
         firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
         print(f"🔥 Fetching posts from Firebase: {firebase_path}")
         
-        # Make request to Firebase
+        # Build Firebase query parameters for true pagination
+        params = {
+            'orderBy': f'"{order_by}"',
+            'limitToFirst': limit + 1,  # Fetch one extra to check if there are more
+        }
+        
+        # Add cursor for pagination
+        if start_after:
+            params['startAt'] = f'"{start_after}"'
+        
+        # Make request to Firebase with pagination parameters
         try:
-            response = requests.get(firebase_path, timeout=10)
+            response = requests.get(firebase_path, params=params, timeout=10)
             print(f"📡 Firebase response status: {response.status_code}")
+            print(f"🔍 Query params: {params}")
             
         except requests.exceptions.Timeout:
             raise HTTPException(
@@ -1165,7 +1220,8 @@ async def get_all_posts(
                 "posts": [],
                 "total_count": 0,
                 "next_cursor": None,
-                "message": "No intern profiles found"
+                "has_more": False,
+                "message": "No posts found"
             }
         
         # Convert Firebase object to list
@@ -1196,37 +1252,29 @@ async def get_all_posts(
                 if clean_post['status'] == 'published':
                     posts_list.append(clean_post)
         
-        # Sort posts by creation date (newest first)
-        posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        # Check if we have more posts than requested
+        has_more = len(posts_list) > limit
         
-        # Implement pagination
-        start_index = 0
-        if start_after:
-            # Find the index of the post with start_after ID
-            for i, post in enumerate(posts_list):
-                if post['id'] == start_after:
-                    start_index = i + 1
-                    break
-        
-        # Get the slice of posts for this page
-        end_index = start_index + limit
-        paginated_posts = posts_list[start_index:end_index]
+        # Remove the extra post we fetched for pagination check
+        if has_more:
+            posts_list = posts_list[:limit]
         
         # Determine next cursor
         next_cursor = None
-        if end_index < len(posts_list):
-            # There are more posts available
-            next_cursor = paginated_posts[-1]['id'] if paginated_posts else None
+        if has_more and posts_list:
+            # Use the last post's order_by field value as cursor
+            last_post = posts_list[-1]
+            next_cursor = last_post.get(order_by, last_post['id'])
         
-        print(f"✅ Successfully processed {len(paginated_posts)} posts (total: {len(posts_list)})")
+        print(f"✅ Successfully processed {len(posts_list)} posts (has_more: {has_more})")
         
         return {
             "success": True,
-            "posts": paginated_posts,
-            "total_count": len(posts_list),
-            "returned_count": len(paginated_posts),
+            "posts": posts_list,
+            "returned_count": len(posts_list),
             "next_cursor": next_cursor,
-            "has_more": next_cursor is not None
+            "has_more": has_more,
+            "order_by": order_by
         }
         
     except HTTPException:
