@@ -502,7 +502,7 @@
             .container {
                 padding: 0 0.75rem;
                 max-width: 95%;
-                margin-top: 70px;
+                margin-top: 100px;
             }
 
             .profile-preview {
@@ -555,12 +555,28 @@
                 margin: 5% auto;
                 width: 95%;
             }
+            .navbar {
+        padding: 0.75rem 0;
+    }
+    .nav-container {
+        padding: 0 0.75rem;
+    }
+    .logo {
+        font-size: 1.2rem; /* Smaller logo on mobile */
+    }
+    .back-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
         }
 
         @media (max-width: 480px) {
             .container {
                 max-width: 100%;
                 padding: 0 0.5rem;
+                margin-top: 90px;
             }
 
             .profile-preview {
@@ -569,6 +585,7 @@
 
             .profile-header h1 {
                 font-size: 1.8rem;
+                margin-bottom: 0.3rem;
             }
 
             .preview-personal {
@@ -580,6 +597,27 @@
             .preview-section-item {
                 margin-bottom: 1.5rem;
             }
+            .navbar {
+        padding: 0.5rem 0;
+    }
+
+    .logo {
+        font-size: 1.1rem;
+    }
+
+    .back-btn {
+        padding: 0.35rem 0.7rem;
+        font-size: 0.8rem;
+    }
+    .profile-header {
+        margin-bottom: 1.5rem; /* Reduce spacing */
+    }
+
+    .profile-header p {
+        font-size: 0.9rem;
+    }
+    
+
         }
     </style>
 </head>
@@ -611,7 +649,7 @@
         </div>
 
         <div class="action-controls" id="action-controls" style="display: none;">
-            <button class="btn-primary" onclick="openMessageModal()">Send Message</button>
+            <a href="/message"><button class="btn-primary">Chat</button></a>
             <button class="btn-outline" onclick="viewResume()">View Resume</button>
         </div>
     </div>
@@ -620,7 +658,7 @@
     <div id="messageModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Send Message</h3>
+                <h3>Chat now</h3>
                 <span class="close" onclick="closeMessageModal()">&times;</span>
             </div>
             <form id="messageForm">
@@ -630,7 +668,7 @@
                         required></textarea>
                 </div>
                 <div class="action-controls">
-                    <button type="submit" class="btn-primary">Send Message</button>
+                    <button type="submit" class="btn-primary">Chat Now</button>
                     <button type="button" class="btn-outline" onclick="closeMessageModal()">Cancel</button>
                 </div>
             </form>
