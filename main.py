@@ -426,6 +426,26 @@ async def startup_home(request: Request, current_user: User = Depends(get_curren
     
     return templates.TemplateResponse("startups/home.html", {"request": request})
 
+@app.get("/intern/profile/view")
+async def view_intern_profile_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    View individual intern profile page - accessible only to authenticated startups
+    """
+    try:
+        # Check if user is authenticated startup
+        if current_user.role != "startup":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only startups can view intern profiles."
+            )
+        
+        return templates.TemplateResponse("templates/startups/view_intern_profile.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
 
 # --------------------- Authentication Routes ---------------------
 
@@ -733,172 +753,6 @@ profiles_cache = {
 CACHE_DURATION = timedelta(minutes=10)  # ⏰ 10 MINUTES CACHE
 #---------------------------------------
 
-
-# @app.get("/get_intern_profiles")
-# @app.get("/get_intern_profiles/")
-# async def get_intern_profiles(
-#     current_user: User = Depends(get_current_user),
-#     limit: int = Query(5, ge=1, le=20, description="Profiles per page"),
-#     start_after: Optional[str] = Query(None, description="Cursor for pagination"),
-#     skills: Optional[str] = Query(None, description="Comma-separated skills to filter by")
-# ):
-#     """
-#     Get intern profiles with optimized pagination and skill filtering
-#     """
-#     try:
-#         # Check if user is authenticated startup
-#         if current_user.role != "startup":
-#             raise HTTPException(
-#                 status_code=403,
-#                 detail="Access denied. Only startups can view intern profiles."
-#             )
-        
-#         # Construct Firebase URL for profiles
-#         firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns.json"
-        
-#         # Fetch profiles from Firebase
-#         try:
-#             response = requests.get(firebase_path, timeout=10)
-#         except requests.exceptions.RequestException as e:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=f"Firebase request failed: {str(e)}"
-#             )
-        
-#         if response.status_code != 200:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail="Failed to fetch profiles from Firebase"
-#             )
-        
-#         profiles_data = response.json()
-        
-#         if not profiles_data:
-#             return {
-#                 "success": True,
-#                 "profiles": [],
-#                 "returned_count": 0,
-#                 "total_count": 0,
-#                 "next_cursor": None,
-#                 "has_more": False
-#             }
-        
-#         # Convert Firebase object to list
-#         profiles_list = []
-#         for profile_id, profile_data in profiles_data.items():
-#             if profile_data and isinstance(profile_data, dict):
-#                 # Clean profile data
-#                 clean_profile = {
-#                     'id': profile_id,
-#                     'profilePicture': profile_data.get('profilePicture', ''),
-#                     'fullName': profile_data.get('fullName', 'Unknown'),
-#                     'email': profile_data.get('email', ''),
-#                     'skills': profile_data.get('skills', []),
-#                     'bio': profile_data.get('bio', ''),
-#                     'experience': profile_data.get('experience', ''),
-#                     'education': profile_data.get('education', ''),
-#                     'portfolio': profile_data.get('portfolio', ''),
-#                     'linkedin': profile_data.get('linkedin', ''),
-#                     'github': profile_data.get('github', ''),
-#                     'location': profile_data.get('location', ''),
-#                     'availability': profile_data.get('availability', ''),
-#                     'created_at': profile_data.get('created_at', ''),
-#                     'updated_at': profile_data.get('updated_at', '')
-#                 }
-#                 profiles_list.append(clean_profile)
-        
-#         # Apply skill filtering first (before pagination)
-#         filtered_profiles = []
-        
-#         if skills:
-#             skill_filters = [s.strip().lower() for s in skills.split(',') if s.strip()]
-            
-#             # Calculate match scores for each profile
-#             for profile in profiles_list:
-#                 profile_skills = profile.get('skills', [])
-#                 if not isinstance(profile_skills, list):
-#                     profile_skills = []
-                
-#                 # Convert profile skills to lowercase for matching
-#                 profile_skills_lower = [skill.lower() for skill in profile_skills if skill]
-                
-#                 # Calculate match score
-#                 matched_skills = 0
-#                 for filter_skill in skill_filters:
-#                     if any(filter_skill in profile_skill for profile_skill in profile_skills_lower):
-#                         matched_skills += 1
-                
-#                 match_score = (matched_skills / len(skill_filters)) * 100 if skill_filters else 0
-                
-#                 # Only include profiles with matches
-#                 if match_score > 0:
-#                     profile['match_score'] = match_score
-#                     profile['matched_skills_count'] = matched_skills
-#                     filtered_profiles.append(profile)
-            
-#             # Sort filtered profiles by match score (highest first), then by skills count, then by name
-#             filtered_profiles.sort(key=lambda x: (
-#                 -x.get('match_score', 0),
-#                 -len(x.get('skills', [])),
-#                 x.get('fullName', '').lower()
-#             ))
-#         else:
-#             # No skill filter - use all profiles sorted by name
-#             filtered_profiles = sorted(profiles_list, key=lambda x: x.get('fullName', '').lower())
-        
-#         # Now apply consistent cursor-based pagination on the filtered and sorted list
-#         start_index = 0
-#         if start_after:
-#             # Find the index of the profile with start_after ID in the current sorted list
-#             for i, profile in enumerate(filtered_profiles):
-#                 if profile['id'] == start_after:
-#                     start_index = i + 1
-#                     break
-#             else:
-#                 # If start_after ID is not found in current results, start from beginning
-#                 # This can happen if filters changed between requests
-#                 start_index = 0
-#                 print(f"Warning: start_after cursor '{start_after}' not found in current results")
-        
-#         # Get the slice of profiles for this page
-#         end_index = start_index + limit
-#         paginated_profiles = filtered_profiles[start_index:end_index]
-        
-#         # Determine if there are more profiles
-#         has_more = end_index < len(filtered_profiles)
-        
-#         # Determine next cursor
-#         next_cursor = None
-#         if has_more and paginated_profiles:
-#             next_cursor = paginated_profiles[-1]['id']
-        
-#         # Clean up match_score and matched_skills_count from response if no skills filter
-#         if not skills:
-#             for profile in paginated_profiles:
-#                 profile.pop('match_score', None)
-#                 profile.pop('matched_skills_count', None)
-        
-#         return {
-#             "success": True,
-#             "profiles": paginated_profiles,
-#             "returned_count": len(paginated_profiles),
-#             "total_count": len(filtered_profiles),  # Total after filtering
-#             "total_available": len(profiles_list),  # Total in database
-#             "next_cursor": next_cursor,
-#             "has_more": has_more,
-#             "skills_applied": skills if skills else None
-#         }
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         print(f"Error fetching intern profiles: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         raise HTTPException(
-#             status_code=500,
-#             detail="Internal server error while fetching profiles"
-#         )
 @app.get("/get_intern_profiles")
 @app.get("/get_intern_profiles/")
 async def get_intern_profiles(
@@ -1354,158 +1208,6 @@ async def check_authentication(request: Request):
         }, status_code=500)
 
 
-
-
-# @app.get("/api/get_all_posts")
-# async def get_all_posts(
-#     current_user: User = Depends(get_current_user),
-#     limit: int = Query(5, ge=1, le=20, description="Number of posts per page"),
-#     start_after: Optional[str] = Query(None, description="Cursor for pagination")
-# ):
-#     """
-#     Get posts from Firebase with optimized pagination
-#     """
-#     try:
-#         # Check if user is authenticated
-#         if not current_user:
-#             raise HTTPException(
-#                 status_code=401, 
-#                 detail="Authentication required"
-#             )
-        
-#         # Construct Firebase URL
-#         if not POSTS_FIREBASE_URL:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail="Posts Firebase URL not configured"
-#             )
-            
-#         firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
-#         print(f"🔥 Fetching posts from Firebase: {firebase_path}")
-        
-#         # Make request to Firebase
-#         try:
-#             response = requests.get(firebase_path, timeout=10)
-#             print(f"📡 Firebase response status: {response.status_code}")
-            
-#         except requests.exceptions.Timeout:
-#             raise HTTPException(
-#                 status_code=504,
-#                 detail="Firebase request timed out"
-#             )
-#         except requests.exceptions.ConnectionError:
-#             raise HTTPException(
-#                 status_code=503,
-#                 detail="Cannot connect to Firebase"
-#             )
-#         except requests.exceptions.RequestException as e:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=f"Firebase request failed: {str(e)}"
-#             )
-        
-#         # Check Firebase response
-#         if response.status_code != 200:
-#             print(f"❌ Firebase error: {response.status_code} - {response.text}")
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail=f"Firebase returned error: {response.status_code}"
-#             )
-        
-#         # Parse Firebase data
-#         try:
-#             posts_data = response.json()
-#         except ValueError as e:
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail="Invalid JSON response from Firebase"
-#             )
-        
-#         # Handle empty or null response
-#         if not posts_data:
-#             print("📝 No posts found in Firebase")
-#             return {
-#                 "success": True,
-#                 "posts": [],
-#                 "returned_count": 0,
-#                 "next_cursor": None,
-#                 "has_more": False,
-#                 "message": "No posts found"
-#             }
-        
-#         # Convert Firebase object to list and clean data
-#         posts_list = []
-#         for post_id, post_data in posts_data.items():
-#             if post_data and isinstance(post_data, dict):
-#                 # Clean and validate post data
-#                 clean_post = {
-#                     'id': post_data.get('id', post_id),
-#                     'startup_name': post_data.get('startup_name', 'Unknown Startup'),
-#                     'tagline': post_data.get('tagline', ''),
-#                     'job_title': post_data.get('job_title', 'Position Available'),
-#                     'skills': post_data.get('skills', ''),
-#                     'description': post_data.get('description', ''),
-#                     'image_url': post_data.get('image_url', ''),
-#                     'created_at': post_data.get('created_at', ''),
-#                     'status': post_data.get('status', 'published'),
-#                     'startup_profile': post_data.get('startup_profile', {}),
-#                     'location': post_data.get('location', ''),
-#                     'duration': post_data.get('duration', ''),
-#                     'stipend': post_data.get('stipend', ''),
-#                     'application_count': post_data.get('application_count', 0),
-#                     'likes_count': post_data.get('likes_count', 0),
-#                     'shares_count': post_data.get('shares_count', 0)
-#                 }
-                
-#                 # Only include published posts
-#                 if clean_post['status'] == 'published':
-#                     posts_list.append(clean_post)
-        
-#         # Sort posts by creation date (newest first)
-#         posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
-        
-#         # Implement cursor-based pagination
-#         start_index = 0
-#         if start_after:
-#             # Find the index of the post with start_after ID
-#             for i, post in enumerate(posts_list):
-#                 if post['id'] == start_after:
-#                     start_index = i + 1
-#                     break
-        
-#         # Get the slice of posts for this page
-#         end_index = start_index + limit
-#         paginated_posts = posts_list[start_index:end_index]
-        
-#         # Determine if there are more posts
-#         has_more = end_index < len(posts_list)
-        
-#         # Determine next cursor
-#         next_cursor = None
-#         if has_more and paginated_posts:
-#             next_cursor = paginated_posts[-1]['id']
-        
-#         print(f"✅ Successfully processed {len(paginated_posts)} posts (total: {len(posts_list)}, has_more: {has_more})")
-        
-#         return {
-#             "success": True,
-#             "posts": paginated_posts,
-#             "returned_count": len(paginated_posts),
-#             "total_count": len(posts_list),
-#             "next_cursor": next_cursor,
-#             "has_more": has_more
-#         }
-        
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         print(f"💥 Unexpected error in get_all_posts: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         raise HTTPException(
-#             status_code=500,
-#             detail="Internal server error while fetching posts"
-#         )
 
 @app.get("/api/get_all_posts")
 async def get_all_posts(
