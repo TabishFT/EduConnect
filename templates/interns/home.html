@@ -1500,7 +1500,14 @@
         setTimeout(startAutoAdvance, 60000);
         
         // Make loadMorePosts globally accessible for debugging
+        window.viewProfile = viewProfile;
+        window.filterPosts = filterPosts;
+        window.loadPosts = loadPosts;
+        window.likePost = likePost;
+        window.sharePost = sharePost;
+        window.messageStartup = messageStartup;
         window.loadMorePosts = loadMorePosts;
+        window.retryLoadPosts = retryLoadPosts;
         </script>
 </body>
 </html>
