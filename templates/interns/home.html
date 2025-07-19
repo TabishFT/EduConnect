@@ -1313,7 +1313,41 @@
         // View profile function
         function viewProfile() {
             console.log('View profile clicked');
-            // In a real app, this would navigate to the profile page
+            
+            // Get current post data
+            if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
+                console.log('❌ No current post available');
+                return;
+            }
+            
+            const currentPost = filteredPosts[currentPostIndex];
+            console.log('📊 Current post data:', currentPost);
+            
+            // Create startup profile data from post data
+            const startupProfileData = {
+                startup_name: currentPost.startup_name,
+                tagline: currentPost.tagline,
+                description: currentPost.description,
+                logo: currentPost.image_url, // Use post image as logo
+                location: currentPost.location || '',
+                website: currentPost.website || '',
+                contactEmail: currentPost.contact_email || '',
+                contactPhone: currentPost.contact_phone || '',
+                linkedin: currentPost.linkedin || '',
+                twitter: currentPost.twitter || '',
+                github: currentPost.github || '',
+                techStack: currentPost.skills ? currentPost.skills.split(',').map(s => s.trim()) : [],
+                requiredPositions: [currentPost.job_title],
+                founders: currentPost.founders || [],
+                created_at: currentPost.created_at
+            };
+            
+            // Store startup profile data in localStorage
+            localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
+            
+            // Navigate to startup profile view page
+            console.log('🚀 Navigating to startup profile view...');
+            window.location.href = '/startup/profile/view';
         }
         
         // Utility function to escape HTML

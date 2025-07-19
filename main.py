@@ -1365,6 +1365,163 @@ async def invalidate_profiles_cache(current_user: User = Depends(get_current_use
     
     return {"success": True, "message": "Profiles cache cleared"}
 
+@app.get("/get_startup_profiles")
+@app.get("/get_startup_profiles/")
+async def get_startup_profiles(
+    current_user: User = Depends(get_current_user),
+    startup_name: Optional[str] = Query(None, description="Specific startup name to fetch")
+):
+    """
+    Get startup profiles with 10 MINUTE SMART CACHING - For interns to view startup details
+    """
+    try:
+        # Check authorization - interns can view startup profiles
+        if current_user.role != "intern":
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Only interns can view startup profiles."
+            )
+        
+        # Use a separate cache for startup profiles
+        startup_cache_key = 'startup_profiles_cache'
+        if not hasattr(get_startup_profiles, 'cache'):
+            get_startup_profiles.cache = {
+                'data': None,
+                'timestamp': None,
+                'lock': asyncio.Lock()
+            }
+        
+        # 🎯 SMART CACHE CHECK (10 MINUTES)
+        async with get_startup_profiles.cache['lock']:
+            cache_valid = (
+                get_startup_profiles.cache['data'] is not None and 
+                get_startup_profiles.cache['timestamp'] is not None and
+                datetime.utcnow() - get_startup_profiles.cache['timestamp'] < CACHE_DURATION
+            )
+            
+            if cache_valid:
+                # ⚡ CACHE HIT - Instant response!
+                startup_data = get_startup_profiles.cache['data']
+                cache_status = "hit"
+                print("✨ Startup Profiles Cache HIT - Serving from memory (10 min cache)")
+            else:
+                # 🔥 CACHE MISS - Fetch from Firebase
+                print("🔥 Startup Profiles Cache MISS - Fetching from Firebase")
+                cache_status = "miss"
+                
+                firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+                
+                try:
+                    response = requests.get(firebase_path, timeout=10)
+                    
+                    if response.status_code == 200:
+                        startup_data = response.json()
+                        # ✅ Update cache with fresh data
+                        get_startup_profiles.cache['data'] = startup_data
+                        get_startup_profiles.cache['timestamp'] = datetime.utcnow()
+                        print(f"✅ Startup profiles cache updated (valid for 10 minutes) with {len(startup_data) if startup_data else 0} items")
+                    else:
+                        # Use stale cache if available
+                        if get_startup_profiles.cache['data'] is not None:
+                            startup_data = get_startup_profiles.cache['data']
+                            cache_status = "stale"
+                            print("⚠️ Using stale startup profiles cache due to Firebase error")
+                        else:
+                            raise HTTPException(status_code=500, detail="Firebase error")
+                            
+                except requests.exceptions.RequestException as e:
+                    # Network error - use stale cache if available
+                    if get_startup_profiles.cache['data'] is not None:
+                        startup_data = get_startup_profiles.cache['data']
+                        cache_status = "stale"
+                        print(f"⚠️ Using stale startup profiles cache due to network error: {str(e)}")
+                    else:
+                        raise HTTPException(status_code=503, detail="Service unavailable")
+        
+        # Handle empty data
+        if not startup_data:
+            return {
+                "success": True,
+                "startup": None,
+                "cache_status": cache_status,
+                "message": "No startup profiles found"
+            }
+        
+        # If specific startup requested, find it
+        if startup_name:
+            # Look for startup by name (case-insensitive)
+            found_startup = None
+            for startup_id, startup_profile in startup_data.items():
+                if (startup_profile and isinstance(startup_profile, dict) and 
+                    startup_profile.get('startupName', '').lower() == startup_name.lower()):
+                    found_startup = {
+                        'id': startup_id,
+                        'startupName': startup_profile.get('startupName', ''),
+                        'logo': startup_profile.get('logo', ''),
+                        'foundingYear': startup_profile.get('foundingYear', ''),
+                        'locationType': startup_profile.get('locationType', ''),
+                        'physicalLocation': startup_profile.get('physicalLocation', ''),
+                        'founders': startup_profile.get('founders', []),
+                        'contactEmail': startup_profile.get('contactEmail', ''),
+                        'contactPhone': startup_profile.get('contactPhone', ''),
+                        'website': startup_profile.get('website', ''),
+                        'linkedin': startup_profile.get('linkedin', ''),
+                        'twitter': startup_profile.get('twitter', ''),
+                        'github': startup_profile.get('github', ''),
+                        'description': startup_profile.get('description', ''),
+                        'techStack': startup_profile.get('techStack', []),
+                        'created_at': startup_profile.get('created_at', ''),
+                        'updated_at': startup_profile.get('updated_at', '')
+                    }
+                    break
+            
+            return {
+                "success": True,
+                "startup": found_startup,
+                "cache_status": cache_status,
+                "cache_age_seconds": int((datetime.utcnow() - get_startup_profiles.cache['timestamp']).total_seconds()) if get_startup_profiles.cache['timestamp'] else None,
+                "cache_duration_minutes": 10
+            }
+        
+        # Return all startups if no specific name requested
+        startups_list = []
+        for startup_id, startup_profile in startup_data.items():
+            if startup_profile and isinstance(startup_profile, dict):
+                startups_list.append({
+                    'id': startup_id,
+                    'startupName': startup_profile.get('startupName', ''),
+                    'logo': startup_profile.get('logo', ''),
+                    'foundingYear': startup_profile.get('foundingYear', ''),
+                    'locationType': startup_profile.get('locationType', ''),
+                    'physicalLocation': startup_profile.get('physicalLocation', ''),
+                    'founders': startup_profile.get('founders', []),
+                    'contactEmail': startup_profile.get('contactEmail', ''),
+                    'contactPhone': startup_profile.get('contactPhone', ''),
+                    'website': startup_profile.get('website', ''),
+                    'linkedin': startup_profile.get('linkedin', ''),
+                    'twitter': startup_profile.get('twitter', ''),
+                    'github': startup_profile.get('github', ''),
+                    'description': startup_profile.get('description', ''),
+                    'techStack': startup_profile.get('techStack', []),
+                    'created_at': startup_profile.get('created_at', ''),
+                    'updated_at': startup_profile.get('updated_at', '')
+                })
+        
+        return {
+            "success": True,
+            "startups": startups_list,
+            "total_count": len(startups_list),
+            "cache_status": cache_status,
+            "cache_age_seconds": int((datetime.utcnow() - get_startup_profiles.cache['timestamp']).total_seconds()) if get_startup_profiles.cache['timestamp'] else None,
+            "cache_duration_minutes": 10
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"💥 Error in get_startup_profiles: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 
 @app.post("/api/like_post/{post_id}")
@@ -1475,6 +1632,26 @@ async def interns_home_page(request: Request, current_user: User = Depends(get_c
     except Exception as e:
         print(f"Error serving interns home page: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/startup/profile/view")
+async def view_startup_profile_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    View individual startup profile page - accessible only to authenticated interns
+    """
+    try:
+        # Check if user is authenticated intern
+        if current_user.role != "intern":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only interns can view startup profiles."
+            )
+        
+        return templates.TemplateResponse("interns/view_startup_profile.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
 
 
 @app.post("/api/message_startup")
