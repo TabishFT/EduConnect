@@ -1342,13 +1342,8 @@
         }
 
         // View profile function
-        function viewProfile() {
+        async function viewProfile() {
             console.log('🚀 View profile clicked');
-            console.log('📊 Current state:', {
-                filteredPostsLength: filteredPosts.length,
-                currentPostIndex: currentPostIndex,
-                hasCurrentPost: currentPostIndex < filteredPosts.length
-            });
             
             // Get current post data
             if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
@@ -1360,77 +1355,122 @@
             const currentPost = filteredPosts[currentPostIndex];
             console.log('📊 Current post data:', currentPost);
             
-            if (!currentPost) {
-                console.log('❌ Current post is null or undefined');
-                alert('Current post data is not available');
+            if (!currentPost || !currentPost.startup_name) {
+                console.log('❌ Current post or startup name is not available');
+                alert('Startup information is not available');
                 return;
             }
             
-            // Create startup profile data from post data with more comprehensive mapping
-            const startupProfileData = {
-                // Primary identification
-                startup_name: currentPost.startup_name || 'Unknown Startup',
-                startupName: currentPost.startup_name || 'Unknown Startup', // Alternative field name
-                
-                // Basic info
-                tagline: currentPost.tagline || '',
-                description: currentPost.description || '',
-                job_title: currentPost.job_title || '',
-                
-                // Visual
-                logo: currentPost.image_url || '', // Use post image as logo
-                image_url: currentPost.image_url || '',
-                
-                // Location and contact
-                location: currentPost.location || '',
-                website: currentPost.website || '',
-                contactEmail: currentPost.contact_email || currentPost.email || '',
-                contactPhone: currentPost.contact_phone || currentPost.phone || '',
-                
-                // Social media
-                linkedin: currentPost.linkedin || '',
-                twitter: currentPost.twitter || '',
-                github: currentPost.github || '',
-                
-                // Skills and positions
-                skills: currentPost.skills || '',
-                techStack: currentPost.skills ? currentPost.skills.split(',').map(s => s.trim()) : [],
-                requiredPositions: currentPost.job_title ? [currentPost.job_title] : [],
-                
-                // Additional data
-                founders: currentPost.founders || [],
-                created_at: currentPost.created_at || '',
-                
-                // Post specific data
-                post_id: currentPost.id || '',
-                likes_count: currentPost.likes_count || 0,
-                application_count: currentPost.application_count || 0
-            };
-            
-            console.log('💾 Startup profile data to store:', startupProfileData);
-            
-            // Store startup profile data in localStorage
             try {
+                // Fetch actual startup profile data from Firebase using the startup name
+                console.log('🔍 Fetching startup profile for:', currentPost.startup_name);
+                
+                const response = await fetch(`/get_startup_profiles?startup_name=${encodeURIComponent(currentPost.startup_name)}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch startup profile: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('📊 Startup profile API response:', data);
+                
+                let startupProfileData;
+                
+                if (data.success && data.startup) {
+                    // Use actual startup profile data from Firebase
+                    startupProfileData = {
+                        // Use actual startup profile data
+                        startup_name: data.startup.startupName || currentPost.startup_name,
+                        startupName: data.startup.startupName || currentPost.startup_name,
+                        
+                        // Startup profile specific data
+                        logo: data.startup.logo || '',
+                        foundingYear: data.startup.foundingYear || '',
+                        locationType: data.startup.locationType || '',
+                        physicalLocation: data.startup.physicalLocation || '',
+                        description: data.startup.description || currentPost.description || '',
+                        
+                        // Founders from startup profile
+                        founders: data.startup.founders || [],
+                        
+                        // Contact info from startup profile
+                        contactEmail: data.startup.contactEmail || '',
+                        contactPhone: data.startup.contactPhone || '',
+                        website: data.startup.website || '',
+                        linkedin: data.startup.linkedin || '',
+                        twitter: data.startup.twitter || '',
+                        github: data.startup.github || '',
+                        
+                        // Tech stack from startup profile
+                        techStack: data.startup.techStack || [],
+                        
+                        // Additional data
+                        created_at: data.startup.created_at || '',
+                        updated_at: data.startup.updated_at || ''
+                    };
+                    
+                    console.log('✅ Using actual startup profile data');
+                } else {
+                    // Fallback to post data if startup profile not found
+                    console.log('⚠️ Startup profile not found, using post data as fallback');
+                    startupProfileData = {
+                        startup_name: currentPost.startup_name,
+                        startupName: currentPost.startup_name,
+                        tagline: currentPost.tagline || '',
+                        description: currentPost.description || '',
+                        logo: '', // Don't use post image as logo
+                        founders: [],
+                        techStack: [],
+                        contactEmail: '',
+                        contactPhone: '',
+                        website: '',
+                        linkedin: '',
+                        twitter: '',
+                        github: ''
+                    };
+                }
+                
+                console.log('💾 Final startup profile data to store:', startupProfileData);
+                
+                // Store startup profile data in localStorage
                 localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
                 console.log('✅ Data stored in localStorage successfully');
                 
-                // Verify storage
-                const storedData = localStorage.getItem('selectedStartupProfile');
-                console.log('🔍 Verification - stored data:', storedData);
+                // Navigate to startup profile view page
+                console.log('🚀 Navigating to startup profile view...');
+                window.location.href = '/startup/profile/view';
                 
             } catch (error) {
-                console.error('❌ Error storing data in localStorage:', error);
-                alert('Failed to store profile data');
-                return;
-            }
-            
-            // Navigate to startup profile view page
-            console.log('🚀 Navigating to startup profile view...');
-            
-            // Add a small delay to ensure localStorage is written
-            setTimeout(() => {
+                console.error('❌ Error fetching startup profile:', error);
+                
+                // Fallback: create basic profile data from post
+                const fallbackData = {
+                    startup_name: currentPost.startup_name,
+                    startupName: currentPost.startup_name,
+                    description: currentPost.description || '',
+                    tagline: currentPost.tagline || '',
+                    logo: '',
+                    founders: [],
+                    techStack: [],
+                    contactEmail: '',
+                    contactPhone: '',
+                    website: '',
+                    linkedin: '',
+                    twitter: '',
+                    github: ''
+                };
+                
+                localStorage.setItem('selectedStartupProfile', JSON.stringify(fallbackData));
+                console.log('⚠️ Using fallback data due to error');
                 window.location.href = '/startup/profile/view';
-            }, 100);
+            }
         }
         
         // Utility function to escape HTML

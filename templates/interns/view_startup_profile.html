@@ -777,6 +777,7 @@
                 }
             }
 
+            // Build startup profile HTML exactly like preview2.html
             const startupHTML = `
         <div class="preview-startup-header">  
             <div class="preview-logo">
@@ -786,8 +787,11 @@
             </div>
             <div class="preview-startup-info">
                 <h2>${startupData.startup_name || startupData.startupName || 'Unknown Startup'}</h2>
-                ${hasValue(startupData.tagline) ? `<p class="founding-year">${startupData.tagline}</p>` : ''}
-                ${hasValue(startupData.location) ? `<p class="location">${startupData.location}</p>` : ''}
+                ${hasValue(startupData.foundingYear) ? `<p class="founding-year">Founded in ${startupData.foundingYear}</p>` : ''}
+                ${hasValue(startupData.locationType) ? `
+                    <p class="location">${startupData.locationType === 'remote' ? 'Remote / Virtual' : 
+                                        startupData.locationType === 'hybrid' ? 'Hybrid' : 'Physical Location'} 
+                     ${startupData.physicalLocation ? `- ${startupData.physicalLocation}` : ''}</p>` : ''}
             </div>
         </div>
         ${hasValue(startupData.description) ? `
@@ -802,7 +806,7 @@
                 ${startupData.founders.map(founder => `
                     <div class="preview-item">
                         ${hasValue(founder.name) ? `<h4>${founder.name}</h4>` : ''}
-                        ${hasValue(founder.role) ? `<p class="title">${founder.role}</p>` : ''}
+                        ${hasValue(founder.role || founder.title) ? `<p class="title">${founder.role || founder.title}</p>` : ''}
                         ${hasValue(founder.email) ? `<p class="email">${founder.email}</p>` : ''}
                         ${hasValue(founder.bio) ? `<p>${founder.bio}</p>` : ''}
                     </div>
@@ -814,13 +818,6 @@
             <h3>Our Tech Stack</h3>
             <div class="tech-container">
                 ${startupData.techStack.map(tech => `<span class="tech-tag">${tech}</span>`).join('')}
-            </div>
-        </div>` : ''}
-        ${(startupData.requiredPositions && startupData.requiredPositions.length > 0) ? `
-        <div class="preview-section-item">
-            <h3>Positions We're Looking For</h3>
-            <div class="positions-container">
-                ${startupData.requiredPositions.map(position => `<span class="position-tag">${position}</span>`).join('')}
             </div>
         </div>` : ''}
         ${(hasValue(startupData.contactEmail) || hasValue(startupData.contactPhone) || hasValue(startupData.website) || hasValue(startupData.linkedin) || hasValue(startupData.twitter) || hasValue(startupData.github)) ? `
