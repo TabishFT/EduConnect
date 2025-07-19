@@ -718,7 +718,6 @@ async def upload_file(
 
 
 
-
 @app.get("/get_intern_profiles")
 @app.get("/get_intern_profiles/")
 async def get_intern_profiles(
@@ -792,7 +791,9 @@ async def get_intern_profiles(
                 }
                 profiles_list.append(clean_profile)
         
-        # Filter by skills if provided
+        # Apply skill filtering first (before pagination)
+        filtered_profiles = []
+        
         if skills:
             skill_filters = [s.strip().lower() for s in skills.split(',') if s.strip()]
             
@@ -811,60 +812,78 @@ async def get_intern_profiles(
                     if any(filter_skill in profile_skill for profile_skill in profile_skills_lower):
                         matched_skills += 1
                 
-                profile['match_score'] = (matched_skills / len(skill_filters)) * 100 if skill_filters else 0
-                profile['matched_skills_count'] = matched_skills
+                match_score = (matched_skills / len(skill_filters)) * 100 if skill_filters else 0
+                
+                # Only include profiles with matches
+                if match_score > 0:
+                    profile['match_score'] = match_score
+                    profile['matched_skills_count'] = matched_skills
+                    filtered_profiles.append(profile)
             
-            # Sort by match score (highest first), then by number of total skills
-            profiles_list.sort(key=lambda x: (
+            # Sort filtered profiles by match score (highest first), then by skills count, then by name
+            filtered_profiles.sort(key=lambda x: (
                 -x.get('match_score', 0),
                 -len(x.get('skills', [])),
                 x.get('fullName', '').lower()
             ))
-            
-            # Filter out profiles with 0% match if skills filter is applied
-            profiles_list = [p for p in profiles_list if p.get('match_score', 0) > 0]
         else:
-            # If no skill filter, sort by name
-            profiles_list.sort(key=lambda x: x.get('fullName', '').lower())
+            # No skill filter - use all profiles sorted by name
+            filtered_profiles = sorted(profiles_list, key=lambda x: x.get('fullName', '').lower())
         
-        # Implement cursor-based pagination
+        # Now apply consistent cursor-based pagination on the filtered and sorted list
         start_index = 0
         if start_after:
-            # Find the index of the profile with start_after ID
-            for i, profile in enumerate(profiles_list):
+            # Find the index of the profile with start_after ID in the current sorted list
+            for i, profile in enumerate(filtered_profiles):
                 if profile['id'] == start_after:
                     start_index = i + 1
                     break
+            else:
+                # If start_after ID is not found in current results, start from beginning
+                # This can happen if filters changed between requests
+                start_index = 0
+                print(f"Warning: start_after cursor '{start_after}' not found in current results")
         
         # Get the slice of profiles for this page
         end_index = start_index + limit
-        paginated_profiles = profiles_list[start_index:end_index]
+        paginated_profiles = filtered_profiles[start_index:end_index]
         
         # Determine if there are more profiles
-        has_more = end_index < len(profiles_list)
+        has_more = end_index < len(filtered_profiles)
         
         # Determine next cursor
         next_cursor = None
         if has_more and paginated_profiles:
             next_cursor = paginated_profiles[-1]['id']
         
+        # Clean up match_score and matched_skills_count from response if no skills filter
+        if not skills:
+            for profile in paginated_profiles:
+                profile.pop('match_score', None)
+                profile.pop('matched_skills_count', None)
+        
         return {
             "success": True,
             "profiles": paginated_profiles,
             "returned_count": len(paginated_profiles),
-            "total_count": len(profiles_list),
+            "total_count": len(filtered_profiles),  # Total after filtering
+            "total_available": len(profiles_list),  # Total in database
             "next_cursor": next_cursor,
-            "has_more": has_more
+            "has_more": has_more,
+            "skills_applied": skills if skills else None
         }
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error fetching intern profiles: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching profiles"
         )
+
 
 
 @app.get("/startups/post")
