@@ -1343,42 +1343,94 @@
 
         // View profile function
         function viewProfile() {
-            console.log('View profile clicked');
+            console.log('🚀 View profile clicked');
+            console.log('📊 Current state:', {
+                filteredPostsLength: filteredPosts.length,
+                currentPostIndex: currentPostIndex,
+                hasCurrentPost: currentPostIndex < filteredPosts.length
+            });
             
             // Get current post data
             if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
                 console.log('❌ No current post available');
+                alert('No post available to view profile');
                 return;
             }
             
             const currentPost = filteredPosts[currentPostIndex];
             console.log('📊 Current post data:', currentPost);
             
-            // Create startup profile data from post data
+            if (!currentPost) {
+                console.log('❌ Current post is null or undefined');
+                alert('Current post data is not available');
+                return;
+            }
+            
+            // Create startup profile data from post data with more comprehensive mapping
             const startupProfileData = {
-                startup_name: currentPost.startup_name,
-                tagline: currentPost.tagline,
-                description: currentPost.description,
-                logo: currentPost.image_url, // Use post image as logo
+                // Primary identification
+                startup_name: currentPost.startup_name || 'Unknown Startup',
+                startupName: currentPost.startup_name || 'Unknown Startup', // Alternative field name
+                
+                // Basic info
+                tagline: currentPost.tagline || '',
+                description: currentPost.description || '',
+                job_title: currentPost.job_title || '',
+                
+                // Visual
+                logo: currentPost.image_url || '', // Use post image as logo
+                image_url: currentPost.image_url || '',
+                
+                // Location and contact
                 location: currentPost.location || '',
                 website: currentPost.website || '',
-                contactEmail: currentPost.contact_email || '',
-                contactPhone: currentPost.contact_phone || '',
+                contactEmail: currentPost.contact_email || currentPost.email || '',
+                contactPhone: currentPost.contact_phone || currentPost.phone || '',
+                
+                // Social media
                 linkedin: currentPost.linkedin || '',
                 twitter: currentPost.twitter || '',
                 github: currentPost.github || '',
+                
+                // Skills and positions
+                skills: currentPost.skills || '',
                 techStack: currentPost.skills ? currentPost.skills.split(',').map(s => s.trim()) : [],
-                requiredPositions: [currentPost.job_title],
+                requiredPositions: currentPost.job_title ? [currentPost.job_title] : [],
+                
+                // Additional data
                 founders: currentPost.founders || [],
-                created_at: currentPost.created_at
+                created_at: currentPost.created_at || '',
+                
+                // Post specific data
+                post_id: currentPost.id || '',
+                likes_count: currentPost.likes_count || 0,
+                application_count: currentPost.application_count || 0
             };
             
+            console.log('💾 Startup profile data to store:', startupProfileData);
+            
             // Store startup profile data in localStorage
-            localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
+            try {
+                localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
+                console.log('✅ Data stored in localStorage successfully');
+                
+                // Verify storage
+                const storedData = localStorage.getItem('selectedStartupProfile');
+                console.log('🔍 Verification - stored data:', storedData);
+                
+            } catch (error) {
+                console.error('❌ Error storing data in localStorage:', error);
+                alert('Failed to store profile data');
+                return;
+            }
             
             // Navigate to startup profile view page
             console.log('🚀 Navigating to startup profile view...');
-            window.location.href = '/startup/profile/view';
+            
+            // Add a small delay to ensure localStorage is written
+            setTimeout(() => {
+                window.location.href = '/startup/profile/view';
+            }, 100);
         }
         
         // Utility function to escape HTML

@@ -849,19 +849,31 @@
 
             // Get startup data from localStorage (set by home.html)
             const startupDataString = localStorage.getItem('selectedStartupProfile');
+            console.log('🔍 Raw localStorage data:', startupDataString);
 
             if (startupDataString) {
                 try {
                     const startupData = JSON.parse(startupDataString);
-                    console.log('📊 Loaded startup data:', startupData);
+                    console.log('📊 Parsed startup data:', startupData);
+                    console.log('📊 Startup name:', startupData.startup_name || startupData.startupName);
+                    console.log('📊 Tagline:', startupData.tagline);
+                    console.log('📊 Description:', startupData.description);
+                    console.log('📊 Logo:', startupData.logo);
+                    
+                    if (!startupData.startup_name && !startupData.startupName) {
+                        console.warn('⚠️ No startup name found in data');
+                    }
+                    
                     displayStartupProfile(startupData);
                 } catch (error) {
                     console.error('❌ Error parsing startup data:', error);
+                    console.error('❌ Raw data that failed to parse:', startupDataString);
                     document.getElementById('no-data-message').style.display = 'block';
                     document.getElementById('startup-content').style.display = 'none';
                 }
             } else {
                 console.log('❌ No startup data found in localStorage');
+                console.log('🔍 All localStorage keys:', Object.keys(localStorage));
                 document.getElementById('no-data-message').style.display = 'block';
                 document.getElementById('startup-content').style.display = 'none';
             }
