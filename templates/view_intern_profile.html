@@ -660,29 +660,17 @@
 
         // View Resume
         function viewResume() {
-            console.log('🔍 Checking for resume in profile data:', currentProfile);
-            
-            // Check multiple possible field names for resume
-            const resumeUrl = currentProfile?.resumeUrl || 
-                             currentProfile?.resume || 
-                             currentProfile?.resumeLink || 
-                             currentProfile?.cv;
-            
-            console.log('📄 Found resume URL:', resumeUrl);
-            
-            if (resumeUrl && resumeUrl.trim() !== '') {
+            if (currentProfile && currentProfile.resumeUrl) {
                 // Add cache-busting parameter
-                let finalResumeUrl = resumeUrl;
-                if (!finalResumeUrl.includes('?')) {
-                    finalResumeUrl += `?updatedAt=${Date.now()}`;
-                } else if (!finalResumeUrl.includes('updatedAt=')) {
-                    finalResumeUrl += `&updatedAt=${Date.now()}`;
+                let resumeUrl = currentProfile.resumeUrl;
+                if (!resumeUrl.includes('?')) {
+                    resumeUrl += `?updatedAt=${Date.now()}`;
+                } else if (!resumeUrl.includes('updatedAt=')) {
+                    resumeUrl += `&updatedAt=${Date.now()}`;
                 }
 
-                console.log('🚀 Opening resume URL:', finalResumeUrl);
-                window.open(finalResumeUrl, '_blank');
+                window.open(resumeUrl, '_blank');
             } else {
-                console.log('❌ No resume found in profile data');
                 showToast('No resume available for this intern.', 'error');
             }
         }
@@ -758,12 +746,7 @@
             function makeSocialLink(label, url) {
                 if (!hasValue(url)) return '';
                 let display = label.charAt(0).toUpperCase() + label.slice(1);
-                // Ensure URL has proper protocol
-                let finalUrl = url;
-                if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    finalUrl = 'https://' + url;
-                }
-                return `<a href="${finalUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
             }
 
             // Add cache-busting to profile picture
@@ -785,7 +768,7 @@
             </div>
             <div class="preview-name">
                 <h2>${profileData.fullName || 'Anonymous User'}</h2>
-                ${hasValue(profileData.headline) ? `<p class="profession">${profileData.headline}</p>` : ''}
+                ${hasValue(profileData.profession) ? `<p class="profession">${profileData.profession}</p>` : ''}
                 ${hasValue(profileData.location) ? `<p class="location">${profileData.location}</p>` : ''}
             </div>
         </div>
@@ -794,15 +777,16 @@
             <h3>About</h3>
             <p>${profileData.bio}</p>
         </div>` : ''}
-        ${(hasValue(profileData.field) || hasValue(profileData.industry) || hasValue(profileData.company) || hasValue(profileData.workExperience) || hasValue(profileData.website)) ? `
+        ${(hasValue(profileData.field) || hasValue(profileData.headline) || hasValue(profileData.industry) || hasValue(profileData.company) || hasValue(profileData.workExperience) || hasValue(profileData.website)) ? `
         <div class="preview-section-item">
             <h3>Professional Details</h3>
             <div class="preview-item">
                 ${hasValue(profileData.field) ? `<p><strong>Field:</strong> ${profileData.field}</p>` : ''}
+                ${hasValue(profileData.headline) ? `<p><strong>Headline:</strong> ${profileData.headline}</p>` : ''}
                 ${hasValue(profileData.industry) ? `<p><strong>Industry:</strong> ${profileData.industry}</p>` : ''}
                 ${hasValue(profileData.company) ? `<p><strong>Company:</strong> ${profileData.company}</p>` : ''}
                 ${hasValue(profileData.workExperience) ? `<p><strong>Experience:</strong> ${profileData.workExperience}</p>` : ''}
-                ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website.startsWith('http') ? profileData.website : 'https://' + profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
+                ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
             </div>
         </div>` : ''}
         ${(profileData.education && profileData.education.length > 0) ? `
