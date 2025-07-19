@@ -844,13 +844,21 @@ async def get_intern_profiles(
                     'bio': profile_data.get('bio', ''),
                     'experience': profile_data.get('experience', ''),
                     'education': profile_data.get('education', ''),
-                    'portfolio': profile_data.get('portfolio', ''),
                     'linkedin': profile_data.get('linkedin', ''),
                     'github': profile_data.get('github', ''),
                     'location': profile_data.get('location', ''),
                     'availability': profile_data.get('availability', ''),
                     'created_at': profile_data.get('created_at', ''),
-                    'updated_at': profile_data.get('updated_at', '')
+                    'updated_at': profile_data.get('updated_at', ''),
+                    'resumeUrl': profile_data.get('resumeUrl', ''),
+                    'website': profile_data.get('website', ''),
+                    'headline': profile_data.get('headline', ''),
+                    'phone': profile_data.get('phone', ''),
+                    'twitter': profile_data.get('twitter', ''),
+                    'field': profile_data.get('field', ''),
+                    'industry': profile_data.get('industry', ''),
+                    'company': profile_data.get('company', ''),
+                    'workExperience': profile_data.get('workExperience', '')
                 })
         
         # Apply skill filtering
