@@ -439,7 +439,7 @@ async def view_intern_profile_page(request: Request, current_user: User = Depend
                 detail="Access denied. Only startups can view intern profiles."
             )
         
-        return templates.TemplateResponse("templates/startups/view_intern_profile.html", {"request": request})
+        return templates.TemplateResponse("startups/view_intern_profile.html", {"request": request})
     
     except HTTPException as e:
         if e.status_code == 401:
