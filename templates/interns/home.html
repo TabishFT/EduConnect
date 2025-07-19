@@ -642,7 +642,7 @@
     <div class="main-container">
         <!-- Controls -->
         <div class="controls">
-            <button class="view-profile-btn" onclick="viewProfile()">View Profile</button>
+            <button class="view-profile-btn" id="viewProfileBtn" onclick="viewProfile()">View Profile</button>
             <select class="sort-dropdown" id="sortFilter" onchange="filterPosts()">
                 <option value="all">All Posts</option>
                 <option value="week">Last 1 Week</option>
@@ -910,6 +910,7 @@
             }
         
             updatePostIndicators();
+            updateViewProfileButton();
             setupSwipeHandlers();
         }
         
@@ -1182,6 +1183,9 @@
                     card.classList.add('prev');
                 }
             });
+            
+            // Update the View Profile button text dynamically
+            updateViewProfileButton();
             updatePostIndicators();
         }
         
@@ -1310,6 +1314,33 @@
             loadPosts();
         }
         
+        // Update View Profile button text dynamically
+        function updateViewProfileButton() {
+            const viewProfileBtn = document.getElementById('viewProfileBtn');
+            
+            if (!viewProfileBtn) {
+                console.log('❌ View Profile button not found');
+                return;
+            }
+            
+            // Check if we have valid posts and current index
+            if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
+                viewProfileBtn.textContent = 'View Profile';
+                viewProfileBtn.disabled = true;
+                return;
+            }
+            
+            const currentPost = filteredPosts[currentPostIndex];
+            if (currentPost && currentPost.startup_name) {
+                // Update button text to show current startup name
+                viewProfileBtn.textContent = `View ${currentPost.startup_name} Profile`;
+                viewProfileBtn.disabled = false;
+            } else {
+                viewProfileBtn.textContent = 'View Profile';
+                viewProfileBtn.disabled = true;
+            }
+        }
+
         // View profile function
         function viewProfile() {
             console.log('View profile clicked');

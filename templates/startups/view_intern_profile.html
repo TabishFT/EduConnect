@@ -555,20 +555,25 @@
                 margin: 5% auto;
                 width: 95%;
             }
+
             .navbar {
-        padding: 0.75rem 0;
-    }
-    .nav-container {
-        padding: 0 0.75rem;
-    }
-    .logo {
-        font-size: 1.2rem; /* Smaller logo on mobile */
-    }
-    .back-btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
-        font-weight: 500;
-    }
+                padding: 0.75rem 0;
+            }
+
+            .nav-container {
+                padding: 0 0.75rem;
+            }
+
+            .logo {
+                font-size: 1.2rem;
+                /* Smaller logo on mobile */
+            }
+
+            .back-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+            }
 
         }
 
@@ -597,26 +602,29 @@
             .preview-section-item {
                 margin-bottom: 1.5rem;
             }
+
             .navbar {
-        padding: 0.5rem 0;
-    }
+                padding: 0.5rem 0;
+            }
 
-    .logo {
-        font-size: 1.1rem;
-    }
+            .logo {
+                font-size: 1.1rem;
+            }
 
-    .back-btn {
-        padding: 0.35rem 0.7rem;
-        font-size: 0.8rem;
-    }
-    .profile-header {
-        margin-bottom: 1.5rem; /* Reduce spacing */
-    }
+            .back-btn {
+                padding: 0.35rem 0.7rem;
+                font-size: 0.8rem;
+            }
 
-    .profile-header p {
-        font-size: 0.9rem;
-    }
-    
+            .profile-header {
+                margin-bottom: 1.5rem;
+                /* Reduce spacing */
+            }
+
+            .profile-header p {
+                font-size: 0.9rem;
+            }
+
 
         }
     </style>
@@ -699,15 +707,15 @@
         // View Resume
         function viewResume() {
             console.log('🔍 Checking for resume in profile data:', currentProfile);
-            
+
             // Check multiple possible field names for resume
-            const resumeUrl = currentProfile?.resumeUrl || 
-                             currentProfile?.resume || 
-                             currentProfile?.resumeLink || 
-                             currentProfile?.cv;
-            
+            const resumeUrl = currentProfile?.resumeUrl ||
+                currentProfile?.resume ||
+                currentProfile?.resumeLink ||
+                currentProfile?.cv;
+
             console.log('📄 Found resume URL:', resumeUrl);
-            
+
             if (resumeUrl && resumeUrl.trim() !== '') {
                 // Add cache-busting parameter
                 let finalResumeUrl = resumeUrl;
