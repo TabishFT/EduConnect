@@ -1747,39 +1747,39 @@ async def get_startup_profiles(
         #         print("✨ Startup Profiles Cache HIT - Serving from memory (10 min cache)")
         #     else:
         #         # 🔥 CACHE MISS - Fetch from Firebase
-                print("🔥 chahche iss offf firreebase is fetcching")
-                #cache_status = "miss"
-                cache_status = "bypassed"
+            print("🔥 chahche iss offf firreebase is fetcching")
+            #cache_status = "miss"
+            cache_status = "bypassed"
+            
+            firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+            
+            try:
+                response = requests.get(firebase_path, timeout=10)
                 
-                firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
-                
-                try:
-                    response = requests.get(firebase_path, timeout=10)
-                    
-                    if response.status_code == 200:
-                        startup_data = response.json()
-                        # ✅ Update cache with fresh data
-                        get_startup_profiles.cache['data'] = startup_data
-                        get_startup_profiles.cache['timestamp'] = datetime.utcnow()
-                        print(f"✅ Startup profiles cache updated (valid for 10 minutes) with {len(startup_data) if startup_data else 0} items")
-                    else:
-                        # Use stale cache if available
-                        if get_startup_profiles.cache['data'] is not None:
-                            startup_data = get_startup_profiles.cache['data']
-                            cache_status = "stale"
-                            print("⚠️ Using stale startup profiles cache due to Firebase error")
-                        else:
-                            raise HTTPException(status_code=500, detail="Firebase error")
-                            
-                except requests.exceptions.RequestException as e:
-                    # Network error - use stale cache if available
+                if response.status_code == 200:
+                    startup_data = response.json()
+                    # ✅ Update cache with fresh data
+                    get_startup_profiles.cache['data'] = startup_data
+                    get_startup_profiles.cache['timestamp'] = datetime.utcnow()
+                    print(f"✅ Startup profiles cache updated (valid for 10 minutes) with {len(startup_data) if startup_data else 0} items")
+                else:
+                    # Use stale cache if available
                     if get_startup_profiles.cache['data'] is not None:
                         startup_data = get_startup_profiles.cache['data']
                         cache_status = "stale"
-                        print(f"⚠️ Using stale startup profiles cache due to network error: {str(e)}")
+                        print("⚠️ Using stale startup profiles cache due to Firebase error")
                     else:
-                        raise HTTPException(status_code=503, detail="Service unavailable")
-        
+                        raise HTTPException(status_code=500, detail="Firebase error")
+                        
+            except requests.exceptions.RequestException as e:
+                # Network error - use stale cache if available
+                if get_startup_profiles.cache['data'] is not None:
+                    startup_data = get_startup_profiles.cache['data']
+                    cache_status = "stale"
+                    print(f"⚠️ Using stale startup profiles cache due to network error: {str(e)}")
+                else:
+                    raise HTTPException(status_code=503, detail="Service unavailable")
+    
         # Handle empty data
         if not startup_data:
             return {
