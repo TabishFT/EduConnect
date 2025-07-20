@@ -1342,99 +1342,94 @@
         }
 
         // View profile function
-        async function viewProfile() {
-            console.log('🚀 View profile clicked');
-            
-            // Get current post data
-            if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
-                console.log('❌ No current post available');
-                alert('No post available to view profile');
-                return;
-            }
-            
-            const currentPost = filteredPosts[currentPostIndex];
-            console.log('📊 Current post data:', currentPost);
-            
-            if (!currentPost || !currentPost.startup_name) {
-                console.log('❌ Current post or startup name is not available');
-                alert('Startup information is not available');
-                return;
-            }
-            
-            try {
-                // Fetch actual startup profile data from Firebase using the startup name
-                console.log('🔍 Fetching startup profile for:', currentPost.startup_name);
-                
-                const response = await fetch(`/get_startup_profiles`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch startup profile: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                console.log('📊 Startup profile API response:', data);
-                
-                let startupProfileData;
-                
-                if (data.success && data.startup) {
-                    // Use actual startup profile data from Firebase
-                    startupProfileData = {
-                        // Use actual startup profile data
-                        startup_name: data.startup.startupName,
-                        startupName: data.startup.startupName,
-                        
-                        // Startup profile specific data
-                        logo: data.startup.logo || '',
-                        foundingYear: data.startup.foundingYear || '',
-                        locationType: data.startup.locationType || '',
-                        physicalLocation: data.startup.physicalLocation || '',
-                        description: data.startup.description || '',
-                        
-                        // Founders from startup profile
-                        founders: data.startup.founders || [],
-                        
-                        // Contact info from startup profile
-                        contactEmail: data.startup.contactEmail || '',
-                        contactPhone: data.startup.contactPhone || '',
-                        website: data.startup.website || '',
-                        linkedin: data.startup.linkedin || '',
-                        twitter: data.startup.twitter || '',
-                        github: data.startup.github || '',
-                        
-                        // Tech stack from startup profile
-                        techStack: data.startup.techStack || [],
-                        
-                        // Additional data
-                        created_at: data.startup.created_at || '',
-                        updated_at: data.startup.updated_at || ''
-                    };
-                    
-                    console.log('✅ Using actual startup profile data');
-                } else {
-                    // Fallback to post data if startup profile not found
-                    console.log('⚠️ Startup profile not found, using post data as fallback');
-                }
-                
-                console.log('💾 Final startup profile data to store:', startupProfileData);
-                
-                // Store startup profile data in localStorage
-                localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
-                console.log('✅ Data stored in localStorage successfully');
-                
-                // Navigate to startup profile view page
-                console.log('🚀 Navigating to startup profile view...');
-                window.location.href = '/startup/profile/view';
-                
-            } catch (error) {
-                console.error('❌ Error fetching startup profile:', error);
-                console.log('⚠️ Using fallback data due to error');
-                window.location.href = '/startup/profile/view';
-            }
-        }
         
+        // Complete viewProfile function with enhanced debugging
+async function viewProfile() {
+    console.log('%c🚀 viewProfile() triggered', 'color: #007bff; font-weight: bold;');
+
+    // 1. Check if there is a post to get data from
+    if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
+        console.error('❌ ABORT: No current post is selected or available. Cannot proceed.');
+        showToast('No post available to view profile.', 'error');
+        return;
+    }
+
+    // 2. Safely get the startup name from the current post
+    const currentPost = filteredPosts[currentPostIndex];
+    const startupNameToFetch = currentPost.startup_name;
+
+    console.log('📊 Current Post Data:', currentPost);
+
+    if (!startupNameToFetch || startupNameToFetch.trim() === '') {
+        console.error('❌ ABORT: The current post does not have a valid startup_name.');
+        showToast('Startup information is not available for this post.', 'error');
+        return;
+    }
+
+    console.log(`✅ Startup to fetch: "${startupNameToFetch}"`);
+
+    // 3. Prepare and execute the API call to the backend
+    try {
+        // Construct the correct API URL with the startup_name as a query parameter
+        const encodedStartupName = encodeURIComponent(startupNameToFetch);
+        const apiUrl = `/get_startup_profiles/?startup_name=${encodedStartupName}`;
+        
+        console.log(`📡 Preparing to call API: ${apiUrl}`);
+        
+        // Show a loading indicator to the user
+        showToast('Loading profile...', 'info');
+
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            credentials: 'include' // Important for sending cookies/session info
+        });
+
+        console.log(`🚦 API Response Status: ${response.status} ${response.statusText}`);
+
+        // Handle non-successful HTTP responses (like 404 Not Found, 500 Server Error)
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API returned a non-OK status. Response body:', errorText);
+            throw new Error(`Server error: ${response.status}`);
+        }
+
+        // 4. Parse the JSON response from the backend
+        const data = await response.json();
+        console.log('%c📦 Received JSON data from backend:', 'color: #28a745; font-weight: bold;', data);
+
+        // 5. Check the business logic of the response (success flag and data)
+        if (data.success && data.startup) {
+            // SUCCESS CASE: The backend found the startup and returned its profile
+            console.log('%c✅ SUCCESS: Backend found the startup profile.', 'color: #28a745; font-weight: bold;');
+            
+            const startupProfileData = data.startup; // This is the complete profile object
+            
+            console.log('📋 Profile data to be stored:', startupProfileData);
+
+            // Store the complete profile data in localStorage for the next page
+            localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
+            console.log('💾 Data successfully stored in localStorage under "selectedStartupProfile".');
+            
+            // Navigate to the profile view page
+            console.log('➡️ Navigating to /startup/profile/view...');
+            window.location.href = '/startup/profile/view';
+
+        } else {
+            // FAILURE CASE: The backend call was successful, but it couldn't find the startup
+            console.error(`❌ FAILURE: Backend reported success=false or "startup" object is missing.`);
+            console.error(`   Message from backend: ${data.message || 'No specific message.'}`);
+            showToast(`Could not find a profile for "${startupNameToFetch}". It may not exist.`, 'error');
+        }
+
+    } catch (error) {
+        // CATCH-ALL ERROR CASE: For network failures or other unexpected issues
+        console.error('💥 FATAL ERROR: An error occurred during the fetch process.', error);
+        showToast('A network error occurred. Please check your connection and try again.', 'error');
+    }
+}
+
+
+
         // Utility function to escape HTML
         function escapeHtml(text) {
             if (!text) return '';
