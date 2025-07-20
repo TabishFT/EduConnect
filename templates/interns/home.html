@@ -1365,13 +1365,9 @@
                 // Fetch actual startup profile data from Firebase using the startup name
                 console.log('🔍 Fetching startup profile for:', currentPost.startup_name);
                 
-                const response = await fetch(`/get_startup_profiles?startup_name=${encodeURIComponent(currentPost.startup_name)}`, {
+                const response = await fetch(`/get_startup_profiles`, {
                     method: 'GET',
-                    credentials: 'include',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
+                    credentials: 'include'
                 });
                 
                 if (!response.ok) {
@@ -1387,15 +1383,15 @@
                     // Use actual startup profile data from Firebase
                     startupProfileData = {
                         // Use actual startup profile data
-                        startup_name: data.startup.startupName || currentPost.startup_name,
-                        startupName: data.startup.startupName || currentPost.startup_name,
+                        startup_name: data.startup.startupName,
+                        startupName: data.startup.startupName,
                         
                         // Startup profile specific data
                         logo: data.startup.logo || '',
                         foundingYear: data.startup.foundingYear || '',
                         locationType: data.startup.locationType || '',
                         physicalLocation: data.startup.physicalLocation || '',
-                        description: data.startup.description || currentPost.description || '',
+                        description: data.startup.description || '',
                         
                         // Founders from startup profile
                         founders: data.startup.founders || [],
@@ -1420,21 +1416,6 @@
                 } else {
                     // Fallback to post data if startup profile not found
                     console.log('⚠️ Startup profile not found, using post data as fallback');
-                    startupProfileData = {
-                        startup_name: currentPost.startup_name,
-                        startupName: currentPost.startup_name,
-                        tagline: currentPost.tagline || '',
-                        description: currentPost.description || '',
-                        logo: '', // Don't use post image as logo
-                        founders: [],
-                        techStack: [],
-                        contactEmail: '',
-                        contactPhone: '',
-                        website: '',
-                        linkedin: '',
-                        twitter: '',
-                        github: ''
-                    };
                 }
                 
                 console.log('💾 Final startup profile data to store:', startupProfileData);
@@ -1449,25 +1430,6 @@
                 
             } catch (error) {
                 console.error('❌ Error fetching startup profile:', error);
-                
-                // Fallback: create basic profile data from post
-                const fallbackData = {
-                    startup_name: currentPost.startup_name,
-                    startupName: currentPost.startup_name,
-                    description: currentPost.description || '',
-                    tagline: currentPost.tagline || '',
-                    logo: '',
-                    founders: [],
-                    techStack: [],
-                    contactEmail: '',
-                    contactPhone: '',
-                    website: '',
-                    linkedin: '',
-                    twitter: '',
-                    github: ''
-                };
-                
-                localStorage.setItem('selectedStartupProfile', JSON.stringify(fallbackData));
                 console.log('⚠️ Using fallback data due to error');
                 window.location.href = '/startup/profile/view';
             }

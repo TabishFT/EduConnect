@@ -1724,31 +1724,32 @@ async def get_startup_profiles(
                 detail="Access denied. Only interns can view startup profiles."
             )
 
-        # Use a separate cache for startup profiles
-        if not hasattr(get_startup_profiles, 'cache'):
-            get_startup_profiles.cache = {
-                'data': None,
-                'timestamp': None,
-                'lock': asyncio.Lock()
-            }
+        # # Use a separate cache for startup profiles
+        # if not hasattr(get_startup_profiles, 'cache'):
+        #     get_startup_profiles.cache = {
+        #         'data': None,
+        #         'timestamp': None,
+        #         'lock': asyncio.Lock()
+        #     }
         
-        # 🎯 SMART CACHE CHECK (10 MINUTES)
-        async with get_startup_profiles.cache['lock']:
-            cache_valid = (
-                get_startup_profiles.cache['data'] is not None and 
-                get_startup_profiles.cache['timestamp'] is not None and
-                datetime.utcnow() - get_startup_profiles.cache['timestamp'] < CACHE_DURATION
-            )
+        # # 🎯 SMART CACHE CHECK (10 MINUTES)
+        # async with get_startup_profiles.cache['lock']:
+        #     cache_valid = (
+        #         get_startup_profiles.cache['data'] is not None and 
+        #         get_startup_profiles.cache['timestamp'] is not None and
+        #         datetime.utcnow() - get_startup_profiles.cache['timestamp'] < CACHE_DURATION
+        #     )
             
-            if cache_valid:
-                # ⚡ CACHE HIT - Instant response!
-                startup_data = get_startup_profiles.cache['data']
-                cache_status = "hit"
-                print("✨ Startup Profiles Cache HIT - Serving from memory (10 min cache)")
-            else:
-                # 🔥 CACHE MISS - Fetch from Firebase
-                print("🔥 Startup Profiles Cache MISS - Fetching from Firebase")
-                cache_status = "miss"
+        #     if cache_valid:
+        #         # ⚡ CACHE HIT - Instant response!
+        #         startup_data = get_startup_profiles.cache['data']
+        #         cache_status = "hit"
+        #         print("✨ Startup Profiles Cache HIT - Serving from memory (10 min cache)")
+        #     else:
+        #         # 🔥 CACHE MISS - Fetch from Firebase
+                print("🔥 chahche iss offf firreebase is fetcching")
+                #cache_status = "miss"
+                cache_status = "bypassed"
                 
                 firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
                 
