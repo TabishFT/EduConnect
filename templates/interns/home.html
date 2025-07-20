@@ -1344,90 +1344,75 @@
         // View profile function
         
         // Complete viewProfile function with enhanced debugging
+// New viewProfile function that uses email for lookup
 async function viewProfile() {
-    console.log('%c🚀 viewProfile() triggered', 'color: #007bff; font-weight: bold;');
+    console.log('%c🚀 viewProfile() triggered (Email Lookup Version)', 'color: #007bff; font-weight: bold;');
 
-    // 1. Check if there is a post to get data from
+    // 1. Get the current post
     if (filteredPosts.length === 0 || currentPostIndex >= filteredPosts.length) {
-        console.error('❌ ABORT: No current post is selected or available. Cannot proceed.');
+        console.error('❌ ABORT: No current post selected.');
         showToast('No post available to view profile.', 'error');
         return;
     }
 
-    // 2. Safely get the startup name from the current post
     const currentPost = filteredPosts[currentPostIndex];
-    const startupNameToFetch = currentPost.startup_name;
-
     console.log('📊 Current Post Data:', currentPost);
 
-    if (!startupNameToFetch || startupNameToFetch.trim() === '') {
-        console.error('❌ ABORT: The current post does not have a valid startup_name.');
-        showToast('Startup information is not available for this post.', 'error');
+    // 2. Get the unique email from the post data
+    const startupEmailToFetch = currentPost.created_by_email;
+
+    if (!startupEmailToFetch) {
+        console.error('❌ ABORT: Post is missing "created_by_email". Cannot link to profile.');
+        showToast('Profile information is not available for this post.', 'error');
         return;
     }
 
-    console.log(`✅ Startup to fetch: "${startupNameToFetch}"`);
+    console.log(`✅ Startup Email to fetch: "${startupEmailToFetch}"`);
 
-    // 3. Prepare and execute the API call to the backend
     try {
-        // Construct the correct API URL with the startup_name as a query parameter
-        const encodedStartupName = encodeURIComponent(startupNameToFetch);
-        const apiUrl = `/get_startup_profiles/?startup_name=${encodedStartupName}`;
+        // 3. Construct the API URL with the email as a query parameter
+        const encodedEmail = encodeURIComponent(startupEmailToFetch);
+        const apiUrl = `/get_startup_profiles/?email=${encodedEmail}`;
         
         console.log(`📡 Preparing to call API: ${apiUrl}`);
-        
-        // Show a loading indicator to the user
         showToast('Loading profile...', 'info');
 
         const response = await fetch(apiUrl, {
             method: 'GET',
-            credentials: 'include' // Important for sending cookies/session info
+            credentials: 'include'
         });
-
+        
         console.log(`🚦 API Response Status: ${response.status} ${response.statusText}`);
-
-        // Handle non-successful HTTP responses (like 404 Not Found, 500 Server Error)
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ API returned a non-OK status. Response body:', errorText);
             throw new Error(`Server error: ${response.status}`);
         }
 
-        // 4. Parse the JSON response from the backend
+        // 4. Parse the response
         const data = await response.json();
         console.log('%c📦 Received JSON data from backend:', 'color: #28a745; font-weight: bold;', data);
 
-        // 5. Check the business logic of the response (success flag and data)
+        // 5. Check if the backend found the profile
         if (data.success && data.startup) {
-            // SUCCESS CASE: The backend found the startup and returned its profile
-            console.log('%c✅ SUCCESS: Backend found the startup profile.', 'color: #28a745; font-weight: bold;');
+            console.log('%c✅ SUCCESS: Backend found the startup profile by email.', 'color: #28a745; font-weight: bold;');
             
-            const startupProfileData = data.startup; // This is the complete profile object
+            // Store the found profile in localStorage
+            localStorage.setItem('selectedStartupProfile', JSON.stringify(data.startup));
+            console.log('💾 Data successfully stored in localStorage.');
             
-            console.log('📋 Profile data to be stored:', startupProfileData);
-
-            // Store the complete profile data in localStorage for the next page
-            localStorage.setItem('selectedStartupProfile', JSON.stringify(startupProfileData));
-            console.log('💾 Data successfully stored in localStorage under "selectedStartupProfile".');
-            
-            // Navigate to the profile view page
+            // Navigate to the profile page
             console.log('➡️ Navigating to /startup/profile/view...');
             window.location.href = '/startup/profile/view';
 
         } else {
-            // FAILURE CASE: The backend call was successful, but it couldn't find the startup
-            console.error(`❌ FAILURE: Backend reported success=false or "startup" object is missing.`);
-            console.error(`   Message from backend: ${data.message || 'No specific message.'}`);
-            showToast(`Could not find a profile for "${startupNameToFetch}". It may not exist.`, 'error');
+            console.error(`❌ FAILURE: Could not find a profile for email: ${startupEmailToFetch}`);
+            showToast(`Could not load profile. The startup may have deleted their account.`, 'error');
         }
 
     } catch (error) {
-        // CATCH-ALL ERROR CASE: For network failures or other unexpected issues
         console.error('💥 FATAL ERROR: An error occurred during the fetch process.', error);
-        showToast('A network error occurred. Please check your connection and try again.', 'error');
+        showToast('A network error occurred. Please try again.', 'error');
     }
 }
-
 
 
         // Utility function to escape HTML
