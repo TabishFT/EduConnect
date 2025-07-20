@@ -958,6 +958,171 @@ async def startup_post_page(request: Request, current_user: User = Depends(get_c
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
+# @app.post("/api/create_post")
+# async def create_post(
+#     request: Request,
+#     current_user: User = Depends(get_current_user)
+# ):
+#     """
+#     Create a new post - accessible only to authenticated startups
+#     """
+#     try:
+#         # Check if user is authenticated startup
+#         if current_user.role != "startup":
+#             raise HTTPException(
+#                 status_code=403, 
+#                 detail="Access denied. Only startups can create posts."
+#             )
+        
+#         # Get form data
+#         form_data = await request.form()
+        
+#         # Extract post data
+#         post_data = {
+#             "name": form_data.get("name", "").strip(),
+#             "tagline": form_data.get("tagline", "").strip(),
+#             "title": form_data.get("title", "").strip(),
+#             "skills": form_data.get("skills", "").strip(),
+#             "description": form_data.get("description", "").strip()
+#         }
+        
+#         # Basic validation
+#         if not post_data["name"] or not post_data["title"]:
+#             raise HTTPException(
+#                 status_code=400,
+#                 detail="Startup name and job title are required"
+#             )
+        
+#         # Handle image upload if present
+#         image_url = ""
+#         image_file = form_data.get("image")
+        
+#         if image_file and hasattr(image_file, 'filename') and image_file.filename:
+#             try:
+#                 # Read image file
+#                 image_contents = await image_file.read()
+                
+#                 # Validate file size (max 4MB)
+#                 MAX_IMAGE_SIZE = 4 * 1024 * 1024  # 4MB
+#                 if len(image_contents) > MAX_IMAGE_SIZE:
+#                     raise HTTPException(
+#                         status_code=413,
+#                         detail="Image file too large. Maximum size is 4MB."
+#                     )
+                
+#                 # Validate file type
+#                 if not image_file.content_type.startswith('image/'):
+#                     raise HTTPException(
+#                         status_code=400,
+#                         detail="Only image files are allowed"
+#                     )
+                
+#                 # Create unique filename
+#                 file_extension = image_file.filename.split('.')[-1].lower()
+#                 post_id = str(uuid4())
+#                 safe_startup_name = re.sub(r"[^A-Za-z0-9]", "_", post_data["name"])
+#                 unique_filename = f"post_{safe_startup_name}_{post_id}.{file_extension}"
+                
+#                 # Encode image for ImageKit
+#                 image_base64 = base64.b64encode(image_contents).decode("utf-8")
+                
+#                 # Upload to posts_imagekit
+#                 upload_options = UploadFileRequestOptions(
+#                     folder="/posts/",
+#                     use_unique_file_name=False,
+#                     overwrite_file=False,
+#                     is_private_file=False,
+#                     tags=["post", "startup", safe_startup_name]
+#                 )
+                
+#                 result = posts_imagekit.upload(
+#                     file=image_base64,
+#                     file_name=unique_filename,
+#                     options=upload_options
+#                 )
+                
+#                 if result and hasattr(result, 'url') and result.url:
+#                     image_url = result.url
+#                     print(f"✅ Image uploaded successfully: {image_url}")
+#                 else:
+#                     print("❌ ImageKit upload failed")
+#                     raise HTTPException(
+#                         status_code=500,
+#                         detail="Failed to upload image"
+#                     )
+                    
+#             except HTTPException:
+#                 raise
+#             except Exception as e:
+#                 print(f"❌ Image upload error: {str(e)}")
+#                 raise HTTPException(
+#                     status_code=500,
+#                     detail=f"Image upload failed: {str(e)}"
+#                 )
+        
+#         # Create post object with all details
+#         post_object = {
+#             "id": str(uuid4()),
+#             "startup_name": post_data["name"],
+#             "tagline": post_data["tagline"],
+#             "job_title": post_data["title"],
+#             "skills": post_data["skills"],
+#             "description": post_data["description"],
+#             "image_url": image_url,
+#             "created_at": datetime.utcnow().isoformat(),
+#             "status": "published",
+#             "created_by_email": current_user.email,  # User who created this
+#             "created_by_name": current_user.name
+#         }
+        
+#         # Store in Firebase (POSTS_FIREBASE_URL)
+#         try:
+#             if not POSTS_FIREBASE_URL:
+#                 raise HTTPException(
+#                     status_code=500,
+#                     detail="Posts Firebase URL not configured"
+#                 )
+            
+#             # Create unique path for the post
+#             firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_object['id']}.json"
+#             print(f"🔥 Storing post in Firebase: {firebase_path}")
+            
+#             response = requests.put(firebase_path, json=post_object, timeout=10)
+            
+#             if response.status_code in (200, 204):
+#                 print("✅ Post stored successfully in Firebase")
+#                 return JSONResponse({
+#                     "success": True,
+#                     "message": "Post published successfully!",
+#                     "post_id": post_object["id"],
+#                     "redirect_url": "/startups/home"
+#                 })
+#             else:
+#                 print(f"❌ Firebase storage failed: {response.status_code} - {response.text}")
+#                 raise HTTPException(
+#                     status_code=500,
+#                     detail="Failed to store post in database"
+#                 )
+                
+#         except requests.exceptions.RequestException as e:
+#             print(f"❌ Firebase request error: {str(e)}")
+#             raise HTTPException(
+#                 status_code=500,
+#                 detail="Database connection error"
+#             )
+    
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"💥 Unexpected error in create_post: {str(e)}")
+#         import traceback
+#         traceback.print_exc()
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"Internal server error: {str(e)}"
+#         )
+
+
 @app.post("/api/create_post")
 async def create_post(
     request: Request,
@@ -970,10 +1135,10 @@ async def create_post(
         # Check if user is authenticated startup
         if current_user.role != "startup":
             raise HTTPException(
-                status_code=403, 
+                status_code=403,
                 detail="Access denied. Only startups can create posts."
             )
-        
+
         # Get form data
         form_data = await request.form()
         
@@ -1060,7 +1225,7 @@ async def create_post(
                     detail=f"Image upload failed: {str(e)}"
                 )
         
-        # Create post object with all details
+        # Create post object with all details including user info
         post_object = {
             "id": str(uuid4()),
             "startup_name": post_data["name"],
@@ -1070,10 +1235,56 @@ async def create_post(
             "description": post_data["description"],
             "image_url": image_url,
             "created_at": datetime.utcnow().isoformat(),
-            "status": "published"
+            "status": "published",
+            # Add user tracking fields
+            "created_by_email": current_user.email,
+            "created_by_name": getattr(current_user, 'name', current_user.email),
+            "likes_count": 0,
+            "shares_count": 0,
+            "application_count": 0
         }
         
-        # Store in Firebase (POSTS_FIREBASE_URL)
+        # Check if startup profile exists for this user
+        print(f"🔍 Checking startup profile for user: {current_user.email}")
+        
+        startup_profile_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+        response = requests.get(startup_profile_path, timeout=10)
+        
+        profile_exists = False
+        existing_profile_id = None
+        
+        if response.status_code == 200:
+            existing_startups = response.json() or {}
+            
+            # Check by email (most reliable way)
+            for startup_id, profile in existing_startups.items():
+                if profile and isinstance(profile, dict):
+                    if profile.get('contactEmail', '') == current_user.email:
+                        profile_exists = True
+                        existing_profile_id = startup_id
+                        print(f"✅ Found existing profile for {current_user.email}")
+                        
+                        # Update startup name if it changed
+                        if profile.get('startupName', '') != post_data["name"]:
+                            print(f"📝 Updating startup name from '{profile.get('startupName', '')}' to '{post_data['name']}'")
+                            update_data = {
+                                'startupName': post_data["name"],
+                                'startup_name': post_data["name"],
+                                'updated_at': datetime.utcnow().isoformat()
+                            }
+                            update_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{startup_id}.json"
+                            requests.patch(update_path, json=update_data, timeout=10)
+                        break
+        
+            profile_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{new_profile['id']}.json"
+            profile_response = requests.put(profile_path, json=new_profile, timeout=10)
+            
+            if profile_response.status_code in (200, 201):
+                print(f"✅ Created startup profile successfully")
+            else:
+                print(f"⚠️ Failed to create startup profile: {profile_response.status_code}")
+        
+        # Store the post in Firebase
         try:
             if not POSTS_FIREBASE_URL:
                 raise HTTPException(
@@ -1089,6 +1300,12 @@ async def create_post(
             
             if response.status_code in (200, 204):
                 print("✅ Post stored successfully in Firebase")
+                
+                # Invalidate posts cache
+                async with posts_cache['lock']:
+                    posts_cache['data'] = None
+                    posts_cache['timestamp'] = None
+                
                 return JSONResponse({
                     "success": True,
                     "message": "Post published successfully!",
@@ -1108,7 +1325,7 @@ async def create_post(
                 status_code=500,
                 detail="Database connection error"
             )
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -1119,6 +1336,9 @@ async def create_post(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
+
+
+
 
 
 @app.get("/api/view_post/{post_id}")
@@ -1365,11 +1585,183 @@ async def invalidate_profiles_cache(current_user: User = Depends(get_current_use
     
     return {"success": True, "message": "Profiles cache cleared"}
 
+# @app.get("/get_startup_profiles")
+# @app.get("/get_startup_profiles/")
+# async def get_startup_profiles(
+#     current_user: User = Depends(get_current_user),
+#     startup_name: Optional[str] = Query(None, description="Specific startup name to fetch")
+# ):
+#     """
+#     Get startup profiles with 10 MINUTE SMART CACHING - For interns to view startup details
+#     """
+#     try:
+#         # Check authorization - interns can view startup profiles
+#         if current_user.role != "intern":
+#             raise HTTPException(
+#                 status_code=403,
+#                 detail="Access denied. Only interns can view startup profiles."
+#             )
+        
+#         # Use a separate cache for startup profiles
+#         startup_cache_key = 'startup_profiles_cache'
+#         if not hasattr(get_startup_profiles, 'cache'):
+#             get_startup_profiles.cache = {
+#                 'data': None,
+#                 'timestamp': None,
+#                 'lock': asyncio.Lock()
+#             }
+        
+#         # 🎯 SMART CACHE CHECK (10 MINUTES)
+#         async with get_startup_profiles.cache['lock']:
+#             cache_valid = (
+#                 get_startup_profiles.cache['data'] is not None and 
+#                 get_startup_profiles.cache['timestamp'] is not None and
+#                 datetime.utcnow() - get_startup_profiles.cache['timestamp'] < CACHE_DURATION
+#             )
+            
+#             if cache_valid:
+#                 # ⚡ CACHE HIT - Instant response!
+#                 startup_data = get_startup_profiles.cache['data']
+#                 cache_status = "hit"
+#                 print("✨ Startup Profiles Cache HIT - Serving from memory (10 min cache)")
+#             else:
+#                 # 🔥 CACHE MISS - Fetch from Firebase
+#                 print("🔥 Startup Profiles Cache MISS - Fetching from Firebase")
+#                 cache_status = "miss"
+                
+#                 firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+                
+#                 try:
+#                     response = requests.get(firebase_path, timeout=10)
+                    
+#                     if response.status_code == 200:
+#                         startup_data = response.json()
+#                         # ✅ Update cache with fresh data
+#                         get_startup_profiles.cache['data'] = startup_data
+#                         get_startup_profiles.cache['timestamp'] = datetime.utcnow()
+#                         print(f"✅ Startup profiles cache updated (valid for 10 minutes) with {len(startup_data) if startup_data else 0} items")
+#                     else:
+#                         # Use stale cache if available
+#                         if get_startup_profiles.cache['data'] is not None:
+#                             startup_data = get_startup_profiles.cache['data']
+#                             cache_status = "stale"
+#                             print("⚠️ Using stale startup profiles cache due to Firebase error")
+#                         else:
+#                             raise HTTPException(status_code=500, detail="Firebase error")
+                            
+#                 except requests.exceptions.RequestException as e:
+#                     # Network error - use stale cache if available
+#                     if get_startup_profiles.cache['data'] is not None:
+#                         startup_data = get_startup_profiles.cache['data']
+#                         cache_status = "stale"
+#                         print(f"⚠️ Using stale startup profiles cache due to network error: {str(e)}")
+#                     else:
+#                         raise HTTPException(status_code=503, detail="Service unavailable")
+        
+#         # Handle empty data
+#         if not startup_data:
+#             return {
+#                 "success": True,
+#                 "startup": None,
+#                 "cache_status": cache_status,
+#                 "message": "No startup profiles found"
+#             }
+        
+#         # If specific startup requested, find it
+#         if startup_name:
+#             # Look for startup by name (case-insensitive)
+#             found_startup = None
+#             for startup_id, startup_profile in startup_data.items():
+#                 if startup_profile and isinstance(startup_profile, dict):
+#                     # Check both field name variants (startupName and startup_name)
+#                     profile_name = (startup_profile.get('startupName', '') or 
+#                                    startup_profile.get('startup_name', ''))
+                    
+#                     if profile_name.lower() == startup_name.lower():
+#                         found_startup = {
+#                             'id': startup_id,
+#                             # Use whichever field has data
+#                             'startupName': startup_profile.get('startupName', '') or startup_profile.get('startup_name', ''),
+#                             'startup_name': startup_profile.get('startup_name', '') or startup_profile.get('startupName', ''),
+#                             'logo': startup_profile.get('logo', ''),
+#                             'foundingYear': startup_profile.get('foundingYear', ''),
+#                             'locationType': startup_profile.get('locationType', ''),
+#                             'physicalLocation': startup_profile.get('physicalLocation', ''),
+#                             'founders': startup_profile.get('founders', []),
+#                             'contactEmail': startup_profile.get('contactEmail', ''),
+#                             'contactPhone': startup_profile.get('contactPhone', ''),
+#                             'website': startup_profile.get('website', ''),
+#                             'linkedin': startup_profile.get('linkedin', ''),
+#                             'twitter': startup_profile.get('twitter', ''),
+#                             'github': startup_profile.get('github', ''),
+#                             'description': startup_profile.get('description', ''),
+#                             'techStack': startup_profile.get('techStack', []),
+#                             'created_at': startup_profile.get('created_at', ''),
+#                             'updated_at': startup_profile.get('updated_at', ''),
+#                             # Add any other fields that might be in the profile
+#                             'tagline': startup_profile.get('tagline', ''),
+#                         }
+#                         break
+            
+#             if found_startup:
+#                 print(f"✅ Found startup profile for: {startup_name}")
+#             else:
+#                 print(f"❌ No startup profile found for: {startup_name}")
+            
+#             return {
+#                 "success": True,
+#                 "startup": found_startup,
+#                 "cache_status": cache_status,
+#                 "cache_age_seconds": int((datetime.utcnow() - get_startup_profiles.cache['timestamp']).total_seconds()) if get_startup_profiles.cache['timestamp'] else None,
+#                 "cache_duration_minutes": 10
+#             }
+        
+#         # Return all startups if no specific name requested
+#         startups_list = []
+#         for startup_id, startup_profile in startup_data.items():
+#             if startup_profile and isinstance(startup_profile, dict):
+#                 startups_list.append({
+#                     'id': startup_id,
+#                     'startupName': startup_profile.get('startupName', ''),
+#                     'logo': startup_profile.get('logo', ''),
+#                     'foundingYear': startup_profile.get('foundingYear', ''),
+#                     'locationType': startup_profile.get('locationType', ''),
+#                     'physicalLocation': startup_profile.get('physicalLocation', ''),
+#                     'founders': startup_profile.get('founders', []),
+#                     'contactEmail': startup_profile.get('contactEmail', ''),
+#                     'contactPhone': startup_profile.get('contactPhone', ''),
+#                     'website': startup_profile.get('website', ''),
+#                     'linkedin': startup_profile.get('linkedin', ''),
+#                     'twitter': startup_profile.get('twitter', ''),
+#                     'github': startup_profile.get('github', ''),
+#                     'description': startup_profile.get('description', ''),
+#                     'techStack': startup_profile.get('techStack', []),
+#                     'created_at': startup_profile.get('created_at', ''),
+#                     'updated_at': startup_profile.get('updated_at', '')
+#                 })
+        
+#         return {
+#             "success": True,
+#             "startups": startups_list,
+#             "total_count": len(startups_list),
+#             "cache_status": cache_status,
+#             "cache_age_seconds": int((datetime.utcnow() - get_startup_profiles.cache['timestamp']).total_seconds()) if get_startup_profiles.cache['timestamp'] else None,
+#             "cache_duration_minutes": 10
+#         }
+        
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         print(f"💥 Error in get_startup_profiles: {str(e)}")
+#         raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/get_startup_profiles")
 @app.get("/get_startup_profiles/")
 async def get_startup_profiles(
     current_user: User = Depends(get_current_user),
-    startup_name: Optional[str] = Query(None, description="Specific startup name to fetch")
+    startup_name: Optional[str] = Query(None, description="Specific startup name to fetch"),
+    email: Optional[str] = Query(None, description="Startup email to fetch")
 ):
     """
     Get startup profiles with 10 MINUTE SMART CACHING - For interns to view startup details
@@ -1381,9 +1773,8 @@ async def get_startup_profiles(
                 status_code=403,
                 detail="Access denied. Only interns can view startup profiles."
             )
-        
+
         # Use a separate cache for startup profiles
-        startup_cache_key = 'startup_profiles_cache'
         if not hasattr(get_startup_profiles, 'cache'):
             get_startup_profiles.cache = {
                 'data': None,
@@ -1442,54 +1833,78 @@ async def get_startup_profiles(
         if not startup_data:
             return {
                 "success": True,
-                "startup": None,
+                "startup": None if (startup_name or email) else [],
                 "cache_status": cache_status,
                 "message": "No startup profiles found"
             }
         
-        # If specific startup requested, find it
-        if startup_name:
-            # Look for startup by name (case-insensitive)
+        # If specific startup requested (by name or email), find it
+        if startup_name or email:
+            # Look for startup
             found_startup = None
             for startup_id, startup_profile in startup_data.items():
-                if (startup_profile and isinstance(startup_profile, dict) and 
-                    startup_profile.get('startupName', '').lower() == startup_name.lower()):
-                    found_startup = {
-                        'id': startup_id,
-                        'startupName': startup_profile.get('startupName', ''),
-                        'logo': startup_profile.get('logo', ''),
-                        'foundingYear': startup_profile.get('foundingYear', ''),
-                        'locationType': startup_profile.get('locationType', ''),
-                        'physicalLocation': startup_profile.get('physicalLocation', ''),
-                        'founders': startup_profile.get('founders', []),
-                        'contactEmail': startup_profile.get('contactEmail', ''),
-                        'contactPhone': startup_profile.get('contactPhone', ''),
-                        'website': startup_profile.get('website', ''),
-                        'linkedin': startup_profile.get('linkedin', ''),
-                        'twitter': startup_profile.get('twitter', ''),
-                        'github': startup_profile.get('github', ''),
-                        'description': startup_profile.get('description', ''),
-                        'techStack': startup_profile.get('techStack', []),
-                        'created_at': startup_profile.get('created_at', ''),
-                        'updated_at': startup_profile.get('updated_at', '')
-                    }
-                    break
+                if startup_profile and isinstance(startup_profile, dict):
+                    # Match by name (case-insensitive)
+                    if startup_name:
+                        profile_name = (startup_profile.get('startupName', '') or 
+                                       startup_profile.get('startup_name', ''))
+                        
+                        if profile_name.lower() == startup_name.lower():
+                            found_startup = startup_profile
+                            found_startup['id'] = startup_id
+                            print(f"✅ Found startup by name: {startup_name}")
+                            break
+                    
+                    # Match by email (more reliable)
+                    if email and startup_profile.get('contactEmail', '').lower() == email.lower():
+                        found_startup = startup_profile
+                        found_startup['id'] = startup_id
+                        print(f"✅ Found startup by email: {email}")
+                        break
+            
+            if found_startup:
+                # Clean and standardize the data
+                cleaned_startup = {
+                    'id': found_startup.get('id', startup_id),
+                    'startupName': found_startup.get('startupName', '') or found_startup.get('startup_name', ''),
+                    'startup_name': found_startup.get('startup_name', '') or found_startup.get('startupName', ''),
+                    'logo': found_startup.get('logo', ''),
+                    'foundingYear': found_startup.get('foundingYear', ''),
+                    'locationType': found_startup.get('locationType', ''),
+                    'physicalLocation': found_startup.get('physicalLocation', ''),
+                    'founders': found_startup.get('founders', []),
+                    'contactEmail': found_startup.get('contactEmail', ''),
+                    'contactPhone': found_startup.get('contactPhone', ''),
+                    'website': found_startup.get('website', ''),
+                    'linkedin': found_startup.get('linkedin', ''),
+                    'twitter': found_startup.get('twitter', ''),
+                    'github': found_startup.get('github', ''),
+                    'description': found_startup.get('description', ''),
+                    'tagline': found_startup.get('tagline', ''),
+                    'techStack': found_startup.get('techStack', []),
+                    'created_at': found_startup.get('created_at', ''),
+                    'updated_at': found_startup.get('updated_at', '')
+                }
+            else:
+                print(f"❌ No startup found for name: {startup_name}, email: {email}")
+                cleaned_startup = None
             
             return {
                 "success": True,
-                "startup": found_startup,
+                "startup": cleaned_startup,
                 "cache_status": cache_status,
                 "cache_age_seconds": int((datetime.utcnow() - get_startup_profiles.cache['timestamp']).total_seconds()) if get_startup_profiles.cache['timestamp'] else None,
                 "cache_duration_minutes": 10
             }
         
-        # Return all startups if no specific name requested
+        # Return all startups if no specific name/email requested
         startups_list = []
         for startup_id, startup_profile in startup_data.items():
             if startup_profile and isinstance(startup_profile, dict):
                 startups_list.append({
                     'id': startup_id,
-                    'startupName': startup_profile.get('startupName', ''),
+                    'startupName': startup_profile.get('startupName', '') or startup_profile.get('startup_name', ''),
+                    'startup_name': startup_profile.get('startup_name', '') or startup_profile.get('startupName', ''),
                     'logo': startup_profile.get('logo', ''),
                     'foundingYear': startup_profile.get('foundingYear', ''),
                     'locationType': startup_profile.get('locationType', ''),
@@ -1502,6 +1917,7 @@ async def get_startup_profiles(
                     'twitter': startup_profile.get('twitter', ''),
                     'github': startup_profile.get('github', ''),
                     'description': startup_profile.get('description', ''),
+                    'tagline': startup_profile.get('tagline', ''),
                     'techStack': startup_profile.get('techStack', []),
                     'created_at': startup_profile.get('created_at', ''),
                     'updated_at': startup_profile.get('updated_at', '')
@@ -1521,6 +1937,10 @@ async def get_startup_profiles(
     except Exception as e:
         print(f"💥 Error in get_startup_profiles: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
+
+
 
 
 
