@@ -1124,25 +1124,20 @@ async def startup_post_page(request: Request, current_user: User = Depends(get_c
 
 
 @app.post("/api/create_post")
-async def create_post(
-    request: Request,
-    current_user: User = Depends(get_current_user)
-):
+async def create_post(request: Request, current_user: User = Depends(get_current_user)):
     """
     Create a new post - accessible only to authenticated startups
     """
     try:
-        # Check if user is authenticated startup
+        # 1. Check if user is an authenticated startup
         if current_user.role != "startup":
             raise HTTPException(
                 status_code=403,
                 detail="Access denied. Only startups can create posts."
             )
 
-        # Get form data
+        # 2. Get and validate form data
         form_data = await request.form()
-        
-        # Extract post data
         post_data = {
             "name": form_data.get("name", "").strip(),
             "tagline": form_data.get("tagline", "").strip(),
@@ -1150,82 +1145,97 @@ async def create_post(
             "skills": form_data.get("skills", "").strip(),
             "description": form_data.get("description", "").strip()
         }
-        
-        # Basic validation
+
         if not post_data["name"] or not post_data["title"]:
             raise HTTPException(
                 status_code=400,
                 detail="Startup name and job title are required"
             )
-        
-        # Handle image upload if present
+
+        # 3. Handle image upload if present
         image_url = ""
         image_file = form_data.get("image")
-        
         if image_file and hasattr(image_file, 'filename') and image_file.filename:
             try:
-                # Read image file
                 image_contents = await image_file.read()
-                
-                # Validate file size (max 4MB)
                 MAX_IMAGE_SIZE = 4 * 1024 * 1024  # 4MB
                 if len(image_contents) > MAX_IMAGE_SIZE:
-                    raise HTTPException(
-                        status_code=413,
-                        detail="Image file too large. Maximum size is 4MB."
-                    )
-                
-                # Validate file type
+                    raise HTTPException(status_code=413, detail="Image file too large. Maximum size is 4MB.")
                 if not image_file.content_type.startswith('image/'):
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Only image files are allowed"
-                    )
-                
-                # Create unique filename
+                    raise HTTPException(status_code=400, detail="Only image files are allowed.")
+
                 file_extension = image_file.filename.split('.')[-1].lower()
                 post_id = str(uuid4())
                 safe_startup_name = re.sub(r"[^A-Za-z0-9]", "_", post_data["name"])
                 unique_filename = f"post_{safe_startup_name}_{post_id}.{file_extension}"
-                
-                # Encode image for ImageKit
+
                 image_base64 = base64.b64encode(image_contents).decode("utf-8")
                 
-                # Upload to posts_imagekit
                 upload_options = UploadFileRequestOptions(
-                    folder="/posts/",
-                    use_unique_file_name=False,
-                    overwrite_file=False,
-                    is_private_file=False,
-                    tags=["post", "startup", safe_startup_name]
+                    folder="/posts/", use_unique_file_name=False, overwrite_file=False
                 )
-                
                 result = posts_imagekit.upload(
-                    file=image_base64,
-                    file_name=unique_filename,
-                    options=upload_options
+                    file=image_base64, file_name=unique_filename, options=upload_options
                 )
-                
-                if result and hasattr(result, 'url') and result.url:
-                    image_url = result.url
-                    print(f"✅ Image uploaded successfully: {image_url}")
-                else:
-                    print("❌ ImageKit upload failed")
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Failed to upload image"
-                    )
-                    
+                image_url = result.url
+                print(f"✅ Image uploaded successfully: {image_url}")
+
             except HTTPException:
                 raise
             except Exception as e:
                 print(f"❌ Image upload error: {str(e)}")
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Image upload failed: {str(e)}"
-                )
+                raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
+
+        # 4. Check/Update/Create Startup Profile in Firebase
+        print(f"🔍 Checking/Updating startup profile for user: {current_user.email}")
         
-        # Create post object with all details including user info
+        # ---> IMPROVEMENT: Use Firebase query to find the profile directly by email
+        profile_query_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+        query_params = {'orderBy': '"contactEmail"', 'equalTo': f'"{current_user.email}"'}
+        
+        try:
+            response = requests.get(profile_query_path, params=query_params, timeout=10)
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+            
+            existing_profiles = response.json() or {}
+            
+            if existing_profiles:
+                # Profile exists, update it if needed
+                profile_id = next(iter(existing_profiles)) # Get the unique ID of the profile
+                profile_data = existing_profiles[profile_id]
+                print(f"✅ Found existing profile for {current_user.email} with ID: {profile_id}")
+                
+                if profile_data.get('startupName', '') != post_data["name"]:
+                    print(f"📝 Updating startup name from '{profile_data.get('startupName', '')}' to '{post_data['name']}'")
+                    update_data = {'startupName': post_data["name"], 'updated_at': datetime.utcnow().isoformat()}
+                    update_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{profile_id}.json"
+                    requests.patch(update_path, json=update_data, timeout=10)
+            else:
+                # ---> THE FIX: If no profile exists, create 'new_profile' here
+                print(f"🤷 No profile found for {current_user.email}. Creating a new one.")
+                new_profile_id = str(uuid4())
+                new_profile = {
+                    "id": new_profile_id,
+                    "startupName": post_data["name"],
+                    "contactEmail": current_user.email,
+                    "contactName": getattr(current_user, 'name', current_user.email),
+                    "createdAt": datetime.utcnow().isoformat(),
+                    "updated_at": datetime.utcnow().isoformat()
+                }
+                
+                profile_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{new_profile_id}.json"
+                profile_response = requests.put(profile_path, json=new_profile, timeout=10)
+                
+                if profile_response.status_code in (200, 201):
+                    print(f"✅ Created startup profile successfully for {current_user.email}")
+                else:
+                    print(f"⚠️ Failed to create startup profile: {profile_response.status_code} - {profile_response.text}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Firebase profile check error: {str(e)}")
+            # Decide if this should be a fatal error or not. Here we let it pass but log it.
+
+        # 5. Create the post object
         post_object = {
             "id": str(uuid4()),
             "startup_name": post_data["name"],
@@ -1236,108 +1246,48 @@ async def create_post(
             "image_url": image_url,
             "created_at": datetime.utcnow().isoformat(),
             "status": "published",
-            # Add user tracking fields
             "created_by_email": current_user.email,
             "created_by_name": getattr(current_user, 'name', current_user.email),
             "likes_count": 0,
             "shares_count": 0,
             "application_count": 0
         }
+
+        # 6. Store the post in Firebase
+        if not POSTS_FIREBASE_URL:
+            raise HTTPException(status_code=500, detail="Posts Firebase URL not configured")
+
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_object['id']}.json"
+        print(f"🔥 Storing post in Firebase: {firebase_path}")
+
+        response = requests.put(firebase_path, json=post_object, timeout=10)
+        response.raise_for_status() # Will raise an exception for non-2xx status codes
+
+        print("✅ Post stored successfully in Firebase")
+
+        # Invalidate posts cache (placeholder logic)
+        if posts_cache.get('lock'):
+            async with posts_cache['lock']:
+                posts_cache['data'] = None
+                posts_cache['timestamp'] = None
         
-        # Check if startup profile exists for this user
-        print(f"🔍 Checking startup profile for user: {current_user.email}")
-        
-        startup_profile_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
-        response = requests.get(startup_profile_path, timeout=10)
-        
-        profile_exists = False
-        existing_profile_id = None
-        
-        if response.status_code == 200:
-            existing_startups = response.json() or {}
-            
-            # Check by email (most reliable way)
-            for startup_id, profile in existing_startups.items():
-                if profile and isinstance(profile, dict):
-                    if profile.get('contactEmail', '') == current_user.email:
-                        profile_exists = True
-                        existing_profile_id = startup_id
-                        print(f"✅ Found existing profile for {current_user.email}")
-                        
-                        # Update startup name if it changed
-                        if profile.get('startupName', '') != post_data["name"]:
-                            print(f"📝 Updating startup name from '{profile.get('startupName', '')}' to '{post_data['name']}'")
-                            update_data = {
-                                'startupName': post_data["name"],
-                                'startup_name': post_data["name"],
-                                'updated_at': datetime.utcnow().isoformat()
-                            }
-                            update_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{startup_id}.json"
-                            requests.patch(update_path, json=update_data, timeout=10)
-                        break
-        
-            profile_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{new_profile['id']}.json"
-            profile_response = requests.put(profile_path, json=new_profile, timeout=10)
-            
-            if profile_response.status_code in (200, 201):
-                print(f"✅ Created startup profile successfully")
-            else:
-                print(f"⚠️ Failed to create startup profile: {profile_response.status_code}")
-        
-        # Store the post in Firebase
-        try:
-            if not POSTS_FIREBASE_URL:
-                raise HTTPException(
-                    status_code=500,
-                    detail="Posts Firebase URL not configured"
-                )
-            
-            # Create unique path for the post
-            firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_object['id']}.json"
-            print(f"🔥 Storing post in Firebase: {firebase_path}")
-            
-            response = requests.put(firebase_path, json=post_object, timeout=10)
-            
-            if response.status_code in (200, 204):
-                print("✅ Post stored successfully in Firebase")
-                
-                # Invalidate posts cache
-                async with posts_cache['lock']:
-                    posts_cache['data'] = None
-                    posts_cache['timestamp'] = None
-                
-                return JSONResponse({
-                    "success": True,
-                    "message": "Post published successfully!",
-                    "post_id": post_object["id"],
-                    "redirect_url": "/startups/home"
-                })
-            else:
-                print(f"❌ Firebase storage failed: {response.status_code} - {response.text}")
-                raise HTTPException(
-                    status_code=500,
-                    detail="Failed to store post in database"
-                )
-                
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Firebase request error: {str(e)}")
-            raise HTTPException(
-                status_code=500,
-                detail="Database connection error"
-            )
+        return JSONResponse({
+            "success": True,
+            "message": "Post published successfully!",
+            "post_id": post_object["id"],
+            "redirect_url": "/startups/home"
+        })
 
     except HTTPException:
-        raise
+        raise  # Re-raise FastAPI's HTTPExceptions
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Firebase request error: {str(e)}")
+        raise HTTPException(status_code=503, detail="Database connection error.")
     except Exception as e:
         print(f"💥 Unexpected error in create_post: {str(e)}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
-
-
+        raise HTTPException(status_code=500, detail=f"An unexpected internal error occurred.")
 
 
 
