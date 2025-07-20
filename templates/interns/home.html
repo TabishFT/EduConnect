@@ -1488,6 +1488,21 @@ async function viewProfile() {
                 }
             }, 30000);
         }
+        // Toast notification system
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    
+    const toastContent = toast.querySelector('.toast-content');
+    if (!toastContent) return;
+    
+    toast.className = 'toast show ' + type;
+    toastContent.textContent = message;
+    
+    setTimeout(() => {
+        toast.className = 'toast';
+    }, 3000);
+}
         
         document.addEventListener('mousedown', resetInactivityTimer);
         document.addEventListener('touchstart', resetInactivityTimer);
