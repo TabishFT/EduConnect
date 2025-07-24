@@ -1997,6 +1997,115 @@ async def get_chat_users(current_user: User = Depends(get_current_user)):
         print(f"Error getting chat users: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get users")
 
+@app.get("/api/chat/conversations")
+async def get_conversations(current_user: User = Depends(get_current_user)):
+    """Get list of existing conversations for the current user"""
+    try:
+        conversations = []
+        
+        # Get all messages involving the current user
+        with cleanup_lock:
+            for conv_id, messages in chat_messages.items():
+                if messages and current_user.email in conv_id:
+                    # Get the other user's email
+                    emails = conv_id.split('_')
+                    other_email = emails[0] if emails[1] == current_user.email else emails[1]
+                    
+                    # Get last message
+                    last_message = messages[-1]
+                    
+                    # Get user info from MongoDB
+                    other_user = users_collection.find_one(
+                        {"email": other_email},
+                        {"email": 1, "name": 1, "role": 1, "_id": 0}
+                    )
+                    
+                    if other_user:
+                        # Count unread messages
+                        unread_count = sum(1 for msg in messages 
+                                         if msg['to'] == current_user.email and not msg.get('read', False))
+                        
+                        conversations.append({
+                            "email": other_user["email"],
+                            "name": other_user.get("name", other_user["email"]),
+                            "role": other_user.get("role", "user"),
+                            "last_message": last_message['message'],
+                            "last_message_time": last_message['timestamp'],
+                            "unread_count": unread_count,
+                            "online": other_user["email"] in user_sockets
+                        })
+        
+        # Sort by last message time (newest first)
+        conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
+        
+        return {"success": True, "conversations": conversations}
+        
+    except Exception as e:
+        print(f"Error getting conversations: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get conversations")
+
+@app.get("/api/chat/search")
+async def search_users(
+    q: str = Query(..., min_length=2),
+    current_user: User = Depends(get_current_user)
+):
+    """Search for users by name or email"""
+    try:
+        # Search in MongoDB
+        search_regex = {"$regex": q, "$options": "i"}
+        users = []
+        
+        cursor = users_collection.find(
+            {
+                "$and": [
+                    {"email": {"$ne": current_user.email}},
+                    {"$or": [
+                        {"email": search_regex},
+                        {"name": search_regex}
+                    ]}
+                ]
+            },
+            {"email": 1, "name": 1, "role": 1, "_id": 0}
+        ).limit(10)
+        
+        for user in cursor:
+            users.append({
+                "email": user["email"],
+                "name": user.get("name", user["email"]),
+                "role": user.get("role", "user"),
+                "online": user["email"] in user_sockets
+            })
+        
+        return {"success": True, "users": users}
+        
+    except Exception as e:
+        print(f"Error searching users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to search users")
+
+@app.post("/api/chat/mark_read")
+async def mark_messages_read(
+    data: dict,
+    current_user: User = Depends(get_current_user)
+):
+    """Mark messages as read"""
+    try:
+        other_user = data.get("with")
+        if not other_user:
+            raise HTTPException(status_code=400, detail="Missing 'with' parameter")
+        
+        with cleanup_lock:
+            conversation_id = '_'.join(sorted([current_user.email, other_user]))
+            if conversation_id in chat_messages:
+                for msg in chat_messages[conversation_id]:
+                    if msg['to'] == current_user.email:
+                        msg['read'] = True
+        
+        return {"success": True}
+        
+    except Exception as e:
+        print(f"Error marking messages as read: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to mark messages as read")
+
 # Update the main execution block
 if __name__ == "__main__":
     import uvicorn
