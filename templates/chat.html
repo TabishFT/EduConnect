@@ -23,6 +23,7 @@
             --online-color: #25D366;
             --input-bg: #1a1a1a;
             --hover-bg: #1a1a1a;
+            --blue-tick: #53bdeb;
         }
 
         * {
@@ -62,6 +63,7 @@
             padding: 20px;
             background: var(--sidebar-bg);
             border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
 
         .sidebar-header h1 {
@@ -103,6 +105,7 @@
             flex: 1;
             overflow-y: auto;
             background: var(--sidebar-bg);
+            -webkit-overflow-scrolling: touch;
         }
 
         .conversation-item {
@@ -137,6 +140,7 @@
             color: white;
             margin-right: 15px;
             position: relative;
+            flex-shrink: 0;
         }
 
         .online-indicator {
@@ -174,6 +178,7 @@
             flex-direction: column;
             align-items: flex-end;
             gap: 5px;
+            flex-shrink: 0;
         }
 
         .conversation-time {
@@ -207,6 +212,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-shrink: 0;
         }
 
         .chat-header-info {
@@ -238,6 +244,7 @@
             overflow-y: auto;
             padding: 20px 30px;
             background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 60 0 L 0 0 0 60" fill="none" stroke="%23151515" stroke-width="1"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100%25" height="100%25" fill="url(%23grid)" /%3E%3C/svg%3E');
+            -webkit-overflow-scrolling: touch;
         }
 
         .message {
@@ -289,6 +296,7 @@
             padding: 20px 30px;
             background: var(--sidebar-bg);
             border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
 
         .message-input-wrapper {
@@ -331,6 +339,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s;
+            flex-shrink: 0;
         }
 
         .send-button:hover {
@@ -378,6 +387,9 @@
             overflow-y: auto;
             z-index: 100;
             display: none;
+            margin-top: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         }
 
         .search-results.active {
@@ -450,10 +462,23 @@
                 z-index: 20;
                 transform: translateX(-100%);
                 transition: transform 0.3s;
+                display: flex;
+                flex-direction: column;
             }
 
             .sidebar.open {
                 transform: translateX(0);
+            }
+
+            .sidebar-header {
+                flex-shrink: 0;
+            }
+
+            .conversations-list {
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 20px;
             }
 
             .chat-area {
@@ -682,6 +707,26 @@
                 this.socket.on('user_typing', (data) => {
                     this.handleTypingIndicator(data);
                 });
+                
+                this.socket.on('message_read', (data) => {
+                    // Update the read status of messages
+                    this.messages.forEach(msg => {
+                        if (msg.id === data.message_id) {
+                            msg.read = true;
+                        }
+                    });
+                    this.renderMessages();
+                });
+
+                this.socket.on('message_delivered', (data) => {
+                    // Update delivery status
+                    this.messages.forEach(msg => {
+                        if (msg.id === data.message_id) {
+                            msg.delivered = true;
+                        }
+                    });
+                    this.renderMessages();
+                });
             }
 
             setupEventListeners() {
@@ -689,6 +734,14 @@
                 this.elements.searchInput.addEventListener('input', (e) => {
                     clearTimeout(this.searchTimer);
                     this.searchTimer = setTimeout(() => this.handleSearch(e.target.value), 300);
+                });
+
+                // Click outside to close search results
+                document.addEventListener('click', (e) => {
+                    if (!this.elements.searchInput.contains(e.target) && 
+                        !this.elements.searchResults.contains(e.target)) {
+                        this.elements.searchResults.classList.remove('active');
+                    }
                 });
 
                 // Send message
@@ -888,13 +941,29 @@
 
                 this.elements.messagesContainer.innerHTML = this.messages.map(msg => {
                     const isSent = msg.from === this.currentUser.email;
+                    
+                    // Determine tick status
+                    let tickIcon = '';
+                    if (isSent) {
+                        if (msg.read) {
+                            // Blue double tick for read
+                            tickIcon = '<i class="fas fa-check-double" style="font-size: 12px; color: var(--blue-tick);"></i>';
+                        } else if (msg.delivered) {
+                            // Grey double tick for delivered
+                            tickIcon = '<i class="fas fa-check-double" style="font-size: 12px; color: #999;"></i>';
+                        } else {
+                            // Single grey tick for sent
+                            tickIcon = '<i class="fas fa-check" style="font-size: 12px; color: #999;"></i>';
+                        }
+                    }
+                    
                     return `
-                        <div class="message ${isSent ? 'sent' : 'received'}">
+                        <div class="message ${isSent ? 'sent' : 'received'}" data-message-id="${msg.id}">
                             <div class="message-bubble">
                                 <div class="message-text">${this.escapeHtml(msg.message)}</div>
                                 <div class="message-time">
                                     ${this.formatMessageTime(msg.timestamp)}
-                                    ${isSent ? '<i class="fas fa-check-double" style="font-size: 12px;"></i>' : ''}
+                                    ${tickIcon}
                                 </div>
                             </div>
                         </div>
@@ -905,6 +974,20 @@
                 setTimeout(() => {
                     this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
                 }, 100);
+
+                // Mark visible received messages as read
+                if (this.currentChat) {
+                    const receivedMessages = this.messages.filter(msg => 
+                        msg.from === this.currentChat && !msg.read
+                    );
+                    
+                    receivedMessages.forEach(msg => {
+                        this.socket.emit('mark_message_read', {
+                            message_id: msg.id,
+                            from: msg.from
+                        });
+                    });
+                }
             }
 
             sendMessage() {
@@ -928,7 +1011,9 @@
                         to: this.currentUser.email,
                         message: data.message,
                         timestamp: data.timestamp,
-                        id: data.id
+                        id: data.id,
+                        delivered: true,
+                        read: false
                     });
                     this.renderMessages();
                 } else {
@@ -947,7 +1032,9 @@
                         to: data.to,
                         message: data.message,
                         timestamp: data.timestamp,
-                        id: data.id
+                        id: data.id,
+                        delivered: data.delivered || false,
+                        read: false
                     });
                     this.renderMessages();
                 }
@@ -970,8 +1057,9 @@
             handleTypingIndicator(data) {
                 if (data.from === this.currentChat) {
                     if (data.typing) {
+                        const user = this.conversations.find(c => c.email === data.from);
                         document.getElementById('typingUser').textContent = 
-                            this.conversations.find(c => c.email === data.from)?.name || data.from;
+                            user ? user.name : data.from;
                         this.elements.typingIndicator.style.display = 'block';
                     } else {
                         this.elements.typingIndicator.style.display = 'none';
@@ -990,7 +1078,8 @@
 
             showNotification(from, message) {
                 if ('Notification' in window && Notification.permission === 'granted') {
-                    const name = this.conversations.find(c => c.email === from)?.name || from;
+                    const user = this.conversations.find(c => c.email === from);
+                    const name = user ? user.name : from;
                     new Notification(name, {
                         body: message,
                         icon: '/static/icon.png'
@@ -1012,12 +1101,42 @@
             }
 
             formatMessageTime(timestamp) {
+                // Parse the ISO timestamp and convert to local time
                 const date = new Date(timestamp);
-                return date.toLocaleTimeString('en-US', { 
-                    hour: 'numeric', 
-                    minute: '2-digit',
-                    hour12: true 
-                });
+                const now = new Date();
+                
+                // Check if it's today
+                const isToday = date.toDateString() === now.toDateString();
+                
+                if (isToday) {
+                    // Show time only for today's messages
+                    return date.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    });
+                } else {
+                    // Show date and time for older messages
+                    const yesterday = new Date(now);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const isYesterday = date.toDateString() === yesterday.toDateString();
+                    
+                    if (isYesterday) {
+                        return 'Yesterday ' + date.toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit',
+                            hour12: true 
+                        });
+                    }
+                    
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                }
             }
 
             escapeHtml(text) {

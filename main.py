@@ -1843,159 +1843,10 @@ async def disconnect(sid):
         
         print(f"✅ User {user_email} disconnected (socket {sid})")
 
-@sio.event
-async def send_message(sid, data):
-    """Handle sending messages between users"""
-    try:
-        # Verify authentication
-        if sid not in connected_users:
-            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
-            return
-        
-        sender_email = connected_users[sid]
-        recipient_email = data.get('to')
-        message_text = data.get('message')
-        
-        # Validate input
-        if not recipient_email or not message_text:
-            await sio.emit('error', {'message': 'Missing recipient or message'}, room=sid)
-            return
-        
-        # Create message
-        message_id = str(uuid4())
-        timestamp = datetime.utcnow()
-        
-        message_obj = {
-            'id': message_id,
-            'from': sender_email,
-            'to': recipient_email,
-            'message': message_text,
-            'timestamp': timestamp.isoformat(),
-            'read': False
-        }
-        
-        # Store message in memory
-        with cleanup_lock:
-            # Create conversation ID (sorted emails for consistency)
-            conversation_id = '_'.join(sorted([sender_email, recipient_email]))
-            
-            if conversation_id not in chat_messages:
-                chat_messages[conversation_id] = []
-            
-            chat_messages[conversation_id].append(message_obj)
-            message_timestamps[message_id] = timestamp
-        
-        # Send to recipient if online
-        if recipient_email in user_sockets:
-            for recipient_sid in user_sockets[recipient_email]:
-                await sio.emit('receive_message', {
-                    'from': sender_email,
-                    'message': message_text,
-                    'timestamp': message_obj['timestamp'],
-                    'id': message_id
-                }, room=recipient_sid)
-        
-        # Confirm to sender
-        await sio.emit('message_sent', {
-            'to': recipient_email,
-            'message': message_text,
-            'timestamp': message_obj['timestamp'],
-            'id': message_id
-        }, room=sid)
-        
-        print(f"📨 Message sent: {sender_email} → {recipient_email}")
-        
-    except Exception as e:
-        print(f"Error in send_message: {str(e)}")
-        await sio.emit('error', {'message': 'Failed to send message'}, room=sid)
 
-@sio.event
-async def get_chat_history(sid, data):
-    """Get chat history with a specific user"""
-    try:
-        if sid not in connected_users:
-            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
-            return
-        
-        current_user = connected_users[sid]
-        other_user = data.get('with')
-        
-        if not other_user:
-            await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
-            return
-        
-        # Get conversation
-        with cleanup_lock:
-            conversation_id = '_'.join(sorted([current_user, other_user]))
-            messages = chat_messages.get(conversation_id, [])
-            
-            # Sort by timestamp
-            sorted_messages = sorted(messages, key=lambda x: x['timestamp'])
-        
-        await sio.emit('chat_history', {
-            'with': other_user,
-            'messages': sorted_messages
-        }, room=sid)
-        
-    except Exception as e:
-        print(f"Error in get_chat_history: {str(e)}")
-        await sio.emit('error', {'message': 'Failed to get chat history'}, room=sid)
 
-@sio.event
-async def typing(sid, data):
-    """Handle typing indicators"""
-    try:
-        if sid not in connected_users:
-            return
-        
-        sender = connected_users[sid]
-        recipient = data.get('to')
-        is_typing = data.get('typing', False)
-        
-        if recipient and recipient in user_sockets:
-            for recipient_sid in user_sockets[recipient]:
-                await sio.emit('user_typing', {
-                    'from': sender,
-                    'typing': is_typing
-                }, room=recipient_sid)
-                
-    except Exception as e:
-        print(f"Error in typing event: {str(e)}")
 
-# Add the chat page route
-@app.get("/chat")
-async def chat_page(request: Request, current_user: User = Depends(get_current_user)):
-    """Serve the chat page"""
-    return templates.TemplateResponse("chat.html", {
-        "request": request,
-        "user": current_user
-    })
-
-# API endpoint to get active users (optional)
-@app.get("/api/chat/users")
-async def get_chat_users(current_user: User = Depends(get_current_user)):
-    """Get list of users to chat with"""
-    try:
-        # Get all users from MongoDB except current user
-        users = []
-        cursor = users_collection.find(
-            {"email": {"$ne": current_user.email}},
-            {"email": 1, "name": 1, "role": 1, "_id": 0}
-        ).limit(50)  # Limit to 50 users for performance
-        
-        for user in cursor:
-            users.append({
-                "email": user["email"],
-                "name": user.get("name", user["email"]),
-                "role": user.get("role", "unknown"),
-                "online": user["email"] in user_sockets
-            })
-        
-        return {"success": True, "users": users}
-        
-    except Exception as e:
-        print(f"Error getting chat users: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to get users")
+# Add these API endpoints to your main.py
 
 @app.get("/api/chat/conversations")
 async def get_conversations(current_user: User = Depends(get_current_user)):
@@ -2105,6 +1956,194 @@ async def mark_messages_read(
     except Exception as e:
         print(f"Error marking messages as read: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to mark messages as read")
+
+@app.get("/api/chat/users")
+async def get_chat_users(current_user: User = Depends(get_current_user)):
+    """Get list of users to chat with (kept for backward compatibility)"""
+    try:
+        # This endpoint is not used in the new version but kept for compatibility
+        return {"success": True, "users": []}
+        
+    except Exception as e:
+        print(f"Error getting chat users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get users")
+
+# Update these Socket.IO events
+
+@sio.event
+async def send_message(sid, data):
+    """Handle sending messages between users"""
+    try:
+        # Verify authentication
+        if sid not in connected_users:
+            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
+            return
+        
+        sender_email = connected_users[sid]
+        recipient_email = data.get('to')
+        message_text = data.get('message')
+        
+        # Validate input
+        if not recipient_email or not message_text:
+            await sio.emit('error', {'message': 'Missing recipient or message'}, room=sid)
+            return
+        
+        # Create message
+        message_id = str(uuid4())
+        timestamp = datetime.utcnow()
+        
+        message_obj = {
+            'id': message_id,
+            'from': sender_email,
+            'to': recipient_email,
+            'message': message_text,
+            'timestamp': timestamp.isoformat(),
+            'read': False,
+            'delivered': False
+        }
+        
+        # Store message in memory
+        with cleanup_lock:
+            # Create conversation ID (sorted emails for consistency)
+            conversation_id = '_'.join(sorted([sender_email, recipient_email]))
+            
+            if conversation_id not in chat_messages:
+                chat_messages[conversation_id] = []
+            
+            chat_messages[conversation_id].append(message_obj)
+            message_timestamps[message_id] = timestamp
+        
+        # Send to recipient if online
+        if recipient_email in user_sockets:
+            message_obj['delivered'] = True  # Mark as delivered
+            for recipient_sid in user_sockets[recipient_email]:
+                await sio.emit('receive_message', {
+                    'from': sender_email,
+                    'message': message_text,
+                    'timestamp': message_obj['timestamp'],
+                    'id': message_id
+                }, room=recipient_sid)
+                
+                # Send delivery confirmation to sender
+                await sio.emit('message_delivered', {
+                    'message_id': message_id
+                }, room=sid)
+        
+        # Confirm to sender with delivery status
+        await sio.emit('message_sent', {
+            'to': recipient_email,
+            'message': message_text,
+            'timestamp': message_obj['timestamp'],
+            'id': message_id,
+            'delivered': message_obj['delivered']
+        }, room=sid)
+        
+        print(f"📨 Message sent: {sender_email} → {recipient_email}")
+        
+    except Exception as e:
+        print(f"Error in send_message: {str(e)}")
+        await sio.emit('error', {'message': 'Failed to send message'}, room=sid)
+
+@sio.event
+async def mark_message_read(sid, data):
+    """Mark a specific message as read and notify sender"""
+    try:
+        if sid not in connected_users:
+            return
+        
+        reader_email = connected_users[sid]
+        message_id = data.get('message_id')
+        sender_email = data.get('from')
+        
+        if not message_id or not sender_email:
+            return
+        
+        # Update message status in memory
+        with cleanup_lock:
+            conversation_id = '_'.join(sorted([reader_email, sender_email]))
+            if conversation_id in chat_messages:
+                for msg in chat_messages[conversation_id]:
+                    if msg['id'] == message_id and msg['to'] == reader_email:
+                        msg['read'] = True
+                        
+                        # Notify sender if online
+                        if sender_email in user_sockets:
+                            for sender_sid in user_sockets[sender_email]:
+                                await sio.emit('message_read', {
+                                    'message_id': message_id,
+                                    'reader': reader_email
+                                }, room=sender_sid)
+                        break
+                        
+    except Exception as e:
+        print(f"Error marking message as read: {str(e)}")
+
+@sio.event
+async def get_chat_history(sid, data):
+    """Get chat history with a specific user"""
+    try:
+        if sid not in connected_users:
+            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
+            return
+        
+        current_user = connected_users[sid]
+        other_user = data.get('with')
+        
+        if not other_user:
+            await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
+            return
+        
+        # Get conversation
+        with cleanup_lock:
+            conversation_id = '_'.join(sorted([current_user, other_user]))
+            messages = chat_messages.get(conversation_id, [])
+            
+            # Sort by timestamp
+            sorted_messages = sorted(messages, key=lambda x: x['timestamp'])
+        
+        await sio.emit('chat_history', {
+            'with': other_user,
+            'messages': sorted_messages
+        }, room=sid)
+        
+    except Exception as e:
+        print(f"Error in get_chat_history: {str(e)}")
+        await sio.emit('error', {'message': 'Failed to get chat history'}, room=sid)
+
+@sio.event
+async def typing(sid, data):
+    """Handle typing indicators"""
+    try:
+        if sid not in connected_users:
+            return
+        
+        sender = connected_users[sid]
+        recipient = data.get('to')
+        is_typing = data.get('typing', False)
+        
+        if recipient and recipient in user_sockets:
+            for recipient_sid in user_sockets[recipient]:
+                await sio.emit('user_typing', {
+                    'from': sender,
+                    'typing': is_typing
+                }, room=recipient_sid)
+                
+    except Exception as e:
+        print(f"Error in typing event: {str(e)}")
+
+# Add the chat page route
+@app.get("/chat")
+async def chat_page(request: Request, current_user: User = Depends(get_current_user)):
+    """Serve the chat page"""
+    return templates.TemplateResponse("chat.html", {
+        "request": request,
+        "user": current_user
+    })
+
+
+
+
+
 
 # Update the main execution block
 if __name__ == "__main__":
