@@ -39,6 +39,12 @@ from uuid import uuid4
 templates = Jinja2Templates(directory="templates")
 # FastAPI app setup
 app = FastAPI()
+# In-memory chat storage with automatic cleanup
+chat_messages = []  # List of all messages with timestamps
+user_connections = {}  # {user_email: [socket_ids]}
+socket_users = {}  # {socket_id: user_email}
+message_lock = threading.Lock()
+
 
 
 def cleanup_old_messages():
@@ -98,11 +104,6 @@ FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 STARTUP_FIREBASE_URL = os.getenv("FIREBASE_STARTUP_DATABASE")
 POSTS_FIREBASE_URL = os.getenv("FIREBASE_POSTS_DATABASE")
 
-# In-memory chat storage with automatic cleanup
-chat_messages = []  # List of all messages with timestamps
-user_connections = {}  # {user_email: [socket_ids]}
-socket_users = {}  # {socket_id: user_email}
-message_lock = threading.Lock()
 
 # CORS middleware
 app.add_middleware(
@@ -1825,7 +1826,7 @@ async def connect(sid, environ):
         import traceback
         traceback.print_exc()
         return False
-        
+
 @sio.event
 async def disconnect(sid):
     """Handle socket disconnections"""
