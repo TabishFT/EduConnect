@@ -37,12 +37,9 @@ from uuid import uuid4
 
 
 templates = Jinja2Templates(directory="templates")
+# FastAPI app setup
+app = FastAPI()
 
-# In-memory chat storage with automatic cleanup
-chat_messages = []  # List of all messages with timestamps
-user_connections = {}  # {user_email: [socket_ids]}
-socket_users = {}  # {socket_id: user_email}
-message_lock = threading.Lock()
 
 def cleanup_old_messages():
     """Remove messages older than 24 hours"""
@@ -95,15 +92,17 @@ sio = socketio.AsyncServer(
     logger=True,
     engineio_logger=True
 )
-
-# FastAPI app setup
-app = FastAPI()
-
 # Combine FastAPI and Socket.IO
 socket_app = socketio.ASGIApp(sio, app)
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 STARTUP_FIREBASE_URL = os.getenv("FIREBASE_STARTUP_DATABASE")
 POSTS_FIREBASE_URL = os.getenv("FIREBASE_POSTS_DATABASE")
+
+# In-memory chat storage with automatic cleanup
+chat_messages = []  # List of all messages with timestamps
+user_connections = {}  # {user_email: [socket_ids]}
+socket_users = {}  # {socket_id: user_email}
+message_lock = threading.Lock()
 
 # CORS middleware
 app.add_middleware(
@@ -1758,21 +1757,31 @@ async def connect(sid, environ):
     print(f"Client {sid} attempting to connect")
     
     try:
-        # Extract cookies from environ
+        # Get authorization from multiple sources
+        auth_header = environ.get('HTTP_AUTHORIZATION', '')
         cookie_header = environ.get('HTTP_COOKIE', '')
-        cookies = {}
-        if cookie_header:
+        
+        token = None
+        
+        # Try to get token from Authorization header first
+        if auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+            print(f"Token found in Authorization header for {sid}")
+        
+        # If not in header, try cookies
+        if not token and cookie_header:
+            cookies = {}
             for cookie in cookie_header.split(';'):
                 if '=' in cookie:
                     key, value = cookie.strip().split('=', 1)
                     cookies[key] = value
+            token = cookies.get('access_token')
+            if token:
+                print(f"Token found in cookies for {sid}")
         
-        # Get JWT token from cookies
-        token = cookies.get('access_token')
         if not token:
-            print(f"No token found for {sid}, disconnecting")
-            await sio.disconnect(sid)
-            return False
+            print(f"No token found for {sid}, rejecting connection")
+            return False  # Reject connection
         
         # Verify JWT token
         try:
@@ -1780,15 +1789,13 @@ async def connect(sid, environ):
             email = payload.get("sub")
             
             if not email:
-                print(f"Invalid token payload for {sid}, disconnecting")
-                await sio.disconnect(sid)
+                print(f"Invalid token payload for {sid}")
                 return False
             
             # Verify user exists
             user = get_user(email)
             if not user:
-                print(f"User {email} not found for {sid}, disconnecting")
-                await sio.disconnect(sid)
+                print(f"User {email} not found for {sid}")
                 return False
             
             # Store user connection
@@ -1796,26 +1803,29 @@ async def connect(sid, environ):
             user_sockets[email].append(sid)
             
             # Store user info in session
-            await sio.save_session(sid, {'user_email': email})
+            await sio.save_session(sid, {'user_email': email, 'user_role': user.role})
             
             print(f"✅ User {email} connected with socket {sid}")
+            
+            # Send confirmation
             await sio.emit('connected', {
                 'message': 'Successfully connected',
-                'user_email': email
-            }, room=sid)
+                'user_email': email,
+                'socket_id': sid
+            }, to=sid)
             
-            return True
+            return True  # Accept connection
             
         except JWTError as e:
-            print(f"JWT decode error for {sid}: {e}")
-            await sio.disconnect(sid)
+            print(f"JWT decode error for {sid}: {str(e)}")
             return False
             
     except Exception as e:
         print(f"Connection error for {sid}: {str(e)}")
-        await sio.disconnect(sid)
+        import traceback
+        traceback.print_exc()
         return False
-
+        
 @sio.event
 async def disconnect(sid):
     """Handle socket disconnections"""
