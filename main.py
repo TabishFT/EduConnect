@@ -1983,7 +1983,7 @@ async def get_chat_users(current_user: User = Depends(get_current_user)):
             {"email": 1, "name": 1, "role": 1, "_id": 0}
         ).limit(50)  # Limit to 50 users for performance
         
-        async for user in cursor:
+        for user in cursor:
             users.append({
                 "email": user["email"],
                 "name": user.get("name", user["email"]),
