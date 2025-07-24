@@ -15,3 +15,5 @@ httpx
 imagekitio
 jinja2
 typing
+python-socketio
+fastapi-socketio

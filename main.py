@@ -22,13 +22,41 @@ from fastapi_sso.sso.github import GithubSSO
 from fastapi_sso.sso.linkedin import LinkedInSSO
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse
-from dotenv import load_dotenv
+from dotenv import load_env
 from functools import wraps
 from fastapi.templating import Jinja2Templates
 from uuid import uuid4
 import json
 import asyncio
+import socketio
+from threading import Timer
+import threading
+from collections import defaultdict
+import time
+from uuid import uuid4
+
+
 templates = Jinja2Templates(directory="templates")
+
+# In-memory chat storage with automatic cleanup
+chat_messages = []  # List of all messages with timestamps
+user_connections = {}  # {user_email: [socket_ids]}
+socket_users = {}  # {socket_id: user_email}
+message_lock = threading.Lock()
+
+def cleanup_old_messages():
+    """Remove messages older than 24 hours"""
+    with message_lock:
+        current_time = time.time()
+        global chat_messages
+        chat_messages = [msg for msg in chat_messages if current_time - msg['timestamp'] < 86400]  # 24 hours
+    
+    # Schedule next cleanup
+    Timer(3600, cleanup_old_messages).start()  # Run every hour
+
+# Start the cleanup timer
+cleanup_old_messages()
+
 # Load environment variables
 load_dotenv()
 
@@ -60,8 +88,19 @@ users_collection.create_index([("role", ASCENDING)])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Socket.IO setup
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins=["https://internweb.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
+    logger=True,
+    engineio_logger=True
+)
+
 # FastAPI app setup
 app = FastAPI()
+
+# Combine FastAPI and Socket.IO
+socket_app = socketio.ASGIApp(sio, app)
 FIREBASE_URL = os.getenv("FIREBASE_INTERN_DATABASE")
 STARTUP_FIREBASE_URL = os.getenv("FIREBASE_STARTUP_DATABASE")
 POSTS_FIREBASE_URL = os.getenv("FIREBASE_POSTS_DATABASE")
@@ -958,171 +997,6 @@ async def startup_post_page(request: Request, current_user: User = Depends(get_c
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
-# @app.post("/api/create_post")
-# async def create_post(
-#     request: Request,
-#     current_user: User = Depends(get_current_user)
-# ):
-#     """
-#     Create a new post - accessible only to authenticated startups
-#     """
-#     try:
-#         # Check if user is authenticated startup
-#         if current_user.role != "startup":
-#             raise HTTPException(
-#                 status_code=403, 
-#                 detail="Access denied. Only startups can create posts."
-#             )
-        
-#         # Get form data
-#         form_data = await request.form()
-        
-#         # Extract post data
-#         post_data = {
-#             "name": form_data.get("name", "").strip(),
-#             "tagline": form_data.get("tagline", "").strip(),
-#             "title": form_data.get("title", "").strip(),
-#             "skills": form_data.get("skills", "").strip(),
-#             "description": form_data.get("description", "").strip()
-#         }
-        
-#         # Basic validation
-#         if not post_data["name"] or not post_data["title"]:
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail="Startup name and job title are required"
-#             )
-        
-#         # Handle image upload if present
-#         image_url = ""
-#         image_file = form_data.get("image")
-        
-#         if image_file and hasattr(image_file, 'filename') and image_file.filename:
-#             try:
-#                 # Read image file
-#                 image_contents = await image_file.read()
-                
-#                 # Validate file size (max 4MB)
-#                 MAX_IMAGE_SIZE = 4 * 1024 * 1024  # 4MB
-#                 if len(image_contents) > MAX_IMAGE_SIZE:
-#                     raise HTTPException(
-#                         status_code=413,
-#                         detail="Image file too large. Maximum size is 4MB."
-#                     )
-                
-#                 # Validate file type
-#                 if not image_file.content_type.startswith('image/'):
-#                     raise HTTPException(
-#                         status_code=400,
-#                         detail="Only image files are allowed"
-#                     )
-                
-#                 # Create unique filename
-#                 file_extension = image_file.filename.split('.')[-1].lower()
-#                 post_id = str(uuid4())
-#                 safe_startup_name = re.sub(r"[^A-Za-z0-9]", "_", post_data["name"])
-#                 unique_filename = f"post_{safe_startup_name}_{post_id}.{file_extension}"
-                
-#                 # Encode image for ImageKit
-#                 image_base64 = base64.b64encode(image_contents).decode("utf-8")
-                
-#                 # Upload to posts_imagekit
-#                 upload_options = UploadFileRequestOptions(
-#                     folder="/posts/",
-#                     use_unique_file_name=False,
-#                     overwrite_file=False,
-#                     is_private_file=False,
-#                     tags=["post", "startup", safe_startup_name]
-#                 )
-                
-#                 result = posts_imagekit.upload(
-#                     file=image_base64,
-#                     file_name=unique_filename,
-#                     options=upload_options
-#                 )
-                
-#                 if result and hasattr(result, 'url') and result.url:
-#                     image_url = result.url
-#                     print(f"✅ Image uploaded successfully: {image_url}")
-#                 else:
-#                     print("❌ ImageKit upload failed")
-#                     raise HTTPException(
-#                         status_code=500,
-#                         detail="Failed to upload image"
-#                     )
-                    
-#             except HTTPException:
-#                 raise
-#             except Exception as e:
-#                 print(f"❌ Image upload error: {str(e)}")
-#                 raise HTTPException(
-#                     status_code=500,
-#                     detail=f"Image upload failed: {str(e)}"
-#                 )
-        
-#         # Create post object with all details
-#         post_object = {
-#             "id": str(uuid4()),
-#             "startup_name": post_data["name"],
-#             "tagline": post_data["tagline"],
-#             "job_title": post_data["title"],
-#             "skills": post_data["skills"],
-#             "description": post_data["description"],
-#             "image_url": image_url,
-#             "created_at": datetime.utcnow().isoformat(),
-#             "status": "published",
-#             "created_by_email": current_user.email,  # User who created this
-#             "created_by_name": current_user.name
-#         }
-        
-#         # Store in Firebase (POSTS_FIREBASE_URL)
-#         try:
-#             if not POSTS_FIREBASE_URL:
-#                 raise HTTPException(
-#                     status_code=500,
-#                     detail="Posts Firebase URL not configured"
-#                 )
-            
-#             # Create unique path for the post
-#             firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_object['id']}.json"
-#             print(f"🔥 Storing post in Firebase: {firebase_path}")
-            
-#             response = requests.put(firebase_path, json=post_object, timeout=10)
-            
-#             if response.status_code in (200, 204):
-#                 print("✅ Post stored successfully in Firebase")
-#                 return JSONResponse({
-#                     "success": True,
-#                     "message": "Post published successfully!",
-#                     "post_id": post_object["id"],
-#                     "redirect_url": "/startups/home"
-#                 })
-#             else:
-#                 print(f"❌ Firebase storage failed: {response.status_code} - {response.text}")
-#                 raise HTTPException(
-#                     status_code=500,
-#                     detail="Failed to store post in database"
-#                 )
-                
-#         except requests.exceptions.RequestException as e:
-#             print(f"❌ Firebase request error: {str(e)}")
-#             raise HTTPException(
-#                 status_code=500,
-#                 detail="Database connection error"
-#             )
-    
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         print(f"💥 Unexpected error in create_post: {str(e)}")
-#         import traceback
-#         traceback.print_exc()
-#         raise HTTPException(
-#             status_code=500,
-#             detail=f"Internal server error: {str(e)}"
-#         )
-
-
 @app.post("/api/create_post")
 async def create_post(request: Request, current_user: User = Depends(get_current_user)):
     """
@@ -1822,12 +1696,304 @@ async def message_startup(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+chat_messages = {}  # {conversation_id: [messages]}
+message_timestamps = {}  # {message_id: timestamp}
+connected_users = {}  # {socket_id: user_email}
+user_sockets = defaultdict(list)  # {user_email: [socket_ids]}
+cleanup_lock = threading.Lock()
+
+# Socket.IO setup (replace your existing setup)
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins=[
+        "https://internweb.onrender.com", 
+        "http://localhost:8000", 
+        "http://127.0.0.1:8000"
+    ],
+    logger=True,
+    engineio_logger=False  # Set to True for debugging
+)
+
+# Create Socket.IO app AFTER FastAPI app is created
+# (move this line after app = FastAPI())
+socket_app = socketio.ASGIApp(sio, app)
+
+# Clean up function for 24-hour message deletion
+def cleanup_old_messages():
+    """Remove messages older than 24 hours"""
+    with cleanup_lock:
+        current_time = datetime.utcnow()
+        cutoff_time = current_time - timedelta(hours=24)
+        
+        messages_to_remove = []
+        for message_id, timestamp in list(message_timestamps.items()):
+            if timestamp < cutoff_time:
+                messages_to_remove.append(message_id)
+        
+        # Remove old messages
+        for message_id in messages_to_remove:
+            del message_timestamps[message_id]
+            
+            # Remove from chat_messages
+            for conv_id in list(chat_messages.keys()):
+                chat_messages[conv_id] = [
+                    msg for msg in chat_messages[conv_id] 
+                    if msg.get('id') != message_id
+                ]
+                if not chat_messages[conv_id]:  # Remove empty conversations
+                    del chat_messages[conv_id]
+        
+        print(f"Cleaned up {len(messages_to_remove)} old messages")
+    
+    # Schedule next cleanup in 1 hour
+    Timer(3600, cleanup_old_messages).start()
+
+# Start the cleanup timer
+Timer(10, cleanup_old_messages).start()  # Start after 10 seconds
+
+# Socket.IO Events
+@sio.event
+async def connect(sid, environ):
+    """Handle new socket connections"""
+    print(f"Client {sid} attempting to connect")
+    
+    try:
+        # Extract cookies from environ
+        cookie_header = environ.get('HTTP_COOKIE', '')
+        cookies = {}
+        if cookie_header:
+            for cookie in cookie_header.split(';'):
+                if '=' in cookie:
+                    key, value = cookie.strip().split('=', 1)
+                    cookies[key] = value
+        
+        # Get JWT token from cookies
+        token = cookies.get('access_token')
+        if not token:
+            print(f"No token found for {sid}, disconnecting")
+            await sio.disconnect(sid)
+            return False
+        
+        # Verify JWT token
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email = payload.get("sub")
+            
+            if not email:
+                print(f"Invalid token payload for {sid}, disconnecting")
+                await sio.disconnect(sid)
+                return False
+            
+            # Verify user exists
+            user = get_user(email)
+            if not user:
+                print(f"User {email} not found for {sid}, disconnecting")
+                await sio.disconnect(sid)
+                return False
+            
+            # Store user connection
+            connected_users[sid] = email
+            user_sockets[email].append(sid)
+            
+            # Store user info in session
+            await sio.save_session(sid, {'user_email': email})
+            
+            print(f"✅ User {email} connected with socket {sid}")
+            await sio.emit('connected', {
+                'message': 'Successfully connected',
+                'user_email': email
+            }, room=sid)
+            
+            return True
+            
+        except JWTError as e:
+            print(f"JWT decode error for {sid}: {e}")
+            await sio.disconnect(sid)
+            return False
+            
+    except Exception as e:
+        print(f"Connection error for {sid}: {str(e)}")
+        await sio.disconnect(sid)
+        return False
+
+@sio.event
+async def disconnect(sid):
+    """Handle socket disconnections"""
+    print(f"Client {sid} disconnecting")
+    
+    if sid in connected_users:
+        user_email = connected_users[sid]
+        del connected_users[sid]
+        
+        if user_email in user_sockets:
+            user_sockets[user_email].remove(sid)
+            if not user_sockets[user_email]:
+                del user_sockets[user_email]
+        
+        print(f"✅ User {user_email} disconnected (socket {sid})")
+
+@sio.event
+async def send_message(sid, data):
+    """Handle sending messages between users"""
+    try:
+        # Verify authentication
+        if sid not in connected_users:
+            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
+            return
+        
+        sender_email = connected_users[sid]
+        recipient_email = data.get('to')
+        message_text = data.get('message')
+        
+        # Validate input
+        if not recipient_email or not message_text:
+            await sio.emit('error', {'message': 'Missing recipient or message'}, room=sid)
+            return
+        
+        # Create message
+        message_id = str(uuid4())
+        timestamp = datetime.utcnow()
+        
+        message_obj = {
+            'id': message_id,
+            'from': sender_email,
+            'to': recipient_email,
+            'message': message_text,
+            'timestamp': timestamp.isoformat(),
+            'read': False
+        }
+        
+        # Store message in memory
+        with cleanup_lock:
+            # Create conversation ID (sorted emails for consistency)
+            conversation_id = '_'.join(sorted([sender_email, recipient_email]))
+            
+            if conversation_id not in chat_messages:
+                chat_messages[conversation_id] = []
+            
+            chat_messages[conversation_id].append(message_obj)
+            message_timestamps[message_id] = timestamp
+        
+        # Send to recipient if online
+        if recipient_email in user_sockets:
+            for recipient_sid in user_sockets[recipient_email]:
+                await sio.emit('receive_message', {
+                    'from': sender_email,
+                    'message': message_text,
+                    'timestamp': message_obj['timestamp'],
+                    'id': message_id
+                }, room=recipient_sid)
+        
+        # Confirm to sender
+        await sio.emit('message_sent', {
+            'to': recipient_email,
+            'message': message_text,
+            'timestamp': message_obj['timestamp'],
+            'id': message_id
+        }, room=sid)
+        
+        print(f"📨 Message sent: {sender_email} → {recipient_email}")
+        
+    except Exception as e:
+        print(f"Error in send_message: {str(e)}")
+        await sio.emit('error', {'message': 'Failed to send message'}, room=sid)
+
+@sio.event
+async def get_chat_history(sid, data):
+    """Get chat history with a specific user"""
+    try:
+        if sid not in connected_users:
+            await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
+            return
+        
+        current_user = connected_users[sid]
+        other_user = data.get('with')
+        
+        if not other_user:
+            await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
+            return
+        
+        # Get conversation
+        with cleanup_lock:
+            conversation_id = '_'.join(sorted([current_user, other_user]))
+            messages = chat_messages.get(conversation_id, [])
+            
+            # Sort by timestamp
+            sorted_messages = sorted(messages, key=lambda x: x['timestamp'])
+        
+        await sio.emit('chat_history', {
+            'with': other_user,
+            'messages': sorted_messages
+        }, room=sid)
+        
+    except Exception as e:
+        print(f"Error in get_chat_history: {str(e)}")
+        await sio.emit('error', {'message': 'Failed to get chat history'}, room=sid)
+
+@sio.event
+async def typing(sid, data):
+    """Handle typing indicators"""
+    try:
+        if sid not in connected_users:
+            return
+        
+        sender = connected_users[sid]
+        recipient = data.get('to')
+        is_typing = data.get('typing', False)
+        
+        if recipient and recipient in user_sockets:
+            for recipient_sid in user_sockets[recipient]:
+                await sio.emit('user_typing', {
+                    'from': sender,
+                    'typing': is_typing
+                }, room=recipient_sid)
+                
+    except Exception as e:
+        print(f"Error in typing event: {str(e)}")
+
+# Add the chat page route
+@app.get("/chat")
+async def chat_page(request: Request, current_user: User = Depends(get_current_user)):
+    """Serve the chat page"""
+    return templates.TemplateResponse("chat.html", {
+        "request": request,
+        "user": current_user
+    })
+
+# API endpoint to get active users (optional)
+@app.get("/api/chat/users")
+async def get_chat_users(current_user: User = Depends(get_current_user)):
+    """Get list of users to chat with"""
+    try:
+        # Get all users from MongoDB except current user
+        users = []
+        cursor = users_collection.find(
+            {"email": {"$ne": current_user.email}},
+            {"email": 1, "name": 1, "role": 1, "_id": 0}
+        ).limit(50)  # Limit to 50 users for performance
+        
+        async for user in cursor:
+            users.append({
+                "email": user["email"],
+                "name": user.get("name", user["email"]),
+                "role": user.get("role", "unknown"),
+                "online": user["email"] in user_sockets
+            })
+        
+        return {"success": True, "users": users}
+        
+    except Exception as e:
+        print(f"Error getting chat users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get users")
+
+# Update the main execution block
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        app,
+        socket_app,  # Use socket_app instead of app
         host="0.0.0.0",
         port=8000,
+        reload=True,  # Set to False in production
         proxy_headers=True,
         forwarded_allow_ips="*"
     )
