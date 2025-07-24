@@ -22,7 +22,7 @@ from fastapi_sso.sso.github import GithubSSO
 from fastapi_sso.sso.linkedin import LinkedInSSO
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse, JSONResponse
-from dotenv import load_env
+from dotenv import load_dotenv
 from functools import wraps
 from fastapi.templating import Jinja2Templates
 from uuid import uuid4
