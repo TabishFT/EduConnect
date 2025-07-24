@@ -91,7 +91,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # Socket.IO setup
 sio = socketio.AsyncServer(
     async_mode='asgi',
-    cors_allowed_origins=["https://internweb.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
+    cors_allowed_origins=["https://myeduconnect.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
     logger=True,
     engineio_logger=True
 )
@@ -108,7 +108,7 @@ POSTS_FIREBASE_URL = os.getenv("FIREBASE_POSTS_DATABASE")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://internweb.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=["https://myeduconnect.onrender.com", "http://localhost:8000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -121,7 +121,7 @@ app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 google_sso = GoogleSSO(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
-    redirect_uri="https://internweb.onrender.com/auth/google/callback",
+    redirect_uri="https://myeduconnect.onrender.com/auth/google/callback",
     allow_insecure_http=False,
     scope=["openid", "email", "profile"] # Explicitly add default scopes
 )
@@ -129,14 +129,14 @@ google_sso = GoogleSSO(
 github_sso = GithubSSO(
     client_id=os.getenv("GITHUB_CLIENT_ID"),
     client_secret=os.getenv("GITHUB_CLIENT_SECRET"),
-    redirect_uri="https://internweb.onrender.com/auth/github/callback",
+    redirect_uri="https://myeduconnect.onrender.com/auth/github/callback",
     allow_insecure_http=False,
 )
 
 linkedin_sso = LinkedInSSO(
     client_id=os.getenv("LINKEDIN_CLIENT_ID"),
     client_secret=os.getenv("LINKEDIN_CLIENT_SECRET"),
-    redirect_uri="https://internweb.onrender.com/auth/linkedin/callback",
+    redirect_uri="https://myeduconnect.onrender.com/auth/linkedin/callback",
     allow_insecure_http=False,
 )
 
@@ -1706,7 +1706,7 @@ cleanup_lock = threading.Lock()
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=[
-        "https://internweb.onrender.com", 
+        "https://myeduconnect.onrender.com", 
         "http://localhost:8000", 
         "http://127.0.0.1:8000"
     ],
