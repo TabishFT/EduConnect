@@ -2239,7 +2239,7 @@ def efficient_cleanup_firebase_messages():
 # START THE TIMER - Add this line after Socket.IO setup
 Timer(10, efficient_cleanup_firebase_messages).start()  # Start after 10 seconds
 
-
+#lets try commit  now
 # Update the main execution block
 if __name__ == "__main__":
     import uvicorn
