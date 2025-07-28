@@ -1653,6 +1653,21 @@ async def view_startup_profile_page(request: Request, current_user: User = Depen
 
 
 
+# Add this at the top with other Firebase URLs
+CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
+
+# Remove these in-memory storage variables (DELETE THESE LINES):
+# chat_messages = {}
+# message_timestamps = {}
+# cleanup_lock = threading.Lock()
+
+# Keep these for socket management only:
+connected_users = {}  # {socket_id: user_email}
+user_sockets = defaultdict(list)  # {user_email: [socket_ids]}
+
+# Remove the cleanup function and timer (DELETE THESE):
+# def cleanup_old_messages(): ...
+# Timer(10, cleanup_old_messages).start()
 
 @app.post("/api/message_startup")
 async def message_startup(
@@ -1661,34 +1676,78 @@ async def message_startup(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Send message to startup
+    Send message to startup - now integrated with chat system
     """
     try:
         if not current_user:
             raise HTTPException(status_code=401, detail="Authentication required")
         
-        # Create message data
-        message_data = {
-            'id': str(uuid.uuid4()),
-            'from_user': current_user.email,
-            'from_name': getattr(current_user, 'name', current_user.email),
-            'to_startup': startup_name,
+        # Find startup email by name
+        firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+        query_params = {'orderBy': '"startupName"', 'equalTo': f'"{startup_name}"'}
+        response = requests.get(firebase_path, params=query_params, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Startup not found")
+        
+        startup_data = response.json()
+        if not startup_data:
+            raise HTTPException(status_code=404, detail="Startup not found")
+        
+        # Get startup email
+        startup_info = next(iter(startup_data.values()))
+        startup_email = startup_info.get('contactEmail', '')
+        
+        if not startup_email:
+            raise HTTPException(status_code=404, detail="Startup email not found")
+        
+        # Create message using chat system
+        message_id = str(uuid4())
+        timestamp = datetime.utcnow().isoformat()
+        conversation_id = '_'.join(sorted([current_user.email, startup_email]))
+        
+        message_obj = {
+            'id': message_id,
+            'from': current_user.email,
+            'to': startup_email,
             'message': message,
-            'timestamp': datetime.now().isoformat(),
-            'status': 'sent'
+            'timestamp': timestamp,
+            'read': False,
+            'delivered': False,
+            'startup_name': startup_name  # Additional context
         }
         
-        # Save to Firebase messages collection
-        messages_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/messages/{message_data['id']}.json"
-        response = requests.put(messages_path, json=message_data, timeout=10)
+        # Save to Firebase chat database
+        chat_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        response = requests.put(chat_path, json=message_obj, timeout=10)
         
         if response.status_code not in [200, 201]:
             raise HTTPException(status_code=500, detail="Failed to send message")
         
+        # Update conversation metadata
+        conv_meta = {
+            'last_message': message,
+            'last_message_time': timestamp,
+            'participants': [current_user.email, startup_email]
+        }
+        meta_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/metadata.json"
+        requests.put(meta_path, json=conv_meta, timeout=10)
+        
+        # Send real-time notification if startup is online
+        if startup_email in user_sockets:
+            for sid in user_sockets[startup_email]:
+                await sio.emit('receive_message', {
+                    'from': current_user.email,
+                    'message': message,
+                    'timestamp': timestamp,
+                    'id': message_id,
+                    'startup_name': startup_name
+                }, room=sid)
+        
         return {
             "success": True,
             "message": f"Message sent to {startup_name} successfully",
-            "message_id": message_data['id']
+            "message_id": message_id
         }
         
     except HTTPException:
@@ -1698,13 +1757,7 @@ async def message_startup(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-chat_messages = {}  # {conversation_id: [messages]}
-message_timestamps = {}  # {message_id: timestamp}
-connected_users = {}  # {socket_id: user_email}
-user_sockets = defaultdict(list)  # {user_email: [socket_ids]}
-cleanup_lock = threading.Lock()
-
-# Socket.IO setup (replace your existing setup)
+# Socket.IO setup remains the same
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins=[
@@ -1716,42 +1769,8 @@ sio = socketio.AsyncServer(
     engineio_logger=False  # Set to True for debugging
 )
 
-# Create Socket.IO app AFTER FastAPI app is created
-# (move this line after app = FastAPI())
+# Create Socket.IO app
 socket_app = socketio.ASGIApp(sio, app)
-
-# Clean up function for 24-hour message deletion
-def cleanup_old_messages():
-    """Remove messages older than 24 hours"""
-    with cleanup_lock:
-        current_time = datetime.utcnow()
-        cutoff_time = current_time - timedelta(hours=24)
-        
-        messages_to_remove = []
-        for message_id, timestamp in list(message_timestamps.items()):
-            if timestamp < cutoff_time:
-                messages_to_remove.append(message_id)
-        
-        # Remove old messages
-        for message_id in messages_to_remove:
-            del message_timestamps[message_id]
-            
-            # Remove from chat_messages
-            for conv_id in list(chat_messages.keys()):
-                chat_messages[conv_id] = [
-                    msg for msg in chat_messages[conv_id] 
-                    if msg.get('id') != message_id
-                ]
-                if not chat_messages[conv_id]:  # Remove empty conversations
-                    del chat_messages[conv_id]
-        
-        print(f"Cleaned up {len(messages_to_remove)} old messages")
-    
-    # Schedule next cleanup in 1 hour
-    Timer(3600, cleanup_old_messages).start()
-
-# Start the cleanup timer
-Timer(10, cleanup_old_messages).start()  # Start after 10 seconds
 
 # Socket.IO Events
 @sio.event
@@ -1846,47 +1865,55 @@ async def disconnect(sid):
         print(f"✅ User {user_email} disconnected (socket {sid})")
 
 
-
-
-# Add these API endpoints to your main.py
-
+# API endpoints
 @app.get("/api/chat/conversations")
 async def get_conversations(current_user: User = Depends(get_current_user)):
     """Get list of existing conversations for the current user"""
     try:
         conversations = []
         
-        # Get all messages involving the current user
-        with cleanup_lock:
-            for conv_id, messages in chat_messages.items():
-                if messages and current_user.email in conv_id:
-                    # Get the other user's email
-                    emails = conv_id.split('_')
-                    other_email = emails[0] if emails[1] == current_user.email else emails[1]
+        # Get all conversations from Firebase
+        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            return {"success": True, "conversations": []}
+        
+        all_conversations = response.json() or {}
+        
+        for conv_id, conv_data in all_conversations.items():
+            # Check if user is part of this conversation
+            if current_user.email in conv_id:
+                # Get the other user's email
+                emails = conv_id.split('_')
+                other_email = emails[0] if emails[1] == current_user.email else emails[1]
+                
+                # Get conversation metadata
+                metadata = conv_data.get('metadata', {})
+                if not metadata:
+                    continue
+                
+                # Get other user info from MongoDB
+                other_user = users_collection.find_one(
+                    {"email": other_email},
+                    {"email": 1, "name": 1, "role": 1, "_id": 0}
+                )
+                
+                if other_user:
+                    # Count unread messages
+                    messages = conv_data.get('messages', {})
+                    unread_count = sum(1 for msg in messages.values() 
+                                     if msg.get('to') == current_user.email and not msg.get('read', False))
                     
-                    # Get last message
-                    last_message = messages[-1]
-                    
-                    # Get user info from MongoDB
-                    other_user = users_collection.find_one(
-                        {"email": other_email},
-                        {"email": 1, "name": 1, "role": 1, "_id": 0}
-                    )
-                    
-                    if other_user:
-                        # Count unread messages
-                        unread_count = sum(1 for msg in messages 
-                                         if msg['to'] == current_user.email and not msg.get('read', False))
-                        
-                        conversations.append({
-                            "email": other_user["email"],
-                            "name": other_user.get("name", other_user["email"]),
-                            "role": other_user.get("role", "user"),
-                            "last_message": last_message['message'],
-                            "last_message_time": last_message['timestamp'],
-                            "unread_count": unread_count,
-                            "online": other_user["email"] in user_sockets
-                        })
+                    conversations.append({
+                        "email": other_user["email"],
+                        "name": other_user.get("name", other_user["email"]),
+                        "role": other_user.get("role", "user"),
+                        "last_message": metadata.get('last_message', ''),
+                        "last_message_time": metadata.get('last_message_time', ''),
+                        "unread_count": unread_count,
+                        "online": other_user["email"] in user_sockets
+                    })
         
         # Sort by last message time (newest first)
         conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
@@ -1946,12 +1973,20 @@ async def mark_messages_read(
         if not other_user:
             raise HTTPException(status_code=400, detail="Missing 'with' parameter")
         
-        with cleanup_lock:
-            conversation_id = '_'.join(sorted([current_user.email, other_user]))
-            if conversation_id in chat_messages:
-                for msg in chat_messages[conversation_id]:
-                    if msg['to'] == current_user.email:
-                        msg['read'] = True
+        conversation_id = '_'.join(sorted([current_user.email, other_user]))
+        
+        # Get all messages in conversation
+        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code == 200 and response.json():
+            messages = response.json()
+            
+            # Update read status for messages to current user
+            for msg_id, msg_data in messages.items():
+                if msg_data.get('to') == current_user.email and not msg_data.get('read', False):
+                    update_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{msg_id}/read.json"
+                    requests.put(update_path, json=True, timeout=10)
         
         return {"success": True}
         
@@ -1970,8 +2005,7 @@ async def get_chat_users(current_user: User = Depends(get_current_user)):
         print(f"Error getting chat users: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get users")
 
-# Update these Socket.IO events
-
+# Socket.IO events
 @sio.event
 async def send_message(sid, data):
     """Handle sending messages between users"""
@@ -1992,37 +2026,48 @@ async def send_message(sid, data):
         
         # Create message
         message_id = str(uuid4())
-        timestamp = datetime.utcnow()
+        timestamp = datetime.utcnow().isoformat()
+        conversation_id = '_'.join(sorted([sender_email, recipient_email]))
         
         message_obj = {
             'id': message_id,
             'from': sender_email,
             'to': recipient_email,
             'message': message_text,
-            'timestamp': timestamp.isoformat(),
+            'timestamp': timestamp,
             'read': False,
             'delivered': False
         }
         
-        # Store message in memory
-        with cleanup_lock:
-            # Create conversation ID (sorted emails for consistency)
-            conversation_id = '_'.join(sorted([sender_email, recipient_email]))
-            
-            if conversation_id not in chat_messages:
-                chat_messages[conversation_id] = []
-            
-            chat_messages[conversation_id].append(message_obj)
-            message_timestamps[message_id] = timestamp
+        # Save to Firebase
+        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        response = requests.put(firebase_path, json=message_obj, timeout=10)
+        
+        if response.status_code not in [200, 201]:
+            await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
+            return
+        
+        # Update conversation metadata
+        conv_meta = {
+            'last_message': message_text,
+            'last_message_time': timestamp,
+            'participants': [sender_email, recipient_email]
+        }
+        meta_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/metadata.json"
+        requests.put(meta_path, json=conv_meta, timeout=10)
         
         # Send to recipient if online
         if recipient_email in user_sockets:
-            message_obj['delivered'] = True  # Mark as delivered
+            message_obj['delivered'] = True
+            # Update delivery status in Firebase
+            delivery_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/delivered.json"
+            requests.put(delivery_path, json=True, timeout=10)
+            
             for recipient_sid in user_sockets[recipient_email]:
                 await sio.emit('receive_message', {
                     'from': sender_email,
                     'message': message_text,
-                    'timestamp': message_obj['timestamp'],
+                    'timestamp': timestamp,
                     'id': message_id
                 }, room=recipient_sid)
                 
@@ -2031,11 +2076,11 @@ async def send_message(sid, data):
                     'message_id': message_id
                 }, room=sid)
         
-        # Confirm to sender with delivery status
+        # Confirm to sender
         await sio.emit('message_sent', {
             'to': recipient_email,
             'message': message_text,
-            'timestamp': message_obj['timestamp'],
+            'timestamp': timestamp,
             'id': message_id,
             'delivered': message_obj['delivered']
         }, room=sid)
@@ -2060,22 +2105,20 @@ async def mark_message_read(sid, data):
         if not message_id or not sender_email:
             return
         
-        # Update message status in memory
-        with cleanup_lock:
-            conversation_id = '_'.join(sorted([reader_email, sender_email]))
-            if conversation_id in chat_messages:
-                for msg in chat_messages[conversation_id]:
-                    if msg['id'] == message_id and msg['to'] == reader_email:
-                        msg['read'] = True
-                        
-                        # Notify sender if online
-                        if sender_email in user_sockets:
-                            for sender_sid in user_sockets[sender_email]:
-                                await sio.emit('message_read', {
-                                    'message_id': message_id,
-                                    'reader': reader_email
-                                }, room=sender_sid)
-                        break
+        conversation_id = '_'.join(sorted([reader_email, sender_email]))
+        
+        # Update read status in Firebase
+        read_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/read.json"
+        response = requests.put(read_path, json=True, timeout=10)
+        
+        if response.status_code in [200, 201]:
+            # Notify sender if online
+            if sender_email in user_sockets:
+                for sender_sid in user_sockets[sender_email]:
+                    await sio.emit('message_read', {
+                        'message_id': message_id,
+                        'reader': reader_email
+                    }, room=sender_sid)
                         
     except Exception as e:
         print(f"Error marking message as read: {str(e)}")
@@ -2095,13 +2138,23 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
             return
         
-        # Get conversation
-        with cleanup_lock:
-            conversation_id = '_'.join(sorted([current_user, other_user]))
-            messages = chat_messages.get(conversation_id, [])
-            
-            # Sort by timestamp
-            sorted_messages = sorted(messages, key=lambda x: x['timestamp'])
+        conversation_id = '_'.join(sorted([current_user, other_user]))
+        
+        # Get messages from Firebase
+        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        params = {
+            'orderBy': '"timestamp"',
+            'limitToLast': 50  # Get last 50 messages
+        }
+        
+        response = requests.get(firebase_path, params=params, timeout=10)
+        
+        if response.status_code == 200:
+            messages = response.json() or {}
+            # Convert to list and sort
+            sorted_messages = sorted(messages.values(), key=lambda x: x['timestamp'])
+        else:
+            sorted_messages = []
         
         await sio.emit('chat_history', {
             'with': other_user,
@@ -2133,7 +2186,7 @@ async def typing(sid, data):
     except Exception as e:
         print(f"Error in typing event: {str(e)}")
 
-# Add the chat page route
+# Chat page route
 @app.get("/chat")
 async def chat_page(request: Request, current_user: User = Depends(get_current_user)):
     """Serve the chat page"""
@@ -2141,11 +2194,7 @@ async def chat_page(request: Request, current_user: User = Depends(get_current_u
         "request": request,
         "user": current_user
     })
-
-
-
-
-
+    
 
 # Update the main execution block
 if __name__ == "__main__":
