@@ -1652,6 +1652,8 @@ async def view_startup_profile_page(request: Request, current_user: User = Depen
         raise e
 
 
+
+
 @app.post("/api/message_startup")
 async def message_startup(
     startup_name: str = Form(...),
