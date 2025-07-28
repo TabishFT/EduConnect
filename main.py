@@ -2194,7 +2194,51 @@ async def chat_page(request: Request, current_user: User = Depends(get_current_u
         "request": request,
         "user": current_user
     })
+
+
+# Paste the function
+def efficient_cleanup_firebase_messages():
+    """More efficient cleanup using Firebase queries"""
+    try:
+        print("🧹 Starting efficient Firebase cleanup...")
+        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        
+        # Get all conversations
+        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations.json"
+        response = requests.get(firebase_path, params={'shallow': 'true'}, timeout=30)
+        
+        if response.status_code == 200 and response.json():
+            conversation_ids = response.json().keys()
+            
+            for conv_id in conversation_ids:
+                # Get only old messages using Firebase query
+                messages_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conv_id}/messages.json"
+                params = {
+                    'orderBy': '"timestamp"',
+                    'endAt': f'"{cutoff_time}"'
+                }
+                
+                old_messages_response = requests.get(messages_path, params=params, timeout=10)
+                
+                if old_messages_response.status_code == 200 and old_messages_response.json():
+                    old_messages = old_messages_response.json()
+                    
+                    # Delete each old message
+                    for msg_id in old_messages.keys():
+                        delete_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
+                        requests.delete(delete_path, timeout=10)
+        
+        print("✅ Efficient cleanup complete")
+        
+    except Exception as e:
+        print(f"❌ Cleanup error: {str(e)}")
     
+    # Schedule next cleanup in 2 hours (less frequent since it's more efficient)
+    Timer(7200, efficient_cleanup_firebase_messages).start()
+
+# START THE TIMER - Add this line after Socket.IO setup
+Timer(10, efficient_cleanup_firebase_messages).start()  # Start after 10 seconds
+
 
 # Update the main execution block
 if __name__ == "__main__":
