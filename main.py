@@ -2260,24 +2260,25 @@ async def settings_page(request: Request, current_user: User = Depends(get_curre
         raise e
 
 @app.post("/logout")
-async def logout(response: Response):
+async def logout():
     """Logout endpoint to clear authentication"""
-    # Clear the cookie on server side
+    response = JSONResponse(content={"message": "Logged out successfully"})
     response.delete_cookie(
         key="access_token",
         path="/",
+        httponly=True,
         samesite="lax"
     )
-    return {"message": "Logged out successfully"}
+    return response
 
 @app.get("/logout")
-async def logout_get(response: Response):
+async def logout_get():
     """GET logout endpoint for direct navigation"""
-    # Clear the cookie and redirect to getstarted page
     response = RedirectResponse(url="/", status_code=302)
     response.delete_cookie(
         key="access_token",
         path="/",
+        httponly=True,
         samesite="lax"
     )
     return response
