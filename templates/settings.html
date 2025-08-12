@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - EduConnect</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        :root {
+            --background: #1A1F2C;
+            --foreground: #F9F7F7;
+            --card: #111824;
+            --border: rgba(255, 255, 255, 0.1);
+            --accent: #E6A55E;
+            --accent-hover: #D89144;
+            --secondary: #2A3441;
+            --muted: rgba(249, 247, 247, 0.6);
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--background) 0%, #16213e 100%);
+            color: var(--foreground);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            background: white;
+            color: var(--background);
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--foreground);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+            padding: 8px 16px;
+            border-radius: 20px;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: var(--accent);
+            background: rgba(230, 165, 94, 0.1);
+        }
+
+        .back-btn {
+            background: var(--card);
+            color: var(--foreground);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        /* Main Container */
+        .main-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .page-subtitle {
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        /* Settings Grid */
+        .settings-grid {
+            display: grid;
+            gap: 20px;
+        }
+
+        .settings-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .settings-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 30px rgba(230, 165, 94, 0.2);
+        }
+
+        .settings-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), #F0C096);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .settings-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(230, 165, 94, 0.15);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--foreground);
+        }
+
+        .card-description {
+            color: var(--muted);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .card-action {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .action-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+        }
+
+        .action-btn.secondary {
+            background: var(--secondary);
+            color: var(--foreground);
+        }
+
+        .action-btn.secondary:hover {
+            background: #3A4551;
+        }
+
+        .action-btn.danger {
+            background: #ef4444;
+        }
+
+        .action-btn.danger:hover {
+            background: #dc2626;
+        }
+
+        .arrow-icon {
+            color: var(--muted);
+            transition: transform 0.3s ease;
+        }
+
+        .settings-card:hover .arrow-icon {
+            transform: translateX(4px);
+            color: var(--accent);
+        }
+
+        /* User Info Card */
+        .user-info {
+            background: linear-gradient(135deg, var(--accent), #F0C096);
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .user-info .card-icon {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .user-info .card-title,
+        .user-info .card-description {
+            color: white;
+        }
+
+        .user-info .arrow-icon {
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .user-info:hover .arrow-icon {
+            color: white;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px 16px;
+            }
+
+            .nav-links {
+                gap: 15px;
+            }
+
+            .nav-links a {
+                padding: 6px 12px;
+                font-size: 14px;
+            }
+
+            .main-container {
+                padding: 20px 16px;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .settings-card {
+                padding: 20px;
+            }
+
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+
+            .card-action {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+        }
+
+        /* Loading and Success States */
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .success-message {
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message {
+            background: #ef4444;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">EduConnect</div>
+        <nav class="nav-links">
+            <a href="javascript:history.back()" class="back-btn">← Back</a>
+            <a href="/chat">Chat</a>
+            <a href="/settings" class="active">Settings</a>
+        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Success/Error Messages -->
+        <div id="successMessage" class="success-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Page Header -->
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Manage your account and preferences</p>
+
+        <!-- Settings Grid -->
+        <div class="settings-grid">
+            <!-- User Profile Card -->
+            <div class="settings-card user-info" onclick="goToProfile()">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="card-title">My Profile</h3>
+                    </div>
+                </div>
+                <p class="card-description">
+                    View and edit your personal information, skills, and professional details
+                </p>
+                <div class="card-action">
+                    <span>Manage your profile</span>
+                    <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Saved Posts Card -->
+            <div class="settings-card" onclick="goToSavedPosts()">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Saved Posts</h3>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Access your bookmarked internship opportunities and startup posts
+                </p>
+                <div class="card-action">
+                    <span>View saved items</span>
+                    <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Help & Feedback Card -->
+            <div class="settings-card" onclick="openHelpFeedback()">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Help & Feedback</h3>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Get support, report issues, or share your feedback to help us improve
+                </p>
+                <div class="card-action">
+                    <button class="action-btn secondary">Get Help</button>
+                    <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Logout Card -->
+            <div class="settings-card" onclick="confirmLogout()">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16,17 21,12 16,7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Logout</h3>
+                    </div>
+                </div>
+                <p class="card-description">
+                    Sign out of your account securely
+                </p>
+                <div class="card-action">
+                    <button class="action-btn danger">Sign Out</button>
+                    <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get user info from template
+        const userRole = '{{ user.role if user else "user" }}';
+        const userEmail = '{{ user.email if user else "" }}';
+
+        function goToProfile() {
+            // Redirect based on user role
+            if (userRole === 'intern') {
+                window.location.href = '/intern_profile';
+            } else if (userRole === 'startup') {
+                window.location.href = '/startup_profile';
+            } else {
+                showError('Profile not available. Please complete your registration.');
+            }
+        }
+
+        function goToSavedPosts() {
+            // For now, show a coming soon message
+            // In the future, this would redirect to a saved posts page
+            showMessage('Saved Posts feature coming soon!', 'info');
+        }
+
+        function openHelpFeedback() {
+            // Create a modal or redirect to help page
+            const helpContent = `
+                <div style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; margin: 20px auto;">
+                    <h3 style="color: var(--accent); margin-bottom: 15px;">Help & Support</h3>
+                    <p style="margin-bottom: 15px; color: var(--muted);">Need help? Here are some ways to get support:</p>
+                    <ul style="color: var(--foreground); margin-bottom: 20px; padding-left: 20px;">
+                        <li style="margin-bottom: 8px;">Email us at: support@educonnect.com</li>
+                        <li style="margin-bottom: 8px;">Use the chat feature to connect with other users</li>
+                        <li style="margin-bottom: 8px;">Check our FAQ section (coming soon)</li>
+                    </ul>
+                    <button onclick="closeHelp()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">Close</button>
+                </div>
+            `;
+            
+            const overlay = document.createElement('div');
+            overlay.id = 'helpOverlay';
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                background: rgba(0,0,0,0.8); z-index: 1000; 
+                display: flex; align-items: center; justify-content: center;
+                backdrop-filter: blur(5px);
+            `;
+            overlay.innerHTML = helpContent;
+            document.body.appendChild(overlay);
+        }
+
+        function closeHelp() {
+            const overlay = document.getElementById('helpOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        function confirmLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                logout();
+            }
+        }
+
+        async function logout() {
+            try {
+                // Show loading state
+                document.body.classList.add('loading');
+                
+                // Clear the access token cookie by setting it to expire
+                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+                
+                // Show success message
+                showSuccess('Logged out successfully!');
+                
+                // Redirect to login page after a short delay
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Logout error:', error);
+                showError('Error during logout. Please try again.');
+                document.body.classList.remove('loading');
+            }
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showMessage(message, type = 'info') {
+            if (type === 'error') {
+                showError(message);
+            } else {
+                showSuccess(message);
+            }
+        }
+
+        // Add click handlers for better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add hover effects and animations
+            const cards = document.querySelectorAll('.settings-card');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-4px)';
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                });
+            });
+        });
+
+        // Close help modal when clicking outside
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'helpOverlay') {
+                closeHelp();
+            }
+        });
+
+        // Handle escape key for help modal
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeHelp();
+            }
+        });
+    </script>
+</body>
+</html>

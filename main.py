@@ -2195,6 +2195,23 @@ async def chat_page(request: Request, current_user: User = Depends(get_current_u
         "user": current_user
     })
 
+@app.get("/settings")
+async def settings_page(request: Request, current_user: User = Depends(get_current_user)):
+    """Serve the settings page"""
+    try:
+        if not current_user:
+            return RedirectResponse(url="/login", status_code=302)
+        
+        return templates.TemplateResponse("settings.html", {
+            "request": request,
+            "user": current_user
+        })
+        
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
 
 # Paste the function
 def efficient_cleanup_firebase_messages():
