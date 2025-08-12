@@ -236,15 +236,56 @@ async def get_current_user(request: Request):
     return user
 
 # --------------------- Routes ---------------------
-
 @app.get("/", include_in_schema=True)
 @app.head("/", include_in_schema=True)
 async def read_index(request: Request):
-    return templates.TemplateResponse("getstarted.html", {"request": request})
+    """Serve the getstarted page for non-authenticated users"""
+    try:
+        # Try to get current user
+        token = request.cookies.get("access_token")
+        if token:
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                email = payload.get("sub")
+                if email:
+                    # User is authenticated, redirect to appropriate home
+                    user = users_collection.find_one(
+                        {"email": email},
+                        {"role": 1, "_id": 0}
+                    )
+                    if user:
+                        if user.get("role") == "startup":
+                            return RedirectResponse(url="/startups/home", status_code=302)
+                        elif user.get("role") == "intern":
+                            return RedirectResponse(url="/interns/home", status_code=302)
+            except (jwt.PyJWTError, Exception):
+                # Invalid token, serve getstarted page
+                pass
+        
+        # No valid auth, serve getstarted page
+        return templates.TemplateResponse("getstarted.html", {
+            "request": request
+        })
+        
+    except Exception:
+        # Any error, serve getstarted page
+        return templates.TemplateResponse("getstarted.html", {
+            "request": request
+        })
 
 @app.get("/login", include_in_schema=True)
 @app.head("/login", include_in_schema=True)
-async def login_page(request: Request):
+async def login_page(request: Request, logout: Optional[str] = None):
+    """Serve the login page"""
+    # If logout parameter exists, don't check for existing auth
+    if logout:
+        response = templates.TemplateResponse("index.html", {
+            "request": request
+        })
+        response.delete_cookie("access_token")
+        return response
+    
+    # Check for existing valid token only if not logging out
     try:
         current_user = await get_current_user(request)
         if current_user and current_user.role:
@@ -259,6 +300,8 @@ async def login_page(request: Request):
         if e.status_code == 401:
             return templates.TemplateResponse("index.html", {"request": request})
         raise e
+
+
 
 @app.get("/select_role", include_in_schema=True)
 @app.head("/select_role", include_in_schema=True)
@@ -2195,6 +2238,10 @@ async def chat_page(request: Request, current_user: User = Depends(get_current_u
         "user": current_user
     })
 
+
+
+#------------------------------------------------------------------------
+
 @app.get("/settings")
 async def settings_page(request: Request, current_user: User = Depends(get_current_user)):
     """Serve the settings page"""
@@ -2211,6 +2258,31 @@ async def settings_page(request: Request, current_user: User = Depends(get_curre
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
         raise e
+
+@app.post("/logout")
+async def logout(response: Response):
+    """Logout endpoint to clear authentication"""
+    # Clear the cookie on server side
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        samesite="lax"
+    )
+    return {"message": "Logged out successfully"}
+
+@app.get("/logout")
+async def logout_get(response: Response):
+    """GET logout endpoint for direct navigation"""
+    # Clear the cookie and redirect to getstarted page
+    response = RedirectResponse(url="/", status_code=302)
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        samesite="lax"
+    )
+    return response
+
+
 
 
 # Paste the function
