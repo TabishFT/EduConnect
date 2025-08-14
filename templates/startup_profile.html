@@ -785,10 +785,98 @@ select option {
       toast.className = 'toast';
     }, 3000);
   }
+
+  // Function to load existing profile data
+  async function loadExistingProfile() {
+    try {
+      const response = await fetch('/api/my-profile');
+      const data = await response.json();
+      
+      if (data.success && data.profile) {
+        const profile = data.profile;
+        
+        // Fill form fields with existing data
+        document.getElementById('startupName').value = profile.startupName || '';
+        document.getElementById('tagline').value = profile.tagline || '';
+        document.getElementById('foundingYear').value = profile.foundingYear || '';
+        document.getElementById('locationType').value = profile.locationType || '';
+        document.getElementById('physicalLocation').value = profile.physicalLocation || '';
+        document.getElementById('description').value = profile.description || '';
+        document.getElementById('contactEmail').value = profile.contactEmail || '';
+        document.getElementById('contactPhone').value = profile.contactPhone || '';
+        document.getElementById('website').value = profile.website || '';
+        
+        // Handle founders array
+        if (profile.founders && Array.isArray(profile.founders)) {
+          const foundersContainer = document.getElementById('founders-container');
+          foundersContainer.innerHTML = '';
+          profile.founders.forEach((founder, index) => {
+            if (founder.trim()) {
+              addFounderField(founder);
+            }
+          });
+        }
+        
+        // Store logo URL in localStorage if it exists
+        if (profile.logo) {
+          localStorage.setItem('logoUrl', profile.logo);
+          // Show preview
+          showImagePreview('logoInput', profile.logo, 'logo-preview');
+        }
+        
+        console.log('Existing startup profile data loaded successfully');
+      }
+    } catch (error) {
+      console.error('Error loading existing startup profile:', error);
+      // Don't show error toast as this might be a new user
+    }
+  }
+
+  // Helper function to add founder field with value
+  function addFounderField(founderName = '') {
+    const foundersContainer = document.getElementById('founders-container');
+    const founderDiv = document.createElement('div');
+    founderDiv.className = 'founder-entry';
+    founderDiv.innerHTML = `
+      <div class="form-group">
+        <label>Founder Name</label>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <input type="text" class="founder-input" value="${founderName}" placeholder="Enter founder name">
+          <button type="button" class="btn-remove" onclick="removeFounder(this)">Remove</button>
+        </div>
+      </div>
+    `;
+    foundersContainer.appendChild(founderDiv);
+  }
+
+  // Helper function to show image preview
+  function showImagePreview(inputId, imageUrl, className) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      const preview = document.createElement('img');
+      preview.src = imageUrl;
+      preview.style.maxWidth = '150px';
+      preview.style.maxHeight = '150px';
+      preview.style.borderRadius = '8px';
+      preview.style.marginTop = '10px';
+      preview.className = className;
+      
+      // Remove existing preview if any
+      const existingPreview = document.querySelector('.' + className);
+      if (existingPreview) {
+        existingPreview.remove();
+      }
+      
+      input.parentNode.appendChild(preview);
+    }
+  }
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Load existing profile data if editing
+  loadExistingProfile();
+
   // Form navigation
   const formSteps = document.querySelectorAll('.form-step');
   const progressBar = document.querySelector('.progress');

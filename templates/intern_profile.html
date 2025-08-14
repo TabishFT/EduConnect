@@ -907,10 +907,126 @@ select option {
       toast.className = 'toast';
     }, 3000);
   }
+
+  // Function to load existing profile data
+  async function loadExistingProfile() {
+    try {
+      const response = await fetch('/api/my-profile');
+      const data = await response.json();
+      
+      if (data.success && data.profile) {
+        const profile = data.profile;
+        
+        // Fill form fields with existing data
+        document.getElementById('fullname').value = profile.fullName || '';
+        document.getElementById('profession').value = profile.headline || '';
+        document.getElementById('location').value = profile.location || '';
+        document.getElementById('bio').value = profile.bio || '';
+        document.getElementById('field').value = profile.field || '';
+        document.getElementById('headline').value = profile.headline || '';
+        document.getElementById('industry').value = profile.industry || '';
+        document.getElementById('email').value = profile.email || '';
+        document.getElementById('phone').value = profile.phone || '';
+        document.getElementById('website').value = profile.website || '';
+        document.getElementById('linkedin').value = profile.linkedin || '';
+        document.getElementById('twitter').value = profile.twitter || '';
+        document.getElementById('github').value = profile.github || '';
+        
+        // Handle skills
+        if (profile.skills && Array.isArray(profile.skills)) {
+          const skillsContainer = document.getElementById('skills-display-container');
+          skillsContainer.innerHTML = '';
+          profile.skills.forEach(skill => {
+            if (skill.trim()) {
+              addSkillToDisplay(skill);
+            }
+          });
+        }
+        
+        // Store URLs in localStorage if they exist
+        if (profile.profilePicture) {
+          localStorage.setItem('profilePictureUrl', profile.profilePicture);
+          // Show preview
+          showImagePreview('profilePicture', profile.profilePicture, 'profile-pic-preview');
+        }
+        
+        if (profile.resumeUrl) {
+          localStorage.setItem('resumeUrl', profile.resumeUrl);
+          // Show resume link
+          showResumePreview(profile.resumeUrl);
+        }
+        
+        console.log('Existing profile data loaded successfully');
+      }
+    } catch (error) {
+      console.error('Error loading existing profile:', error);
+      // Don't show error toast as this might be a new user
+    }
+  }
+
+  // Helper function to add skill to display
+  function addSkillToDisplay(skillText) {
+    const skillsContainer = document.getElementById('skills-display-container');
+    const skillTag = document.createElement('div');
+    skillTag.className = 'skill-tag';
+    skillTag.innerHTML = `
+      ${skillText}
+      <span class="remove-skill" onclick="removeSkill(this)">×</span>
+    `;
+    skillsContainer.appendChild(skillTag);
+  }
+
+  // Helper function to show image preview
+  function showImagePreview(inputId, imageUrl, className) {
+    const input = document.getElementById(inputId);
+    if (input) {
+      const preview = document.createElement('img');
+      preview.src = imageUrl;
+      preview.style.maxWidth = '150px';
+      preview.style.maxHeight = '150px';
+      preview.style.borderRadius = '8px';
+      preview.style.marginTop = '10px';
+      preview.className = className;
+      
+      // Remove existing preview if any
+      const existingPreview = document.querySelector('.' + className);
+      if (existingPreview) {
+        existingPreview.remove();
+      }
+      
+      input.parentNode.appendChild(preview);
+    }
+  }
+
+  // Helper function to show resume preview
+  function showResumePreview(resumeUrl) {
+    const resumeInput = document.getElementById('resumeInput');
+    if (resumeInput) {
+      const preview = document.createElement('div');
+      preview.style.marginTop = '10px';
+      preview.innerHTML = `
+        <a href="${resumeUrl}" target="_blank" style="color: var(--accent); text-decoration: none;">
+          📄 View Current Resume
+        </a>
+      `;
+      preview.className = 'resume-preview';
+      
+      // Remove existing preview if any
+      const existingPreview = document.querySelector('.resume-preview');
+      if (existingPreview) {
+        existingPreview.remove();
+      }
+      
+      resumeInput.parentNode.appendChild(preview);
+    }
+  }
 </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // Load existing profile data if editing
+  loadExistingProfile();
+
   // Form navigation
   const formSteps = document.querySelectorAll('.form-step');
   const progressBar = document.querySelector('.progress');

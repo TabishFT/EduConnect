@@ -1302,6 +1302,49 @@ async def check_authentication(request: Request):
             "detail": "Authentication check failed"
         }, status_code=500)
 
+@app.get("/api/my-profile")
+async def get_my_profile(current_user: User = Depends(get_current_user)):
+    """
+    Get current user's profile data
+    """
+    try:
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        
+        if current_user.role == "intern":
+            firebase_path = f"{FIREBASE_URL.rstrip('/')}/interns/{safe_email}.json"
+        elif current_user.role == "startup":
+            firebase_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+        else:
+            raise HTTPException(status_code=400, detail="Invalid user role")
+        
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code == 200:
+            profile_data = response.json()
+            if profile_data:
+                return JSONResponse({
+                    "success": True,
+                    "profile": profile_data
+                })
+            else:
+                return JSONResponse({
+                    "success": False,
+                    "message": "Profile not found",
+                    "profile": None
+                })
+        else:
+            return JSONResponse({
+                "success": False,
+                "message": "Failed to fetch profile",
+                "profile": None
+            })
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching profile: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 
 
 @app.get("/api/get_all_posts")
@@ -1688,6 +1731,38 @@ async def view_startup_profile_page(request: Request, current_user: User = Depen
             )
         
         return templates.TemplateResponse("interns/view_startup_profile.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
+@app.get("/interns/my-profile")
+async def intern_my_profile_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    View own profile page for interns
+    """
+    try:
+        if current_user.role != "intern":
+            raise HTTPException(status_code=403, detail="Access denied. Only interns can access this page.")
+        
+        return templates.TemplateResponse("interns/my_profile.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
+@app.get("/startups/my-profile")
+async def startup_my_profile_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    View own profile page for startups
+    """
+    try:
+        if current_user.role != "startup":
+            raise HTTPException(status_code=403, detail="Access denied. Only startups can access this page.")
+        
+        return templates.TemplateResponse("startups/my_profile.html", {"request": request})
     
     except HTTPException as e:
         if e.status_code == 401:
