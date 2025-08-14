@@ -1737,39 +1737,6 @@ async def view_startup_profile_page(request: Request, current_user: User = Depen
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
-@app.get("/interns/my-profile")
-async def intern_my_profile_page(request: Request, current_user: User = Depends(get_current_user)):
-    """
-    View own profile page for interns
-    """
-    try:
-        if current_user.role != "intern":
-            raise HTTPException(status_code=403, detail="Access denied. Only interns can access this page.")
-        
-        return templates.TemplateResponse("interns/my_profile.html", {"request": request})
-    
-    except HTTPException as e:
-        if e.status_code == 401:
-            return RedirectResponse(url="/login", status_code=303)
-        raise e
-
-@app.get("/startups/my-profile")
-async def startup_my_profile_page(request: Request, current_user: User = Depends(get_current_user)):
-    """
-    View own profile page for startups
-    """
-    try:
-        if current_user.role != "startup":
-            raise HTTPException(status_code=403, detail="Access denied. Only startups can access this page.")
-        
-        return templates.TemplateResponse("startups/my_profile.html", {"request": request})
-    
-    except HTTPException as e:
-        if e.status_code == 401:
-            return RedirectResponse(url="/login", status_code=303)
-        raise e
-
-
 
 # Add this at the top with other Firebase URLs
 CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
