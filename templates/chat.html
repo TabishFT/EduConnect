@@ -38,6 +38,101 @@
             color: var(--text-primary);
             height: 100vh;
             overflow: hidden;
+            padding-top: 70px;
+        }
+
+        /* Header Styles */
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            height: 70px;
+            box-sizing: border-box;
+        }
+
+        .logo {
+            background: white;
+            color: #1a1a2e;
+            padding: 8px 16px;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            color: #f59e0b;
+        }
+
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            backdrop-filter: blur(15px);
+            z-index: 999;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mobile-nav-btn {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 60px;
+        }
+
+        .mobile-nav-btn:hover,
+        .mobile-nav-btn.active {
+            background: rgba(255, 107, 107, 0.2);
+            color: #f59e0b;
+            transform: translateY(-2px);
+        }
+
+        .mobile-nav-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .mobile-nav-btn span {
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* Main Layout */
@@ -451,8 +546,21 @@
         }
 
         @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-nav {
+                display: flex;
+            }
+
+            body {
+                padding-bottom: 80px;
+            }
+
             .app-container {
                 position: relative;
+                height: calc(100vh - 150px);
             }
 
             .sidebar {
@@ -520,6 +628,13 @@
             }
         }
 
+        /* Desktop - Hide Mobile Nav */
+        @media (min-width: 769px) {
+            .mobile-nav {
+                display: none;
+            }
+        }
+
         /* Scrollbar Styling */
         ::-webkit-scrollbar {
             width: 6px;
@@ -564,6 +679,15 @@
     </style>
 </head>
 <body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">InternConnect</div>
+        <nav class="nav-links">
+            <a href="javascript:history.back()">Back</a>
+            <a href="/settings">Settings</a>
+        </nav>
+    </header>
+
     <button class="mobile-menu-toggle" id="mobileMenuToggle">
         <i class="fas fa-comments"></i>
     </button>
@@ -627,8 +751,52 @@
         </div>
     </div>
 
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <button class="mobile-nav-btn" onclick="goToHome()">
+            <svg viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+            </svg>
+            <span>Home</span>
+        </button>
+        <button class="mobile-nav-btn active">
+            <svg viewBox="0 0 24 24">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+            </svg>
+            <span>Messages</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="window.location.href='/settings'">
+            <svg viewBox="0 0 24 24">
+                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+            </svg>
+            <span>Settings</span>
+        </button>
+    </div>
+
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script>
+        // Navigation function
+        function goToHome() {
+            // Check user role and redirect to appropriate home
+            fetch('/api/auth/check', { credentials: 'include' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated && data.user.role) {
+                        if (data.user.role === 'intern') {
+                            window.location.href = '/interns/home';
+                        } else if (data.user.role === 'startup') {
+                            window.location.href = '/startups/home';
+                        } else {
+                            window.location.href = '/';
+                        }
+                    } else {
+                        window.location.href = '/';
+                    }
+                })
+                .catch(() => {
+                    window.location.href = '/';
+                });
+        }
         class ChatApp {
             constructor() {
                 this.socket = null;
