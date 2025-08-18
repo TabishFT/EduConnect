@@ -255,19 +255,73 @@
             color: white;
         }
 
+        /* Mobile Navigation */
+        .mobile-nav {
+            display: none;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            backdrop-filter: blur(15px);
+            z-index: 999;
+            border-top: 1px solid var(--border);
+        }
+
+        .mobile-nav-btn {
+            background: none;
+            border: none;
+            color: rgba(249, 247, 247, 0.7);
+            cursor: pointer;
+            padding: 12px;
+            border-radius: 12px;
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 60px;
+        }
+
+        .mobile-nav-btn:hover,
+        .mobile-nav-btn.active {
+            background: rgba(230, 165, 94, 0.2);
+            color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .mobile-nav-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .mobile-nav-btn span {
+            font-size: 10px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .mobile-nav {
+                display: flex;
+            }
+
+            body {
+                padding-bottom: 80px;
+            }
+
             .header {
                 padding: 12px 16px;
-            }
-
-            .nav-links {
-                gap: 15px;
-            }
-
-            .nav-links a {
-                padding: 6px 12px;
-                font-size: 14px;
             }
 
             .main-container {
@@ -292,6 +346,13 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 12px;
+            }
+        }
+
+        /* Desktop - Hide Mobile Nav */
+        @media (min-width: 769px) {
+            .mobile-nav {
+                display: none;
             }
         }
 
@@ -451,196 +512,245 @@
         </div>
     </div>
 
-    <script>
-        // Get user info from template
-        const userRole = '{{ user.role if user else "user" }}';
-        const userEmail = '{{ user.email if user else "" }}';
+    <!-- Mobile Navigation -->
+    <div class="mobile-nav">
+        <button class="mobile-nav-btn" onclick="goToHome()">
+            <svg viewBox="0 0 24 24">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            <span>Home</span>
+        </button>
+        <button class="mobile-nav-btn" onclick="window.location.href='/chat'">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
+            </svg>
+            <span>Messages</span>
+        </button>
+        <button class="mobile-nav-btn active">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z" />
+            </svg>
+            <span>Settings</span>
+        </button>
+    </div>
 
-        function goToProfile() {
-            // Redirect based on user role
-            if (userRole === 'intern') {
-                window.location.href = '/intern_profile';
-            } else if (userRole === 'startup') {
-                window.location.href = '/startup_profile';
-            } else {
-                showError('Profile not available. Please complete your registration.');
-            }
-        }
+    <script></script>
+    // Get user info from template
+    const userRole = '{{ user.role if user else "user" }}';
+    const userEmail = '{{ user.email if user else "" }}';
 
-        async function setupMyProfileLink() {
-            try {
-                const response = await fetch('/api/auth/check');
-                const data = await response.json();
+    // Navigation function
+    function goToHome() {
+    // Check user role and redirect to appropriate home
+    fetch('/api/auth/check', { credentials: 'include' })
+    .then(response => response.json())
+    .then(data => {
+    if (data.authenticated && data.user.role) {
+    if (data.user.role === 'intern') {
+    window.location.href = '/interns/home';
+    } else if (data.user.role === 'startup') {
+    window.location.href = '/startups/home';
+    } else {
+    window.location.href = '/';
+    }
+    } else {
+    window.location.href = '/';
+    }
+    })
+    .catch(() => {
+    window.location.href = '/';
+    });
+    }
 
-                if (data.authenticated && data.user) {
-                    const myProfileLink = document.getElementById('myProfileLink');
-                    if (data.user.role === 'intern') {
-                        myProfileLink.href = '/interns/my-profile';
-                    } else if (data.user.role === 'startup') {
-                        myProfileLink.href = '/startups/my-profile';
-                    } else {
-                        myProfileLink.style.display = 'none';
-                    }
-                }
-            } catch (error) {
-                console.error('Error setting up My Profile link:', error);
-                document.getElementById('myProfileLink').style.display = 'none';
-            }
-        }
+    function goToProfile() {
+    // Redirect based on user role
+    if (userRole === 'intern') {
+    window.location.href = '/intern_profile';
+    } else if (userRole === 'startup') {
+    window.location.href = '/startup_profile';
+    } else {
+    showError('Profile not available. Please complete your registration.');
+    }
+    }
 
-        function goToSavedPosts() {
-            // For now, show a coming soon message
-            // In the future, this would redirect to a saved posts page
-            showMessage('Saved Posts feature coming soon!', 'info');
-        }
+    async function setupMyProfileLink() {
+    try {
+    const response = await fetch('/api/auth/check');
+    const data = await response.json();
 
-        function openHelpFeedback() {
-            // Create a modal or redirect to help page
-            const helpContent = `
-                <div style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; margin: 20px auto;">
-                    <h3 style="color: var(--accent); margin-bottom: 15px;">Help & Support</h3>
-                    <p style="margin-bottom: 15px; color: var(--muted);">Need help? Here are some ways to get support:</p>
-                    <ul style="color: var(--foreground); margin-bottom: 20px; padding-left: 20px;">
-                        <li style="margin-bottom: 8px;">Email us at: support@educonnect.com</li>
-                        <li style="margin-bottom: 8px;">Use the chat feature to connect with other users</li>
-                        <li style="margin-bottom: 8px;">Check our FAQ section (coming soon)</li>
-                    </ul>
-                    <button onclick="closeHelp()" style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">Close</button>
-                </div>
-            `;
+    if (data.authenticated && data.user) {
+    const myProfileLink = document.getElementById('myProfileLink');
+    if (data.user.role === 'intern') {
+    myProfileLink.href = '/interns/my-profile';
+    } else if (data.user.role === 'startup') {
+    myProfileLink.href = '/startups/my-profile';
+    } else {
+    myProfileLink.style.display = 'none';
+    }
+    }
+    } catch (error) {
+    console.error('Error setting up My Profile link:', error);
+    document.getElementById('myProfileLink').style.display = 'none';
+    }
+    }
 
-            const overlay = document.createElement('div');
-            overlay.id = 'helpOverlay';
-            overlay.style.cssText = `
-                position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-                background: rgba(0,0,0,0.8); z-index: 1000; 
-                display: flex; align-items: center; justify-content: center;
-                backdrop-filter: blur(5px);
-            `;
-            overlay.innerHTML = helpContent;
-            document.body.appendChild(overlay);
-        }
+    function goToSavedPosts() {
+    // For now, show a coming soon message
+    // In the future, this would redirect to a saved posts page
+    showMessage('Saved Posts feature coming soon!', 'info');
+    }
 
-        function closeHelp() {
-            const overlay = document.getElementById('helpOverlay');
-            if (overlay) {
-                overlay.remove();
-            }
-        }
+    function openHelpFeedback() {
+    // Create a modal or redirect to help page
+    const helpContent = `
+    <div
+        style="background: var(--card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); max-width: 500px; margin: 20px auto;">
+        <h3 style="color: var(--accent); margin-bottom: 15px;">Help & Support</h3>
+        <p style="margin-bottom: 15px; color: var(--muted);">Need help? Here are some ways to get support:</p>
+        <ul style="color: var(--foreground); margin-bottom: 20px; padding-left: 20px;">
+            <li style="margin-bottom: 8px;">Email us at: support@educonnect.com</li>
+            <li style="margin-bottom: 8px;">Use the chat feature to connect with other users</li>
+            <li style="margin-bottom: 8px;">Check our FAQ section (coming soon)</li>
+        </ul>
+        <button onclick="closeHelp()"
+            style="background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer;">Close</button>
+    </div>
+    `;
 
-        function confirmLogout() {
-            if (confirm('Are you sure you want to logout?')) {
-                // Direct approach - just clear everything and redirect
-                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
-                localStorage.clear();
-                sessionStorage.clear();
+    const overlay = document.createElement('div');
+    overlay.id = 'helpOverlay';
+    overlay.style.cssText = `
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px);
+    `;
+    overlay.innerHTML = helpContent;
+    document.body.appendChild(overlay);
+    }
 
-                // Direct redirect to logout endpoint which will clear server-side cookie
-                window.location.href = '/logout';  // This will call the GET logout endpoint
-            }
-        }
+    function closeHelp() {
+    const overlay = document.getElementById('helpOverlay');
+    if (overlay) {
+    overlay.remove();
+    }
+    }
 
-        async function logout() {
-            try {
-                // Show loading state
-                document.body.classList.add('loading');
+    function confirmLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+    // Direct approach - just clear everything and redirect
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+    localStorage.clear();
+    sessionStorage.clear();
 
-                // Clear cookies on client side FIRST
-                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; HttpOnly=false';
-                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+    // Direct redirect to logout endpoint which will clear server-side cookie
+    window.location.href = '/logout'; // This will call the GET logout endpoint
+    }
+    }
 
-                // Clear any localStorage/sessionStorage
-                localStorage.clear();
-                sessionStorage.clear();
+    async function logout() {
+    try {
+    // Show loading state
+    document.body.classList.add('loading');
 
-                // Call the logout endpoint
-                const response = await fetch('/logout', {
-                    method: 'POST',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+    // Clear cookies on client side FIRST
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; HttpOnly=false';
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
 
-                // Show success message
-                showSuccess('Logged out successfully!');
+    // Clear any localStorage/sessionStorage
+    localStorage.clear();
+    sessionStorage.clear();
 
-                // Force redirect to root (getstarted page) with cache bypass
-                setTimeout(() => {
-                    // Use replace to prevent back button issues
-                    window.location.replace('/');
-                }, 500);
+    // Call the logout endpoint
+    const response = await fetch('/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {
+    'Content-Type': 'application/json'
+    }
+    });
 
-            } catch (error) {
-                console.error('Logout error:', error);
+    // Show success message
+    showSuccess('Logged out successfully!');
 
-                // Even on error, force logout
-                document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
-                localStorage.clear();
-                sessionStorage.clear();
+    // Force redirect to root (getstarted page) with cache bypass
+    setTimeout(() => {
+    // Use replace to prevent back button issues
+    window.location.replace('/');
+    }, 500);
 
-                // Force redirect
-                window.location.replace('/');
-            }
-        }
+    } catch (error) {
+    console.error('Logout error:', error);
 
-        function showSuccess(message) {
-            const successDiv = document.getElementById('successMessage');
-            successDiv.textContent = message;
-            successDiv.style.display = 'block';
-            setTimeout(() => {
-                successDiv.style.display = 'none';
-            }, 3000);
-        }
+    // Even on error, force logout
+    document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax';
+    localStorage.clear();
+    sessionStorage.clear();
 
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-            setTimeout(() => {
-                errorDiv.style.display = 'none';
-            }, 5000);
-        }
+    // Force redirect
+    window.location.replace('/');
+    }
+    }
 
-        function showMessage(message, type = 'info') {
-            if (type === 'error') {
-                showError(message);
-            } else {
-                showSuccess(message);
-            }
-        }
+    function showSuccess(message) {
+    const successDiv = document.getElementById('successMessage');
+    successDiv.textContent = message;
+    successDiv.style.display = 'block';
+    setTimeout(() => {
+    successDiv.style.display = 'none';
+    }, 3000);
+    }
 
-        // Add click handlers for better UX
-        document.addEventListener('DOMContentLoaded', function () {
-            // Set up My Profile link based on user role
-            setupMyProfileLink();
+    function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+    setTimeout(() => {
+    errorDiv.style.display = 'none';
+    }, 5000);
+    }
 
-            // Add hover effects and animations
-            const cards = document.querySelectorAll('.settings-card');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', function () {
-                    this.style.transform = 'translateY(-4px)';
-                });
+    function showMessage(message, type = 'info') {
+    if (type === 'error') {
+    showError(message);
+    } else {
+    showSuccess(message);
+    }
+    }
 
-                card.addEventListener('mouseleave', function () {
-                    this.style.transform = 'translateY(0)';
-                });
-            });
-        });
+    // Add click handlers for better UX
+    document.addEventListener('DOMContentLoaded', function () {
+    // Set up My Profile link based on user role
+    setupMyProfileLink();
 
-        // Close help modal when clicking outside
-        document.addEventListener('click', function (e) {
-            if (e.target.id === 'helpOverlay') {
-                closeHelp();
-            }
-        });
+    // Add hover effects and animations
+    const cards = document.querySelectorAll('.settings-card');
+    cards.forEach(card => {
+    card.addEventListener('mouseenter', function () {
+    this.style.transform = 'translateY(-4px)';
+    });
 
-        // Handle escape key for help modal
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                closeHelp();
-            }
-        });
+    card.addEventListener('mouseleave', function () {
+    this.style.transform = 'translateY(0)';
+    });
+    });
+    });
+
+    // Close help modal when clicking outside
+    document.addEventListener('click', function (e) {
+    if (e.target.id === 'helpOverlay') {
+    closeHelp();
+    }
+    });
+
+    // Handle escape key for help modal
+    document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+    closeHelp();
+    }
+    });
     </script>
 </body>
 
