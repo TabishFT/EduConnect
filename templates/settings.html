@@ -432,7 +432,7 @@
             </div>
 
             <!-- Saved Posts Card -->
-            <div class="settings-card" onclick="goToSavedPosts()">
+            <div class="settings-card" onclick="window.location.href='/saved-posts'">
                 <div class="card-header">
                     <div class="card-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -597,9 +597,148 @@
         }
 
         function goToSavedPosts() {
-            // For now, show a coming soon message
-            // In the future, this would redirect to a saved posts page
-            showMessage('Saved Posts feature coming soon!', 'info');
+            // Show saved posts modal
+            showSavedPostsModal();
+        }
+
+        async function showSavedPostsModal() {
+            try {
+                // Fetch saved posts
+                const response = await fetch('/api/saved_posts', {
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showError('Failed to load saved posts');
+                    return;
+                }
+                
+                const savedPosts = data.saved_posts || [];
+                
+                let postsHtml = '';
+                if (savedPosts.length === 0) {
+                    postsHtml = `
+                        <div style="text-align: center; padding: 40px; color: var(--muted);">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 20px; opacity: 0.5;">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                            </svg>
+                            <h3 style="margin-bottom: 10px;">No Saved Posts</h3>
+                            <p>You haven't saved any posts yet. Start exploring and save posts you're interested in!</p>
+                        </div>
+                    `;
+                } else {
+                    postsHtml = savedPosts.map(savedPost => {
+                        const post = savedPost.post_data;
+                        const savedDate = new Date(savedPost.saved_at).toLocaleDateString();
+                        
+                        return `
+                            <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                                    <div>
+                                        <h4 style="color: var(--accent); margin-bottom: 5px;">${post.startup_name || 'Unknown Startup'}</h4>
+                                        <h3 style="margin-bottom: 10px;">${post.job_title || 'Position Available'}</h3>
+                                        <p style="color: var(--muted); font-size: 14px;">Saved on ${savedDate}</p>
+                                    </div>
+                                    <button onclick="removeSavedPost('${savedPost.post_id}')" style="background: #ef4444; color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                                        Remove
+                                    </button>
+                                </div>
+                                
+                                ${post.skills ? `<p style="color: var(--muted); margin-bottom: 10px;"><strong>Skills:</strong> ${post.skills}</p>` : ''}
+                                
+                                ${post.description ? `<p style="color: var(--foreground); line-height: 1.5; margin-bottom: 15px;">${post.description.substring(0, 200)}${post.description.length > 200 ? '...' : ''}</p>` : ''}
+                                
+                                <div style="display: flex; gap: 10px;">
+                                    <button onclick="viewFullPost('${savedPost.post_id}')" style="background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                        View Full Post
+                                    </button>
+                                    ${post.startup_name ? `<button onclick="messageStartupFromSaved('${post.startup_name}')" style="background: var(--primary); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">Message Startup</button>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                
+                const modalContent = `
+                    <div style="background: var(--background); padding: 30px; border-radius: 12px; border: 1px solid var(--border); max-width: 800px; max-height: 80vh; overflow-y: auto; margin: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="color: var(--accent); margin: 0;">Saved Posts (${savedPosts.length})</h2>
+                            <button onclick="closeSavedPosts()" style="background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; padding: 5px;">&times;</button>
+                        </div>
+                        <div style="max-height: 60vh; overflow-y: auto;">
+                            ${postsHtml}
+                        </div>
+                    </div>
+                `;
+                
+                const overlay = document.createElement('div');
+                overlay.id = 'savedPostsOverlay';
+                overlay.style.cssText = `
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                    background: rgba(0,0,0,0.8); z-index: 1000; 
+                    display: flex; align-items: center; justify-content: center;
+                    backdrop-filter: blur(5px); padding: 20px;
+                `;
+                overlay.innerHTML = modalContent;
+                document.body.appendChild(overlay);
+                
+            } catch (error) {
+                console.error('Error loading saved posts:', error);
+                showError('Failed to load saved posts');
+            }
+        }
+
+        function closeSavedPosts() {
+            const overlay = document.getElementById('savedPostsOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        async function removeSavedPost(postId) {
+            if (!confirm('Are you sure you want to remove this saved post?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/unsave_post/${postId}`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showSuccess('Post removed from saved posts');
+                    // Refresh the saved posts modal
+                    closeSavedPosts();
+                    setTimeout(() => showSavedPostsModal(), 500);
+                } else {
+                    showError('Failed to remove saved post');
+                }
+            } catch (error) {
+                console.error('Error removing saved post:', error);
+                showError('Failed to remove saved post');
+            }
+        }
+
+        function viewFullPost(postId) {
+            // Close modal and redirect to interns home (they can find the post there)
+            closeSavedPosts();
+            if (userRole === 'intern') {
+                window.location.href = '/interns/home';
+            } else {
+                showMessage('Please visit the posts page to view full details', 'info');
+            }
+        }
+
+        function messageStartupFromSaved(startupName) {
+            // Close modal and redirect to chat
+            closeSavedPosts();
+            localStorage.setItem('startConversationWith', startupName);
+            window.location.href = '/chat';
         }
 
         function openHelpFeedback() {

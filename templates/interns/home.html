@@ -300,6 +300,21 @@
             animation: pulse 0.3s ease;
         }
 
+        .save-btn {
+            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            color: white;
+        }
+
+        .save-btn:hover {
+            transform: scale(1.15);
+            box-shadow: 0 6px 25px rgba(139, 92, 246, 0.5);
+        }
+
+        .save-btn.saved {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            animation: pulse 0.3s ease;
+        }
+
         .share-btn {
             background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
             color: white;
@@ -536,6 +551,56 @@
             transform: translateX(0);
         }
 
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .toast.success {
+            background: #28a745;
+        }
+
+        .toast.error {
+            background: #dc3545;
+        }
+
+        .toast.info {
+            background: #17a2b8;
+        }
+
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Saved button state */
+        .save-btn.saved {
+            background: #28a745;
+            color: white;
+        }
+
+        .save-btn.saved svg {
+            fill: white;
+        }
+
         
 .load-more-card {
     display: flex;
@@ -683,6 +748,11 @@
 
         <!-- Post Indicators -->
         <div class="post-indicators" id="postIndicators"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-content"></div>
     </div>
 
     <!-- Mobile Navigation -->
@@ -1042,6 +1112,11 @@
                             </svg>
                             <span class="likes-count">${post.likes_count || 0}</span>
                         </button>
+                        <button class="action-btn save-btn" onclick="savePost('${post.id}', this)" title="Save Post">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                            </svg>
+                        </button>
                         <button class="action-btn share-btn" onclick="sharePost('${post.id}')" title="Share">
                             <svg viewBox="0 0 24 24">
                                 <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
@@ -1238,6 +1313,65 @@
             }, 200);
         }
         
+        function savePost(postId, button) {
+            console.log('Saving post:', postId);
+            
+            // Check if already saved
+            const isSaved = button.classList.contains('saved');
+            
+            if (isSaved) {
+                // Unsave post
+                fetch(`/api/unsave_post/${postId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        button.classList.remove('saved');
+                        showToast('Post removed from saved posts', 'info');
+                    } else {
+                        showToast('Failed to unsave post', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error unsaving post:', error);
+                    showToast('Failed to unsave post', 'error');
+                });
+            } else {
+                // Save post
+                fetch(`/api/save_post/${postId}`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        button.classList.add('saved');
+                        showToast('Post saved successfully!', 'success');
+                        
+                        // Add animation
+                        button.style.transform = 'scale(1.2)';
+                        setTimeout(() => {
+                            button.style.transform = '';
+                        }, 200);
+                    } else {
+                        showToast('Failed to save post', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving post:', error);
+                    showToast('Failed to save post', 'error');
+                });
+            }
+        }
+
         function sharePost(postId) {
             console.log('Shared post:', postId);
             
@@ -1520,6 +1654,7 @@ function showToast(message, type = 'info') {
         window.filterPosts = filterPosts;
         window.loadPosts = loadPosts;
         window.likePost = likePost;
+        window.savePost = savePost;
         window.sharePost = sharePost;
         window.messageStartup = messageStartup;
         window.loadMorePosts = loadMorePosts;

@@ -1697,6 +1697,126 @@ async def share_post(post_id: str, current_user: User = Depends(get_current_user
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.post("/api/save_post/{post_id}")
+async def save_post(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Save a post for the current user
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Get the post data first to validate it exists
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        post_data = response.json()
+        if not post_data:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Create saved post entry
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        saved_post_data = {
+            "post_id": post_id,
+            "user_email": current_user.email,
+            "saved_at": datetime.utcnow().isoformat(),
+            "post_data": post_data  # Store the post data for quick access
+        }
+        
+        # Save to Firebase
+        saved_posts_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
+        save_response = requests.put(saved_posts_path, json=saved_post_data, timeout=10)
+        
+        if save_response.status_code not in [200, 201]:
+            raise HTTPException(status_code=500, detail="Failed to save post")
+        
+        return {
+            "success": True,
+            "message": "Post saved successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error saving post: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post("/api/unsave_post/{post_id}")
+async def unsave_post(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Remove a saved post for the current user
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Remove from Firebase
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        saved_posts_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
+        
+        delete_response = requests.delete(saved_posts_path, timeout=10)
+        
+        # Firebase returns 200 even if the item doesn't exist, so we don't need to check
+        return {
+            "success": True,
+            "message": "Post removed from saved posts"
+        }
+        
+    except Exception as e:
+        print(f"Error unsaving post: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/saved_posts")
+async def get_saved_posts(current_user: User = Depends(get_current_user)):
+    """
+    Get all saved posts for the current user
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        # Get saved posts from Firebase
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        saved_posts_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}.json"
+        
+        response = requests.get(saved_posts_path, timeout=10)
+        
+        if response.status_code != 200:
+            return {
+                "success": True,
+                "saved_posts": []
+            }
+        
+        saved_posts_data = response.json() or {}
+        
+        # Convert to list and sort by saved_at (newest first)
+        saved_posts = []
+        for post_id, saved_data in saved_posts_data.items():
+            if saved_data and isinstance(saved_data, dict):
+                saved_posts.append({
+                    "post_id": post_id,
+                    "saved_at": saved_data.get("saved_at"),
+                    "post_data": saved_data.get("post_data", {})
+                })
+        
+        # Sort by saved_at (newest first)
+        saved_posts.sort(key=lambda x: x.get("saved_at", ""), reverse=True)
+        
+        return {
+            "success": True,
+            "saved_posts": saved_posts
+        }
+        
+    except Exception as e:
+        print(f"Error getting saved posts: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/interns/home")
 async def interns_home_page(request: Request, current_user: User = Depends(get_current_user)):
     """
@@ -1737,9 +1857,30 @@ async def view_startup_profile_page(request: Request, current_user: User = Depen
             return RedirectResponse(url="/login", status_code=303)
         raise e
 
+@app.get("/saved-posts")
+async def saved_posts_page(request: Request, current_user: User = Depends(get_current_user)):
+    """
+    Display saved posts page - accessible only to authenticated interns
+    """
+    try:
+        # Check if user is authenticated intern
+        if current_user.role != "intern":
+            raise HTTPException(
+                status_code=403, 
+                detail="Access denied. Only interns can view saved posts."
+            )
+        
+        return templates.TemplateResponse("saved_posts.html", {"request": request})
+    
+    except HTTPException as e:
+        if e.status_code == 401:
+            return RedirectResponse(url="/login", status_code=303)
+        raise e
+
 
 # Add this at the top with other Firebase URLs
 CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
+SAVED_POSTS_FIREBASE_URL = os.getenv("FIREBASE_SAVED_POSTS_DATABASE", FIREBASE_URL)  # Use same as intern DB if not specified
 
 # Remove these in-memory storage variables (DELETE THESE LINES):
 # chat_messages = {}
