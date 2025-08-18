@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Interns Home - TechStartup</title>
     <style>
         * {
@@ -11,11 +11,18 @@
             box-sizing: border-box;
         }
 
+        html {
+            touch-action: manipulation;
+            -webkit-text-size-adjust: 100%;
+        }
+
         body {
             font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: white;
             min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         /* Header */
@@ -62,6 +69,9 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            min-height: calc(100vh - 140px);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Controls */
@@ -108,10 +118,10 @@
         .posts-container {
             position: relative;
             height: 700px;
-            overflow: visible;
+            overflow: hidden;
             border-radius: 20px;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            touch-action: manipulation;
+            touch-action: pan-y pinch-zoom;
         }
 
         .post-card {
@@ -183,9 +193,9 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            overflow-y: visible;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: auto;
+            overscroll-behavior: contain;
         }
 
         .startup-info {
@@ -368,6 +378,10 @@
 
             .main-container {
                 padding: 15px;
+                min-height: calc(100vh - 160px);
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior: contain;
             }
 
             .controls {
@@ -377,14 +391,18 @@
 
             .posts-container {
                 min-height: 600px;
-                overflow: visible;
+                overflow: hidden;
+                touch-action: pan-x pan-y;
             }
+            
             .post-card {
                 position: absolute; 
-                }
+            }
 
             .post-content {
                 padding: 15px 20px;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
             }
 
             .startup-name {
