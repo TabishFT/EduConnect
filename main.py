@@ -1611,7 +1611,7 @@ async def get_startup_profiles(
 @app.post("/api/like_post/{post_id}")
 async def like_post(post_id: str, current_user: User = Depends(get_current_user)):
     """
-    Like/Unlike a post
+    Like/Unlike a post with proper user tracking
     """
     try:
         if not current_user:
@@ -1628,21 +1628,57 @@ async def like_post(post_id: str, current_user: User = Depends(get_current_user)
         if not post_data:
             raise HTTPException(status_code=404, detail="Post not found")
         
-        # Update likes count
-        current_likes = post_data.get('likes_count', 0)
-        updated_likes = current_likes + 1
+        # Check if user has already liked this post
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes/{post_id}/{safe_email}.json"
         
-        # Update Firebase
+        # Check if like exists
+        like_check = requests.get(likes_path, timeout=10)
+        already_liked = like_check.status_code == 200 and like_check.json() is not None
+        
+        if already_liked:
+            # Unlike the post
+            delete_response = requests.delete(likes_path, timeout=10)
+            if delete_response.status_code not in [200, 204]:
+                raise HTTPException(status_code=500, detail="Failed to unlike post")
+            
+            # Decrement likes count
+            current_likes = post_data.get('likes_count', 1)
+            updated_likes = max(0, current_likes - 1)
+            action = "unliked"
+        else:
+            # Like the post
+            like_data = {
+                "user_email": current_user.email,
+                "liked_at": datetime.utcnow().isoformat()
+            }
+            put_response = requests.put(likes_path, json=like_data, timeout=10)
+            if put_response.status_code not in [200, 201]:
+                raise HTTPException(status_code=500, detail="Failed to like post")
+            
+            # Increment likes count
+            current_likes = post_data.get('likes_count', 0)
+            updated_likes = current_likes + 1
+            action = "liked"
+        
+        # Update Firebase with new likes count
         update_data = {'likes_count': updated_likes}
         update_response = requests.patch(firebase_path, json=update_data, timeout=10)
         
         if update_response.status_code != 200:
-            raise HTTPException(status_code=500, detail="Failed to update likes")
+            raise HTTPException(status_code=500, detail="Failed to update likes count")
+        
+        # Invalidate posts cache
+        async with posts_cache['lock']:
+            posts_cache['data'] = None
+            posts_cache['timestamp'] = None
         
         return {
             "success": True,
-            "message": "Post liked successfully",
-            "likes_count": updated_likes
+            "action": action,
+            "message": f"Post {action} successfully",
+            "likes_count": updated_likes,
+            "is_liked": not already_liked
         }
         
     except HTTPException:
@@ -1653,9 +1689,9 @@ async def like_post(post_id: str, current_user: User = Depends(get_current_user)
 
 
 @app.post("/api/share_post/{post_id}")
-async def share_post(post_id: str, current_user: User = Depends(get_current_user)):
+async def share_post(post_id: str, request: Request, current_user: User = Depends(get_current_user)):
     """
-    Share a post (increment share count)
+    Share a post (increment share count and generate unique link)
     """
     try:
         if not current_user:
@@ -1683,11 +1719,20 @@ async def share_post(post_id: str, current_user: User = Depends(get_current_user
         if update_response.status_code != 200:
             raise HTTPException(status_code=500, detail="Failed to update shares")
         
+        # Generate the unique shareable URL
+        base_url = str(request.base_url).rstrip('/')
+        share_url = f"{base_url}/post/{post_id}"
+        
+        # Invalidate posts cache
+        async with posts_cache['lock']:
+            posts_cache['data'] = None
+            posts_cache['timestamp'] = None
+        
         return {
             "success": True,
             "message": "Post shared successfully",
             "shares_count": updated_shares,
-            "share_url": f"{request.base_url}post/{post_id}"
+            "share_url": share_url
         }
         
     except HTTPException:
@@ -1876,6 +1921,86 @@ async def saved_posts_page(request: Request, current_user: User = Depends(get_cu
         if e.status_code == 401:
             return RedirectResponse(url="/login", status_code=303)
         raise e
+
+
+@app.get("/post/{post_id}")
+async def public_post_view(post_id: str, request: Request):
+    """
+    Public post view - accessible without authentication for sharing
+    """
+    try:
+        if not POSTS_FIREBASE_URL:
+            raise HTTPException(status_code=500, detail="Posts Firebase URL not configured")
+        
+        # Get post data
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200 or not response.json():
+            # Post not found - redirect to login
+            return RedirectResponse(url="/login", status_code=303)
+        
+        post_data = response.json()
+        
+        # Get startup profile if available
+        startup_profile = None
+        if post_data.get('created_by_email'):
+            try:
+                profile_query_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups.json"
+                query_params = {'orderBy': '"contactEmail"', 'equalTo': f'"{post_data["created_by_email"]}"'}
+                profile_response = requests.get(profile_query_path, params=query_params, timeout=10)
+                
+                if profile_response.status_code == 200:
+                    profiles = profile_response.json()
+                    if profiles:
+                        startup_profile = next(iter(profiles.values()))
+            except:
+                pass  # Fail silently for profile fetch
+        
+        # Check if user is authenticated
+        user_authenticated = False
+        user_role = None
+        try:
+            token = request.cookies.get("access_token")
+            if token:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                email = payload.get("sub")
+                if email:
+                    user = get_user(email)
+                    if user:
+                        user_authenticated = True
+                        user_role = user.role
+        except:
+            pass  # User not authenticated
+        
+        # Prepare post data for template
+        post_display = {
+            'id': post_data.get('id', post_id),
+            'startup_name': post_data.get('startup_name', 'Unknown Startup'),
+            'tagline': post_data.get('tagline', ''),
+            'job_title': post_data.get('job_title', 'Position Available'),
+            'skills': post_data.get('skills', ''),
+            'description': post_data.get('description', ''),
+            'image_url': post_data.get('image_url', ''),
+            'created_at': post_data.get('created_at', ''),
+            'likes_count': post_data.get('likes_count', 0),
+            'shares_count': post_data.get('shares_count', 0),
+            'startup_profile': startup_profile
+        }
+        
+        # Render the public post view template
+        return templates.TemplateResponse("public_post.html", {
+            "request": request,
+            "post": post_display,
+            "authenticated": user_authenticated,
+            "user_role": user_role
+        })
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error viewing public post: {str(e)}")
+        return RedirectResponse(url="/", status_code=303)
 
 
 # Add this at the top with other Firebase URLs

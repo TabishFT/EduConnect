@@ -431,8 +431,8 @@
                 </div>
             </div>
 
-            <!-- Saved Posts Card -->
-            <div class="settings-card" onclick="window.location.href='/saved-posts'">
+            <!-- Saved Posts Card (Only for Interns) -->
+            <div class="settings-card" id="savedPostsCard" onclick="window.location.href='/saved-posts'" style="display: none;">
                 <div class="card-header">
                     <div class="card-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -540,6 +540,14 @@
         // Get user info from template
         const userRole = '{{ user.role if user else "user" }}';
         const userEmail = '{{ user.email if user else "" }}';
+
+        // Show/hide saved posts card based on user role
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedPostsCard = document.getElementById('savedPostsCard');
+            if (userRole === 'intern' && savedPostsCard) {
+                savedPostsCard.style.display = 'block';
+            }
+        });
 
         // Navigation function
         function goToHome() {

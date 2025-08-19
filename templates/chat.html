@@ -833,6 +833,7 @@
                 this.initSocket();
                 this.setupEventListeners();
                 await this.loadConversations();
+                this.checkAutoOpenChat();
             }
 
             async authenticate() {
@@ -1078,6 +1079,11 @@
                 this.messages = [];
                 this.elements.messagesContainer.innerHTML = '<div class="loading">Loading messages</div>';
                 this.socket.emit('get_chat_history', { with: email });
+                
+                // Update URL without page reload
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.set('with', email);
+                window.history.replaceState({}, '', newUrl);
 
                 // Mark as read
                 fetch('/api/chat/mark_read', {
@@ -1312,6 +1318,52 @@
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
+            }
+
+            checkAutoOpenChat() {
+                // Check URL parameters for auto-opening chat
+                const urlParams = new URLSearchParams(window.location.search);
+                const withEmail = urlParams.get('with');
+                
+                if (withEmail) {
+                    console.log('Auto-opening chat with:', withEmail);
+                    this.searchAndOpenChat(withEmail);
+                    return;
+                }
+                
+                // Check localStorage for stored conversation
+                const storedEmail = localStorage.getItem('startConversationWith');
+                if (storedEmail) {
+                    console.log('Opening stored conversation with:', storedEmail);
+                    localStorage.removeItem('startConversationWith');
+                    this.searchAndOpenChat(storedEmail);
+                }
+            }
+
+            async searchAndOpenChat(email) {
+                // First check if conversation already exists
+                const existingConv = this.conversations.find(conv => conv.email === email);
+                if (existingConv) {
+                    this.openChat(email);
+                    return;
+                }
+                
+                // If not in conversations, search for the user
+                try {
+                    const response = await fetch(`/api/chat/search?q=${encodeURIComponent(email)}`, { 
+                        credentials: 'include' 
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success && data.users.length > 0) {
+                        const user = data.users.find(u => u.email === email);
+                        if (user) {
+                            this.openChat(email);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error searching for user:', error);
+                }
             }
         }
 
