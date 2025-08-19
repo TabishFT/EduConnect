@@ -1442,11 +1442,35 @@ async def get_all_posts(
                     'application_count': post_data.get('application_count', 0),
                     'likes_count': post_data.get('likes_count', 0),
                     'shares_count': post_data.get('shares_count', 0),
+                    'is_liked': False,  # Will be updated below
+                    'is_saved': False,  # Will be updated below
                     'created_by_email': post_data.get('created_by_email')
                 })
         
         # Sort by creation date (newest first)
         posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        # Check like/save status for current user
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        
+        for post in posts_list:
+            post_id = post['id']
+            
+            # Check if user liked this post
+            likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes/{post_id}/{safe_email}.json"
+            try:
+                like_response = requests.get(likes_path, timeout=5)
+                post['is_liked'] = like_response.status_code == 200 and like_response.json() is not None
+            except:
+                post['is_liked'] = False
+            
+            # Check if user saved this post
+            saved_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
+            try:
+                save_response = requests.get(saved_path, timeout=5)
+                post['is_saved'] = save_response.status_code == 200 and save_response.json() is not None
+            except:
+                post['is_saved'] = False
         
         # Pagination logic
         start_index = 0
