@@ -84,6 +84,54 @@
             gap: 15px;
         }
 
+        .search-container {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 12px 40px 12px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .search-bar:focus {
+            outline: none;
+            border-color: #f59e0b;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .search-bar::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .clear-search {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.2s ease;
+        }
+
+        .clear-search:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
         .view-profile-btn {
             background: #f59e0b;
             color: white;
@@ -398,6 +446,12 @@
             .controls {
                 flex-direction: column;
                 align-items: stretch;
+                gap: 15px;
+            }
+
+            .search-container {
+                max-width: none;
+                order: -1;
             }
 
             .posts-container {
@@ -718,6 +772,10 @@
     <div class="main-container">
         <!-- Controls -->
         <div class="controls">
+            <div class="search-container">
+                <input type="text" class="search-bar" id="searchBar" placeholder="Search by company name..." onkeyup="handleSearch()">
+                <button class="clear-search" id="clearSearch" onclick="clearSearch()" style="display: none;">×</button>
+            </div>
             <button class="view-profile-btn" id="viewProfileBtn" onclick="viewProfile()">View Profile</button>
             <select class="sort-dropdown" id="sortFilter" onchange="filterPosts()">
                 <option value="all">All Posts</option>
@@ -783,6 +841,8 @@
         let isDragging = false;
         let nextCursor = null;
         let hasMorePosts = true;
+        let searchQuery = '';
+        let searchTimeout = null;
         const postsContainer = document.getElementById('postsContainer');
         
         // Sample data for testing
@@ -1297,121 +1357,145 @@
             }
         }
         
-        // Action button functions
+        // Search functionality
+        function handleSearch() {
+            const searchBar = document.getElementById('searchBar');
+            const clearBtn = document.getElementById('clearSearch');
+            
+            searchQuery = searchBar.value.trim().toLowerCase();
+            
+            // Show/hide clear button
+            clearBtn.style.display = searchQuery ? 'block' : 'none';
+            
+            // Debounce search
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterPosts();
+            }, 300);
+        }
+        
+        function clearSearch() {
+            const searchBar = document.getElementById('searchBar');
+            const clearBtn = document.getElementById('clearSearch');
+            
+            searchBar.value = '';
+            searchQuery = '';
+            clearBtn.style.display = 'none';
+            filterPosts();
+        }
+
+        // Fast like/save with optimistic updates
         async function likePost(postId, button) {
-            console.log('Liking/Unliking post:', postId);
+            // Immediate UI update (optimistic)
+            const likesCountSpan = button.querySelector('.likes-count');
+            const post = filteredPosts.find(p => p.id === postId);
+            const wasLiked = button.classList.contains('liked');
             
-            // Disable button to prevent double clicks
-            button.disabled = true;
+            // Update UI immediately
+            if (wasLiked) {
+                button.classList.remove('liked');
+                post.likes_count = Math.max(0, (post.likes_count || 0) - 1);
+            } else {
+                button.classList.add('liked');
+                post.likes_count = (post.likes_count || 0) + 1;
+            }
             
+            likesCountSpan.textContent = post.likes_count;
+            
+            // Animation
+            button.style.transform = 'scale(1.2)';
+            setTimeout(() => button.style.transform = '', 150);
+            
+            // Background API call
             try {
                 const response = await fetch(`/api/like_post/${postId}`, {
                     method: 'POST',
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 });
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Toggle liked state
+                    // Sync with server response
+                    post.likes_count = data.likes_count || 0;
+                    post.is_liked = data.is_liked;
+                    likesCountSpan.textContent = post.likes_count;
+                    
                     if (data.is_liked) {
                         button.classList.add('liked');
-                        showToast('Post liked!', 'success');
                     } else {
                         button.classList.remove('liked');
-                        showToast('Post unliked!', 'info');
                     }
-                    
-                    // Update likes count in button and global state
-                    const likesCountSpan = button.querySelector('.likes-count');
-                    if (likesCountSpan) {
-                        likesCountSpan.textContent = data.likes_count || 0;
-                    }
-                    
-                    // Update the post data in filteredPosts array
-                    const post = filteredPosts.find(p => p.id === postId);
-                    if (post) {
-                        post.likes_count = data.likes_count || 0;
-                        post.is_liked = data.is_liked;
-                    }
-                    
-                    // Add animation
-                    button.style.transform = 'scale(1.2)';
-                    setTimeout(() => {
-                        button.style.transform = '';
-                    }, 200);
                 } else {
+                    // Revert on error
+                    if (wasLiked) {
+                        button.classList.add('liked');
+                        post.likes_count = (post.likes_count || 0) + 1;
+                    } else {
+                        button.classList.remove('liked');
+                        post.likes_count = Math.max(0, (post.likes_count || 0) - 1);
+                    }
+                    likesCountSpan.textContent = post.likes_count;
                     showToast('Failed to update like', 'error');
                 }
             } catch (error) {
-                console.error('Error liking/unliking post:', error);
-                showToast('Failed to update like', 'error');
-            } finally {
-                // Re-enable button
-                button.disabled = false;
+                // Revert on error
+                if (wasLiked) {
+                    button.classList.add('liked');
+                    post.likes_count = (post.likes_count || 0) + 1;
+                } else {
+                    button.classList.remove('liked');
+                    post.likes_count = Math.max(0, (post.likes_count || 0) - 1);
+                }
+                likesCountSpan.textContent = post.likes_count;
+                showToast('Network error', 'error');
             }
         }
         
         function savePost(postId, button) {
-            console.log('Saving post:', postId);
-            
-            // Check if already saved
             const isSaved = button.classList.contains('saved');
             
+            // Immediate UI update
             if (isSaved) {
-                // Unsave post
-                fetch(`/api/unsave_post/${postId}`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        button.classList.remove('saved');
-                        showToast('Post removed from saved posts', 'info');
-                    } else {
-                        showToast('Failed to unsave post', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error unsaving post:', error);
-                    showToast('Failed to unsave post', 'error');
-                });
+                button.classList.remove('saved');
+                showToast('Removed from saved', 'info');
             } else {
-                // Save post
-                fetch(`/api/save_post/${postId}`, {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        button.classList.add('saved');
-                        showToast('Post saved successfully!', 'success');
-                        
-                        // Add animation
-                        button.style.transform = 'scale(1.2)';
-                        setTimeout(() => {
-                            button.style.transform = '';
-                        }, 200);
-                    } else {
-                        showToast('Failed to save post', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving post:', error);
-                    showToast('Failed to save post', 'error');
-                });
+                button.classList.add('saved');
+                showToast('Post saved!', 'success');
+                button.style.transform = 'scale(1.2)';
+                setTimeout(() => button.style.transform = '', 150);
             }
+            
+            // Background API call
+            const endpoint = isSaved ? `/api/unsave_post/${postId}` : `/api/save_post/${postId}`;
+            
+            fetch(endpoint, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    // Revert on error
+                    if (isSaved) {
+                        button.classList.add('saved');
+                    } else {
+                        button.classList.remove('saved');
+                    }
+                    showToast('Action failed', 'error');
+                }
+            })
+            .catch(() => {
+                // Revert on error
+                if (isSaved) {
+                    button.classList.add('saved');
+                } else {
+                    button.classList.remove('saved');
+                }
+                showToast('Network error', 'error');
+            });
         }
         
        async function sharePost(postId, button) {
@@ -1495,37 +1579,43 @@
         
         
         
-        // Filter posts
+        // Enhanced filter with search
         function filterPosts() {
             const filterElement = document.getElementById('sortFilter');
             const filterValue = filterElement ? filterElement.value : 'all';
             const now = new Date();
             let filteredData = [...allPosts];
         
+            // Apply search filter
+            if (searchQuery) {
+                filteredData = filteredData.filter(post => 
+                    post.startup_name.toLowerCase().includes(searchQuery)
+                );
+            }
+        
+            // Apply time filter
             switch (filterValue) {
                 case 'week':
                     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    filteredData = allPosts.filter(post => {
+                    filteredData = filteredData.filter(post => {
                         const postDate = new Date(post.created_at);
                         return postDate >= oneWeekAgo;
                     });
                     break;
                 case 'month':
                     const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-                    filteredData = allPosts.filter(post => {
+                    filteredData = filteredData.filter(post => {
                         const postDate = new Date(post.created_at);
                         return postDate >= oneMonthAgo;
                     });
                     break;
                 case '6months':
                     const sixMonthsAgo = new Date(now.getTime() - 6 * 30 * 24 * 60 * 60 * 1000);
-                    filteredData = allPosts.filter(post => {
+                    filteredData = filteredData.filter(post => {
                         const postDate = new Date(post.created_at);
                         return postDate >= sixMonthsAgo;
                     });
                     break;
-                default:
-                    filteredData = [...allPosts];
             }
         
             // Sort by creation date (newest first)
