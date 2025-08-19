@@ -92,7 +92,7 @@
 
         .search-bar {
             width: 100%;
-            padding: 12px 40px 12px 20px;
+            padding: 12px 80px 12px 20px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 25px;
             background: rgba(255, 255, 255, 0.1);
@@ -110,6 +110,28 @@
 
         .search-bar::placeholder {
             color: rgba(255, 255, 255, 0.6);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 45px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #f59e0b;
+            border: none;
+            color: white;
+            padding: 8px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-btn:hover {
+            background: #ff5252;
+            transform: translateY(-50%) scale(1.1);
         }
 
         .clear-search {
@@ -383,6 +405,11 @@
             0% { transform: scale(1); }
             50% { transform: scale(1.1); }
             100% { transform: scale(1); }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Navigation Dots */
@@ -773,7 +800,12 @@
         <!-- Controls -->
         <div class="controls">
             <div class="search-container">
-                <input type="text" class="search-bar" id="searchBar" placeholder="Search by company name..." onkeyup="handleSearch(event)" onkeydown="if(event.key==='Enter') handleSearch(event)">
+                <input type="text" class="search-bar" id="searchBar" placeholder="Search by company name..." onkeydown="if(event.key==='Enter') performSearch()">
+                <button class="search-btn" id="searchBtn" onclick="performSearch()" title="Search">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                    </svg>
+                </button>
                 <button class="clear-search" id="clearSearch" onclick="clearSearch()" style="display: none;">×</button>
             </div>
             <button class="view-profile-btn" id="viewProfileBtn" onclick="viewProfile()">View Profile</button>
@@ -1358,25 +1390,53 @@
         }
         
         // Search functionality
-        function handleSearch(event) {
+        async function performSearch() {
             const searchBar = document.getElementById('searchBar');
             const clearBtn = document.getElementById('clearSearch');
+            const searchBtn = document.getElementById('searchBtn');
             
-            searchQuery = searchBar.value.trim().toLowerCase();
+            searchQuery = searchBar.value.trim();
             
-            // Show/hide clear button
-            clearBtn.style.display = searchQuery ? 'block' : 'none';
+            if (!searchQuery) {
+                showToast('Please enter a company name', 'info');
+                return;
+            }
             
-            // Immediate search on Enter key or after typing
-            if (event && event.key === 'Enter') {
-                clearTimeout(searchTimeout);
-                filterPosts();
-            } else {
-                // Debounce search for typing
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    filterPosts();
-                }, 500);
+            // Show loading state
+            searchBtn.innerHTML = '<div style="width:16px;height:16px;border:2px solid #fff;border-top:2px solid transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>';
+            clearBtn.style.display = 'block';
+            
+            try {
+                // Search for posts by startup name
+                const response = await fetch(`/api/search_posts_by_startup?startup_name=${encodeURIComponent(searchQuery)}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.posts && data.posts.length > 0) {
+                        // Replace current posts with search results
+                        filteredPosts = data.posts;
+                        currentPostIndex = 0;
+                        renderPosts();
+                        showToast(`Found ${data.posts.length} posts from ${searchQuery}`, 'success');
+                    } else {
+                        filteredPosts = [];
+                        renderPosts();
+                        showToast(`No posts found for "${searchQuery}"`, 'info');
+                    }
+                } else {
+                    showToast('Search failed', 'error');
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                showToast('Search failed', 'error');
+            } finally {
+                // Restore search button
+                searchBtn.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>';
             }
         }
         
@@ -1387,7 +1447,12 @@
             searchBar.value = '';
             searchQuery = '';
             clearBtn.style.display = 'none';
+            
+            // Reload all posts
+            filteredPosts = [...allPosts];
+            currentPostIndex = 0;
             filterPosts();
+            showToast('Search cleared', 'info');
         }
 
         // Fast like with proper state management
@@ -1607,21 +1672,14 @@
         
         
         
-        // Enhanced filter with search
+        // Filter posts by time only (search is handled separately)
         function filterPosts() {
             const filterElement = document.getElementById('sortFilter');
             const filterValue = filterElement ? filterElement.value : 'all';
             const now = new Date();
             let filteredData = [...allPosts];
         
-            // Apply search filter
-            if (searchQuery) {
-                filteredData = filteredData.filter(post => 
-                    post.startup_name.toLowerCase().includes(searchQuery)
-                );
-            }
-        
-            // Apply time filter
+            // Apply time filter only
             switch (filterValue) {
                 case 'week':
                     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

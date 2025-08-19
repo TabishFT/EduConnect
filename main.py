@@ -1347,6 +1347,93 @@ async def get_my_profile(current_user: User = Depends(get_current_user)):
 
 
 
+@app.get("/api/search_posts_by_startup")
+async def search_posts_by_startup(
+    startup_name: str = Query(..., description="Startup name to search for"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Search posts by startup name
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        if not POSTS_FIREBASE_URL:
+            raise HTTPException(status_code=500, detail="Posts Firebase URL not configured")
+        
+        # Get all posts from Firebase
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Failed to fetch posts")
+        
+        posts_data = response.json() or {}
+        
+        # Filter posts by startup name
+        matching_posts = []
+        search_name = startup_name.lower().strip()
+        
+        for post_id, post_data in posts_data.items():
+            if (post_data and isinstance(post_data, dict) and 
+                post_data.get('status') == 'published' and
+                search_name in post_data.get('startup_name', '').lower()):
+                
+                matching_posts.append({
+                    'id': post_data.get('id', post_id),
+                    'startup_name': post_data.get('startup_name', 'Unknown Startup'),
+                    'tagline': post_data.get('tagline', ''),
+                    'job_title': post_data.get('job_title', 'Position Available'),
+                    'skills': post_data.get('skills', ''),
+                    'description': post_data.get('description', ''),
+                    'image_url': post_data.get('image_url', ''),
+                    'created_at': post_data.get('created_at', ''),
+                    'likes_count': post_data.get('likes_count', 0),
+                    'shares_count': post_data.get('shares_count', 0),
+                    'is_liked': False,
+                    'is_saved': False,
+                    'created_by_email': post_data.get('created_by_email')
+                })
+        
+        # Check like/save status for current user
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        
+        for post in matching_posts:
+            post_id = post['id']
+            
+            # Check if user liked this post
+            likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes/{post_id}/{safe_email}.json"
+            try:
+                like_response = requests.get(likes_path, timeout=5)
+                post['is_liked'] = like_response.status_code == 200 and like_response.json() is not None
+            except:
+                post['is_liked'] = False
+            
+            # Check if user saved this post
+            saved_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
+            try:
+                save_response = requests.get(saved_path, timeout=5)
+                post['is_saved'] = save_response.status_code == 200 and save_response.json() is not None
+            except:
+                post['is_saved'] = False
+        
+        # Sort by creation date (newest first)
+        matching_posts.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        return {
+            "success": True,
+            "posts": matching_posts,
+            "count": len(matching_posts),
+            "search_query": startup_name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in search_posts_by_startup: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 @app.get("/api/get_all_posts")
 async def get_all_posts(
     current_user: User = Depends(get_current_user),
