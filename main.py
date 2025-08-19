@@ -1441,6 +1441,7 @@ async def get_all_posts(
                     'stipend': post_data.get('stipend', ''),
                     'application_count': post_data.get('application_count', 0),
                     'likes_count': post_data.get('likes_count', 0),
+                    'shares_count': post_data.get('shares_count', 0),
                     'created_by_email': post_data.get('created_by_email')
                 })
         

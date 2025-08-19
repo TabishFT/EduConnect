@@ -1449,16 +1449,15 @@
                         const postData = filteredPosts.find(p => p.id === postId);
                         navigator.share({
                             title: `${postData.startup_name} - ${postData.job_title}`,
-                            text: `Check out this internship opportunity at ${postData.startup_name}`,
                             url: shareUrl
                         }).then(() => {
                             showToast('Post shared successfully!', 'success');
                         }).catch(err => {
                             console.error('Error sharing:', err);
-                            fallbackShare(shareUrl, postData);
+                            fallbackShare(shareUrl);
                         });
                     } else {
-                        fallbackShare(shareUrl, filteredPosts.find(p => p.id === postId));
+                        fallbackShare(shareUrl);
                     }
                 } else {
                     showToast('Failed to generate share link', 'error');
@@ -1469,11 +1468,9 @@
             }
         }
         
-        function fallbackShare(shareUrl, post) {
-            // Fallback share - copy to clipboard
-            const shareText = `Check out this internship at ${post.startup_name}: ${post.job_title}\n${shareUrl}`;
-            
-            navigator.clipboard.writeText(shareText).then(() => {
+        function fallbackShare(shareUrl) {
+            // Fallback share - copy only URL to clipboard
+            navigator.clipboard.writeText(shareUrl).then(() => {
                 showToast('Share link copied to clipboard!', 'success');
             }).catch(err => {
                 console.error('Error copying to clipboard:', err);
