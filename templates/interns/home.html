@@ -220,23 +220,45 @@
             cursor: grabbing;
         }
 
-        /* Fixed Image Styling */
+        /* Fixed Image Styling with Lazy Loading */
         .post-image {
             width: 100%;
             height: 300px;
-            object-fit: contain; /* Changed from cover to contain */
+            object-fit: contain;
             background: linear-gradient(45deg, #f59e0b, #ffa500);
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            position: relative;
         }
 
         .post-image img {
             width: 100%;
             height: 100%;
-            object-fit: contain; /* Ensure full image is visible */
-            background: #000; /* Black background for better contrast */
+            object-fit: contain;
+            background: #000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .post-image img.loaded {
+            opacity: 1;
+        }
+
+        .post-image .loading-spinner {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid #f59e0b;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         .placeholder-image {
@@ -896,7 +918,7 @@
             loadPosts();
         });
         
-        // This is the complete and fixed loadPosts function
+        // Optimized loadPosts function with reduced initial load
         async function loadPosts() {
             // Prevent multiple simultaneous requests
             if (isLoading || !hasMorePosts) {
@@ -908,8 +930,8 @@
             isLoading = true;
             showLoading();
         
-            // Build API URL with pagination
-            let apiUrl = `/api/get_all_posts?limit=5`;
+            // Build API URL with smaller initial load for faster response
+            let apiUrl = `/api/get_all_posts?limit=3`;
             
             if (nextCursor) {
                 apiUrl += `&start_after=${nextCursor}`;
@@ -1075,6 +1097,7 @@
             updatePostIndicators();
             updateViewProfileButton();
             setupSwipeHandlers();
+            setupLazyLoading();
         }
         
         // Updated createLoadMoreCard function with proper event handling
@@ -1115,8 +1138,20 @@
                     const currentPosition = currentPostIndex;
                     
                     try {
-                        // Load more posts
-                        await loadPosts();
+                        // Load more posts with higher limit for load more
+                        const response = await fetch(`/api/get_all_posts?limit=5&start_after=${nextCursor}`, {
+                            method: 'GET',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include'
+                        });
+                        
+                        const data = await response.json();
+                        if (data.success && data.posts) {
+                            allPosts = allPosts.concat(data.posts);
+                            nextCursor = data.next_cursor;
+                            hasMorePosts = data.has_more;
+                            filterPosts();
+                        }
                         
                         // After loading, restore position and re-render
                         currentPostIndex = currentPosition;
@@ -1144,11 +1179,12 @@
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
             card.setAttribute('data-index', index);
         
-            // Handle image display
+            // Handle image display with lazy loading
             const imageHtml = post.image_url ? 
                 `<div class="post-image">
-                    <img src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
-                         style="width: 100%; height: 100%; object-fit: contain; background: #000;"
+                    <div class="loading-spinner"></div>
+                    <img data-src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
+                         class="lazy-image" loading="lazy"
                          onerror="this.parentElement.innerHTML='<div class=\\'placeholder-image\\'><svg viewBox=\\'0 0 24 24\\'><path d=\\'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z\\'/></svg></div>'">
                  </div>` :
                 `<div class="placeholder-image">
@@ -1881,6 +1917,29 @@ function showToast(message, type = 'info') {
         
         // Auto-advance disabled
         // setTimeout(startAutoAdvance, 60000);
+        
+        // Lazy loading setup
+        function setupLazyLoading() {
+            const lazyImages = document.querySelectorAll('.lazy-image');
+            
+            const imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        const spinner = img.parentElement.querySelector('.loading-spinner');
+                        
+                        img.src = img.dataset.src;
+                        img.onload = () => {
+                            img.classList.add('loaded');
+                            if (spinner) spinner.remove();
+                        };
+                        imageObserver.unobserve(img);
+                    }
+                });
+            }, { rootMargin: '50px' });
+            
+            lazyImages.forEach(img => imageObserver.observe(img));
+        }
         
         // Settings navigation function
         function goToSettings() {
