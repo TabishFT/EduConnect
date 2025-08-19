@@ -2368,9 +2368,19 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                     unread_count = sum(1 for msg in messages.values() 
                                      if msg.get('to') == current_user.email and not msg.get('read', False))
                     
+                    # Ensure we have a proper name - fallback to email if name is empty/null
+                    user_name = other_user.get("name")
+                    if not user_name or user_name.strip() == "" or user_name == other_user["email"]:
+                        # Extract name from email (before @)
+                        email_parts = other_user["email"].split('@')
+                        if email_parts and len(email_parts[0]) > 0:
+                            user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title()
+                        else:
+                            user_name = other_user["email"]
+                    
                     conversations.append({
                         "email": other_user["email"],
-                        "name": other_user.get("name", other_user["email"]),
+                        "name": user_name,
                         "role": other_user.get("role", "user"),
                         "last_message": metadata.get('last_message', ''),
                         "last_message_time": metadata.get('last_message_time', ''),
@@ -2412,9 +2422,19 @@ async def search_users(
         ).limit(10)
         
         for user in cursor:
+            # Ensure we have a proper name - fallback to email if name is empty/null
+            user_name = user.get("name")
+            if not user_name or user_name.strip() == "" or user_name == user["email"]:
+                # Extract name from email (before @)
+                email_parts = user["email"].split('@')
+                if email_parts and len(email_parts[0]) > 0:
+                    user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title()
+                else:
+                    user_name = user["email"]
+            
             users.append({
                 "email": user["email"],
-                "name": user.get("name", user["email"]),
+                "name": user_name,
                 "role": user.get("role", "user"),
                 "online": user["email"] in user_sockets
             })

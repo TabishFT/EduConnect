@@ -970,14 +970,27 @@
 
                 this.elements.conversationsList.innerHTML = this.conversations.map(conv => {
                     const time = this.formatTime(conv.last_message_time);
+                    
+                    // Prioritize name over email for display
+                    let displayName = conv.email; // fallback
+                    if (conv.name && conv.name.trim() !== '' && conv.name !== conv.email) {
+                        displayName = conv.name;
+                    } else {
+                        // Extract name from email (before @)
+                        const emailParts = conv.email.split('@');
+                        if (emailParts.length > 0 && emailParts[0].length > 0) {
+                            displayName = emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        }
+                    }
+                    
                     return `
                         <div class="conversation-item" data-email="${conv.email}">
                             <div class="avatar">
-                                ${conv.name.charAt(0).toUpperCase()}
+                                ${displayName.charAt(0).toUpperCase()}
                                 ${conv.online ? '<span class="online-indicator"></span>' : ''}
                             </div>
                             <div class="conversation-info">
-                                <div class="conversation-name">${conv.name}</div>
+                                <div class="conversation-name">${displayName}</div>
                                 <div class="conversation-last-message">${this.escapeHtml(conv.last_message)}</div>
                             </div>
                             <div class="conversation-meta">
@@ -1010,18 +1023,32 @@
                     const data = await response.json();
 
                     if (data.success && data.users.length > 0) {
-                        this.elements.searchResults.innerHTML = data.users.map(user => `
-                            <div class="search-result-item" data-email="${user.email}">
-                                <div class="avatar">
-                                    ${user.name.charAt(0).toUpperCase()}
-                                    ${user.online ? '<span class="online-indicator"></span>' : ''}
+                        this.elements.searchResults.innerHTML = data.users.map(user => {
+                            // Prioritize name over email for display
+                            let displayName = user.email; // fallback
+                            if (user.name && user.name.trim() !== '' && user.name !== user.email) {
+                                displayName = user.name;
+                            } else {
+                                // Extract name from email (before @)
+                                const emailParts = user.email.split('@');
+                                if (emailParts.length > 0 && emailParts[0].length > 0) {
+                                    displayName = emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                }
+                            }
+                            
+                            return `
+                                <div class="search-result-item" data-email="${user.email}">
+                                    <div class="avatar">
+                                        ${displayName.charAt(0).toUpperCase()}
+                                        ${user.online ? '<span class="online-indicator"></span>' : ''}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600;">${displayName}</div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">${user.email}</div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div style="font-weight: 600;">${user.name}</div>
-                                    <div style="font-size: 12px; color: var(--text-secondary);">${user.email}</div>
-                                </div>
-                            </div>
-                        `).join('');
+                            `;
+                        }).join('');
 
                         this.elements.searchResults.classList.add('active');
 
@@ -1063,13 +1090,24 @@
                 this.elements.messageInputContainer.style.display = 'block';
                 this.elements.chatArea.classList.remove('no-conversation');
 
-                // Update header
+                // Update header - prioritize name over email
                 const conv = this.conversations.find(c => c.email === email);
-                const name = conv ? conv.name : email;
+                let displayName = email; // fallback to email
+                
+                if (conv && conv.name && conv.name.trim() !== '' && conv.name !== conv.email) {
+                    displayName = conv.name;
+                } else {
+                    // Try to extract name from email (before @)
+                    const emailParts = email.split('@');
+                    if (emailParts.length > 0 && emailParts[0].length > 0) {
+                        displayName = emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    }
+                }
+                
                 const online = conv ? conv.online : false;
 
-                document.getElementById('chatName').textContent = name;
-                document.getElementById('chatAvatarText').textContent = name.charAt(0).toUpperCase();
+                document.getElementById('chatName').textContent = displayName;
+                document.getElementById('chatAvatarText').textContent = displayName.charAt(0).toUpperCase();
                 document.getElementById('chatStatus').textContent = online ? 'online' : 'offline';
                 document.getElementById('chatStatus').className = `chat-status ${online ? 'online' : ''}`;
                 document.getElementById('chatOnlineIndicator').style.display = online ? 'block' : 'none';
@@ -1232,8 +1270,19 @@
                 if (data.from === this.currentChat) {
                     if (data.typing) {
                         const user = this.conversations.find(c => c.email === data.from);
-                        document.getElementById('typingUser').textContent = 
-                            user ? user.name : data.from;
+                        let displayName = data.from; // fallback to email
+                        
+                        if (user && user.name && user.name.trim() !== '' && user.name !== user.email) {
+                            displayName = user.name;
+                        } else {
+                            // Extract name from email (before @)
+                            const emailParts = data.from.split('@');
+                            if (emailParts.length > 0 && emailParts[0].length > 0) {
+                                displayName = emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            }
+                        }
+                        
+                        document.getElementById('typingUser').textContent = displayName;
                         this.elements.typingIndicator.style.display = 'block';
                     } else {
                         this.elements.typingIndicator.style.display = 'none';
@@ -1253,8 +1302,19 @@
             showNotification(from, message) {
                 if ('Notification' in window && Notification.permission === 'granted') {
                     const user = this.conversations.find(c => c.email === from);
-                    const name = user ? user.name : from;
-                    new Notification(name, {
+                    let displayName = from; // fallback to email
+                    
+                    if (user && user.name && user.name.trim() !== '' && user.name !== user.email) {
+                        displayName = user.name;
+                    } else {
+                        // Extract name from email (before @)
+                        const emailParts = from.split('@');
+                        if (emailParts.length > 0 && emailParts[0].length > 0) {
+                            displayName = emailParts[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                        }
+                    }
+                    
+                    new Notification(displayName, {
                         body: message,
                         icon: '/static/icon.png'
                     });
