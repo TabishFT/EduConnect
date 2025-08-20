@@ -908,6 +908,55 @@
             details.classList.toggle('show');
         }
         
+        // Navigate between posts
+        function navigatePost(direction) {
+            if (direction === 'next' && currentPostIndex < filteredPosts.length - 1) {
+                currentPostIndex++;
+                updateActivePost();
+                
+                // Load more posts if near end
+                if (currentPostIndex >= filteredPosts.length - 2 && hasMorePosts && !isLoading) {
+                    loadPosts();
+                }
+            } else if (direction === 'prev' && currentPostIndex > 0) {
+                currentPostIndex--;
+                updateActivePost();
+            }
+        }
+        
+        // Update active post display
+        function updateActivePost() {
+            const cards = document.querySelectorAll('.post-card');
+            cards.forEach((card, index) => {
+                card.classList.remove('active', 'prev');
+                if (index === currentPostIndex) {
+                    card.classList.add('active');
+                } else if (index < currentPostIndex) {
+                    card.classList.add('prev');
+                }
+            });
+            
+            // Update view profile button
+            updateViewProfileButton();
+        }
+        
+        // Update view profile button for current post
+        function updateViewProfileButton() {
+            const btn = document.getElementById('viewProfileBtn');
+            if (filteredPosts[currentPostIndex]) {
+                const currentPost = filteredPosts[currentPostIndex];
+                btn.textContent = `View ${currentPost.startup_name} Profile`;
+                btn.onclick = () => viewProfile(currentPost.startup_name, currentPost.created_by_email);
+            }
+        }
+        
+        // View profile function
+        function viewProfile(startupName, email) {
+            if (startupName && email) {
+                window.location.href = `/startup/profile/view?startup_name=${encodeURIComponent(startupName)}&email=${encodeURIComponent(email)}`;
+            }
+        }
+        
         // Load posts on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadPosts();
@@ -1055,7 +1104,6 @@
                 container.appendChild(loadMoreCard);
             }
         
-            updatePostIndicators();
             updateViewProfileButton();
             setupSwipeHandlers();
             setupLazyLoading();
