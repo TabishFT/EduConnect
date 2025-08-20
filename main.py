@@ -2113,6 +2113,17 @@ async def public_post_view(post_id: str, request: Request):
 CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
 SAVED_POSTS_FIREBASE_URL = os.getenv("FIREBASE_SAVED_POSTS_DATABASE", FIREBASE_URL)  # Use same as intern DB if not specified
 
+# Debug: Print Firebase URLs at startup
+print(f"🔥 Firebase URLs configured:")
+print(f"   FIREBASE_URL: {FIREBASE_URL}")
+print(f"   STARTUP_FIREBASE_URL: {STARTUP_FIREBASE_URL}")
+print(f"   POSTS_FIREBASE_URL: {POSTS_FIREBASE_URL}")
+print(f"   CHATS_FIREBASE_URL: {CHATS_FIREBASE_URL}")
+print(f"   SAVED_POSTS_FIREBASE_URL: {SAVED_POSTS_FIREBASE_URL}")
+
+if not CHATS_FIREBASE_URL:
+    print("⚠️ WARNING: CHATS_FIREBASE_URL not configured - chat functionality will not work!")
+
 # Remove these in-memory storage variables (DELETE THESE LINES):
 # chat_messages = {}
 # message_timestamps = {}
@@ -2174,8 +2185,13 @@ async def message_startup(
             'startup_name': startup_name  # Additional context
         }
         
+        # Use fallback Firebase URL
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            raise HTTPException(status_code=500, detail="Chat service not configured")
+        
         # Save to Firebase chat database
-        chat_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        chat_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
         response = requests.put(chat_path, json=message_obj, timeout=10)
         
         if response.status_code not in [200, 201]:
@@ -2187,7 +2203,7 @@ async def message_startup(
             'last_message_time': timestamp,
             'participants': [current_user.email, startup_email]
         }
-        meta_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/metadata.json"
+        meta_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/metadata.json"
         requests.put(meta_path, json=conv_meta, timeout=10)
         
         # Send real-time notification if startup is online
@@ -2329,8 +2345,13 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
     try:
         conversations = []
         
+        # Use fallback Firebase URL if CHATS_FIREBASE_URL not configured
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            return {"success": False, "error": "Chat service not configured"}
+        
         # Get all conversations from Firebase
-        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations.json"
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations.json"
         response = requests.get(firebase_path, timeout=10)
         
         if response.status_code != 200:
@@ -2452,8 +2473,13 @@ async def mark_messages_read(
         
         conversation_id = '_'.join(sorted([current_user.email, other_user]))
         
+        # Use fallback Firebase URL
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            return {"success": False, "error": "Chat service not configured"}
+        
         # Get all messages in conversation
-        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
         response = requests.get(firebase_path, timeout=10)
         
         if response.status_code == 200 and response.json():
@@ -2462,7 +2488,7 @@ async def mark_messages_read(
             # Update read status for messages to current user
             for msg_id, msg_data in messages.items():
                 if msg_data.get('to') == current_user.email and not msg_data.get('read', False):
-                    update_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{msg_id}/read.json"
+                    update_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{msg_id}/read.json"
                     requests.put(update_path, json=True, timeout=10)
         
         return {"success": True}
@@ -2489,6 +2515,7 @@ async def send_message(sid, data):
     try:
         # Verify authentication
         if sid not in connected_users:
+            print(f"❌ Unauthenticated socket {sid} trying to send message")
             await sio.emit('error', {'message': 'Not authenticated'}, room=sid)
             return
         
@@ -2496,10 +2523,22 @@ async def send_message(sid, data):
         recipient_email = data.get('to')
         message_text = data.get('message')
         
+        print(f"📨 Message attempt: {sender_email} → {recipient_email}: '{message_text}'")
+        
         # Validate input
         if not recipient_email or not message_text:
+            print(f"❌ Invalid input - recipient: {recipient_email}, message: {message_text}")
             await sio.emit('error', {'message': 'Missing recipient or message'}, room=sid)
             return
+        
+        # Check if CHATS_FIREBASE_URL is configured, use fallback if needed
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            print(f"❌ No Firebase URL configured for chats")
+            await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
+            return
+        
+        print(f"🔥 Using Firebase URL for chats: {chat_firebase_url}")
         
         # Create message
         message_id = str(uuid4())
@@ -2516,29 +2555,52 @@ async def send_message(sid, data):
             'delivered': False
         }
         
-        # Save to Firebase
-        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
-        response = requests.put(firebase_path, json=message_obj, timeout=10)
+        print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
         
-        if response.status_code not in [200, 201]:
+        # Save to Firebase with better error handling
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        
+        try:
+            response = requests.put(firebase_path, json=message_obj, timeout=15)
+            print(f"🔥 Firebase response: {response.status_code} - {response.text[:200]}")
+            
+            if response.status_code not in [200, 201]:
+                print(f"❌ Firebase save failed: {response.status_code} - {response.text}")
+                await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
+                return
+                
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Firebase request error: {str(e)}")
             await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
             return
         
+        print(f"✅ Message saved successfully")
+        
         # Update conversation metadata
-        conv_meta = {
-            'last_message': message_text,
-            'last_message_time': timestamp,
-            'participants': [sender_email, recipient_email]
-        }
-        meta_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/metadata.json"
-        requests.put(meta_path, json=conv_meta, timeout=10)
+        try:
+            conv_meta = {
+                'last_message': message_text,
+                'last_message_time': timestamp,
+                'participants': [sender_email, recipient_email]
+            }
+            meta_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/metadata.json"
+            meta_response = requests.put(meta_path, json=conv_meta, timeout=10)
+            print(f"📝 Metadata update: {meta_response.status_code}")
+        except Exception as meta_error:
+            print(f"⚠️ Metadata update failed: {str(meta_error)}")
+            # Don't fail the message send if metadata update fails
         
         # Send to recipient if online
         if recipient_email in user_sockets:
             message_obj['delivered'] = True
+            print(f"📤 Recipient {recipient_email} is online, delivering message")
+            
             # Update delivery status in Firebase
-            delivery_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/delivered.json"
-            requests.put(delivery_path, json=True, timeout=10)
+            try:
+                delivery_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/delivered.json"
+                requests.put(delivery_path, json=True, timeout=10)
+            except Exception as delivery_error:
+                print(f"⚠️ Delivery status update failed: {str(delivery_error)}")
             
             for recipient_sid in user_sockets[recipient_email]:
                 await sio.emit('receive_message', {
@@ -2552,6 +2614,8 @@ async def send_message(sid, data):
                 await sio.emit('message_delivered', {
                     'message_id': message_id
                 }, room=sid)
+        else:
+            print(f"📭 Recipient {recipient_email} is offline")
         
         # Confirm to sender
         await sio.emit('message_sent', {
@@ -2562,10 +2626,12 @@ async def send_message(sid, data):
             'delivered': message_obj['delivered']
         }, room=sid)
         
-        print(f"📨 Message sent: {sender_email} → {recipient_email}")
+        print(f"✅ Message sent successfully: {sender_email} → {recipient_email}")
         
     except Exception as e:
-        print(f"Error in send_message: {str(e)}")
+        print(f"💥 Unexpected error in send_message: {str(e)}")
+        import traceback
+        traceback.print_exc()
         await sio.emit('error', {'message': 'Failed to send message'}, room=sid)
 
 @sio.event
@@ -2584,8 +2650,13 @@ async def mark_message_read(sid, data):
         
         conversation_id = '_'.join(sorted([reader_email, sender_email]))
         
+        # Use fallback Firebase URL
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            return
+        
         # Update read status in Firebase
-        read_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/read.json"
+        read_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/read.json"
         response = requests.put(read_path, json=True, timeout=10)
         
         if response.status_code in [200, 201]:
@@ -2617,8 +2688,14 @@ async def get_chat_history(sid, data):
         
         conversation_id = '_'.join(sorted([current_user, other_user]))
         
+        # Use fallback Firebase URL
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
+            return
+        
         # Get messages from Firebase
-        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
         params = {
             'orderBy': '"timestamp"',
             'limitToLast': 50  # Get last 50 messages
@@ -2725,10 +2802,17 @@ def efficient_cleanup_firebase_messages():
     """More efficient cleanup using Firebase queries"""
     try:
         print("🧹 Starting efficient Firebase cleanup...")
+        
+        # Use fallback Firebase URL
+        chat_firebase_url = CHATS_FIREBASE_URL
+        if not chat_firebase_url:
+            print("⚠️ Skipping cleanup - no Firebase URL configured")
+            return
+        
         cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
         
         # Get all conversations
-        firebase_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations.json"
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations.json"
         response = requests.get(firebase_path, params={'shallow': 'true'}, timeout=30)
         
         if response.status_code == 200 and response.json():
@@ -2736,7 +2820,7 @@ def efficient_cleanup_firebase_messages():
             
             for conv_id in conversation_ids:
                 # Get only old messages using Firebase query
-                messages_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conv_id}/messages.json"
+                messages_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages.json"
                 params = {
                     'orderBy': '"timestamp"',
                     'endAt': f'"{cutoff_time}"'
@@ -2749,7 +2833,7 @@ def efficient_cleanup_firebase_messages():
                     
                     # Delete each old message
                     for msg_id in old_messages.keys():
-                        delete_path = f"{CHATS_FIREBASE_URL.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
+                        delete_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
                         requests.delete(delete_path, timeout=10)
         
         print("✅ Efficient cleanup complete")
