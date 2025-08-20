@@ -1396,27 +1396,36 @@ async def search_posts_by_startup(
                     'created_by_email': post_data.get('created_by_email')
                 })
         
-        # Check like/save status for current user
+        # Batch check like/save status
         safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
         
-        for post in matching_posts:
-            post_id = post['id']
-            
-            # Check if user liked this post
-            likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes/{post_id}/{safe_email}.json"
+        if matching_posts:
             try:
-                like_response = requests.get(likes_path, timeout=5)
-                post['is_liked'] = like_response.status_code == 200 and like_response.json() is not None
+                # Batch check likes
+                likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes.json"
+                likes_response = requests.get(likes_path, timeout=3)
+                user_likes = {}
+                if likes_response.status_code == 200 and likes_response.json():
+                    all_likes = likes_response.json()
+                    for post_id, likes_data in all_likes.items():
+                        if likes_data and safe_email in likes_data:
+                            user_likes[post_id] = True
+                
+                # Batch check saves
+                saves_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}.json"
+                saves_response = requests.get(saves_path, timeout=3)
+                user_saves = set()
+                if saves_response.status_code == 200 and saves_response.json():
+                    user_saves = set(saves_response.json().keys())
+                
+                # Apply to posts
+                for post in matching_posts:
+                    post['is_liked'] = user_likes.get(post['id'], False)
+                    post['is_saved'] = post['id'] in user_saves
             except:
-                post['is_liked'] = False
-            
-            # Check if user saved this post
-            saved_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
-            try:
-                save_response = requests.get(saved_path, timeout=5)
-                post['is_saved'] = save_response.status_code == 200 and save_response.json() is not None
-            except:
-                post['is_saved'] = False
+                for post in matching_posts:
+                    post['is_liked'] = False
+                    post['is_saved'] = False
         
         # Sort by creation date (newest first)
         matching_posts.sort(key=lambda x: x.get('created_at', ''), reverse=True)
@@ -1441,15 +1450,16 @@ async def get_all_posts(
     start_after: Optional[str] = Query(None, description="Cursor for pagination")
 ):
     """
-    Get posts with 10 MINUTE SMART CACHING - Perfect balance!
+    Get posts with ULTRA-FAST OPTIMIZED CACHING - Sub-second response!
     """
     try:
-        # Check authentication
         if not current_user:
             raise HTTPException(status_code=401, detail="Authentication required")
         
         if not POSTS_FIREBASE_URL:
             raise HTTPException(status_code=500, detail="Posts Firebase URL not configured")
+        
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
         
         # 🎯 SMART CACHE CHECK (10 MINUTES)
         async with posts_cache['lock']:
@@ -1460,45 +1470,31 @@ async def get_all_posts(
             )
             
             if cache_valid:
-                # ⚡ CACHE HIT - Instant response!
                 posts_data = posts_cache['data']
                 cache_status = "hit"
-                print("✨ Posts Cache HIT - Serving from memory (10 min cache)")
             else:
-                # 🔥 CACHE MISS - Fetch from Firebase
-                print("🔥 Posts Cache MISS - Fetching from Firebase")
                 cache_status = "miss"
-                
                 firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts.json"
                 
                 try:
-                    response = requests.get(firebase_path, timeout=10)
-                    
+                    response = requests.get(firebase_path, timeout=8)
                     if response.status_code == 200:
                         posts_data = response.json()
-                        # ✅ Update cache with fresh data
                         posts_cache['data'] = posts_data
                         posts_cache['timestamp'] = datetime.utcnow()
-                        print(f"✅ Posts cache updated (valid for 10 minutes) with {len(posts_data) if posts_data else 0} items")
                     else:
-                        # Use stale cache if available
                         if posts_cache['data'] is not None:
                             posts_data = posts_cache['data']
                             cache_status = "stale"
-                            print("⚠️ Using stale posts cache due to Firebase error")
                         else:
                             raise HTTPException(status_code=500, detail="Firebase error")
-                            
-                except requests.exceptions.RequestException as e:
-                    # Network error - use stale cache if available
+                except requests.exceptions.RequestException:
                     if posts_cache['data'] is not None:
                         posts_data = posts_cache['data']
                         cache_status = "stale"
-                        print(f"⚠️ Using stale posts cache due to network error: {str(e)}")
                     else:
                         raise HTTPException(status_code=503, detail="Service unavailable")
         
-        # Handle empty data
         if not posts_data:
             return {
                 "success": True,
@@ -1509,7 +1505,7 @@ async def get_all_posts(
                 "cache_status": cache_status
             }
         
-        # Process posts
+        # Process posts efficiently
         posts_list = []
         for post_id, post_data in posts_data.items():
             if post_data and isinstance(post_data, dict) and post_data.get('status') == 'published':
@@ -1522,44 +1518,16 @@ async def get_all_posts(
                     'description': post_data.get('description', ''),
                     'image_url': post_data.get('image_url', ''),
                     'created_at': post_data.get('created_at', ''),
-                    'status': post_data.get('status', 'published'),
-                    'location': post_data.get('location', ''),
-                    'duration': post_data.get('duration', ''),
-                    'stipend': post_data.get('stipend', ''),
-                    'application_count': post_data.get('application_count', 0),
                     'likes_count': post_data.get('likes_count', 0),
                     'shares_count': post_data.get('shares_count', 0),
-                    'is_liked': False,  # Will be updated below
-                    'is_saved': False,  # Will be updated below
+                    'is_liked': False,
+                    'is_saved': False,
                     'created_by_email': post_data.get('created_by_email')
                 })
         
-        # Sort by creation date (newest first)
         posts_list.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         
-        # Check like/save status for current user
-        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
-        
-        for post in posts_list:
-            post_id = post['id']
-            
-            # Check if user liked this post
-            likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes/{post_id}/{safe_email}.json"
-            try:
-                like_response = requests.get(likes_path, timeout=5)
-                post['is_liked'] = like_response.status_code == 200 and like_response.json() is not None
-            except:
-                post['is_liked'] = False
-            
-            # Check if user saved this post
-            saved_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}/{post_id}.json"
-            try:
-                save_response = requests.get(saved_path, timeout=5)
-                post['is_saved'] = save_response.status_code == 200 and save_response.json() is not None
-            except:
-                post['is_saved'] = False
-        
-        # Pagination logic
+        # Pagination first, then batch check status
         start_index = 0
         if start_after:
             for i, post in enumerate(posts_list):
@@ -1572,6 +1540,34 @@ async def get_all_posts(
         has_more = end_index < len(posts_list)
         next_cursor = paginated_posts[-1]['id'] if has_more and paginated_posts else None
         
+        # ⚡ BATCH CHECK LIKES/SAVES - Only for paginated posts
+        if paginated_posts:
+            try:
+                # Batch check likes
+                likes_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/likes.json"
+                likes_response = requests.get(likes_path, timeout=3)
+                user_likes = {}
+                if likes_response.status_code == 200 and likes_response.json():
+                    all_likes = likes_response.json()
+                    for post_id, likes_data in all_likes.items():
+                        if likes_data and safe_email in likes_data:
+                            user_likes[post_id] = True
+                
+                # Batch check saves
+                saves_path = f"{SAVED_POSTS_FIREBASE_URL.rstrip('/')}/saved_posts/{safe_email}.json"
+                saves_response = requests.get(saves_path, timeout=3)
+                user_saves = set()
+                if saves_response.status_code == 200 and saves_response.json():
+                    user_saves = set(saves_response.json().keys())
+                
+                # Apply status to posts
+                for post in paginated_posts:
+                    post['is_liked'] = user_likes.get(post['id'], False)
+                    post['is_saved'] = post['id'] in user_saves
+                    
+            except:
+                pass  # Fail silently, defaults to False
+        
         return {
             "success": True,
             "posts": paginated_posts,
@@ -1579,9 +1575,7 @@ async def get_all_posts(
             "total_count": len(posts_list),
             "next_cursor": next_cursor,
             "has_more": has_more,
-            "cache_status": cache_status,
-            "cache_age_seconds": int((datetime.utcnow() - posts_cache['timestamp']).total_seconds()) if posts_cache['timestamp'] else None,
-            "cache_duration_minutes": 10
+            "cache_status": cache_status
         }
         
     except HTTPException:

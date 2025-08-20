@@ -881,13 +881,13 @@
             loadPosts();
         });
         
-        // Ultra-fast loadPosts function
+        // Ultra-fast loadPosts function with preloading
         async function loadPosts() {
             if (isLoading || !hasMorePosts) return;
             
             isLoading = true;
             
-            let apiUrl = `/api/get_all_posts?limit=5`;
+            let apiUrl = `/api/get_all_posts?limit=8`; // Load more posts per request
             if (nextCursor) apiUrl += `&start_after=${nextCursor}`;
             
             try {
@@ -903,6 +903,9 @@
                     nextCursor = data.next_cursor;
                     hasMorePosts = data.has_more;
                     filterPosts();
+                    
+                    // Preload images for better UX
+                    preloadImages(data.posts);
                 } else {
                     hasMorePosts = false;
                     if (!allPosts.length) showNoPostsState();
@@ -914,6 +917,16 @@
                 hideLoading();
                 isLoading = false;
             }
+        }
+        
+        // Preload images for faster display
+        function preloadImages(posts) {
+            posts.forEach(post => {
+                if (post.image_url) {
+                    const img = new Image();
+                    img.src = post.image_url;
+                }
+            });
         }
         
         // Global function to handle "Load more posts" action
@@ -1091,10 +1104,12 @@
             const card = document.createElement('div');
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
             card.setAttribute('data-index', index);
-        
+            
+            // Load first image immediately, lazy load others
+            const isActive = index === currentPostIndex;
             const imageHtml = post.image_url ? 
                 `<div class="post-image">
-                    <img data-src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" class="lazy-image">
+                    <img ${isActive ? `src="${post.image_url}"` : `data-src="${post.image_url}" class="lazy-image"`} alt="${escapeHtml(post.startup_name)}">
                  </div>` :
                 `<div class="placeholder-image">
                     <svg viewBox="0 0 24 24">
