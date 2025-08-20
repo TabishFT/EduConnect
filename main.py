@@ -2661,9 +2661,9 @@ async def send_message(sid, data):
             # Add new message
             messages.append(message_obj)
             
-            # Keep only last 50 messages per conversation (optimized limit)
-            if len(messages) > 50:
-                messages = messages[-50:]
+            # Keep only last 10 messages per conversation (reduce bandwidth)
+            if len(messages) > 10:
+                messages = messages[-10:]
             
             # Save messages in single operation
             response = requests.put(messages_path, json=messages, timeout=10)
@@ -2705,6 +2705,7 @@ async def send_message(sid, data):
             'message': message_text,
             'timestamp': timestamp,
             'id': message_id,
+            'temp_id': data.get('temp_id'),
             'delivered': is_delivered
         }, room=sid)
         

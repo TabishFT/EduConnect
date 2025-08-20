@@ -807,7 +807,7 @@
                 this.typingTimer = null;
                 this.searchTimer = null;
                 this.markingAsRead = false;
-                this.renderThrottle = null;
+                this.isRendering = false;
                 
                 this.elements = {
                     sidebar: document.getElementById('sidebar'),
@@ -1173,14 +1173,14 @@
             }
 
             renderMessages() {
-                // Throttle rendering to prevent infinite loops
-                if (this.renderThrottle) {
-                    clearTimeout(this.renderThrottle);
-                }
+                // Prevent multiple renders
+                if (this.isRendering) return;
+                this.isRendering = true;
                 
-                this.renderThrottle = setTimeout(() => {
+                requestAnimationFrame(() => {
                     this._doRenderMessages();
-                }, 50);
+                    this.isRendering = false;
+                });
             }
             
             _doRenderMessages() {
@@ -1231,21 +1231,16 @@
                 // Scroll to bottom
                 this.scrollToBottom();
 
-                // Mark visible received messages as read (throttled)
+                // Mark messages as read (minimal)
                 if (this.currentChat && !this.markingAsRead) {
-                    const receivedMessages = this.messages.filter(msg => 
-                        msg.from === this.currentChat && !msg.read
-                    );
+                    const unreadCount = this.messages.filter(msg => 
+                        msg.from === this.currentChat && !msg.read && !msg.temp
+                    ).length;
                     
-                    if (receivedMessages.length > 0) {
+                    if (unreadCount > 0) {
                         this.markingAsRead = true;
-                        receivedMessages.forEach(msg => {
-                            this.socket.emit('mark_message_read', {
-                                message_id: msg.id,
-                                from: msg.from
-                            });
-                        });
-                        setTimeout(() => { this.markingAsRead = false; }, 1000);
+                        this.socket.emit('mark_all_read', { with: this.currentChat });
+                        setTimeout(() => { this.markingAsRead = false; }, 2000);
                     }
                 }
             }
@@ -1262,14 +1257,37 @@
                 const message = this.elements.messageInput.value.trim();
                 if (!message || !this.currentChat) return;
 
+                // Disable send button temporarily
+                this.elements.sendButton.disabled = true;
+                
+                // Add message immediately to UI (optimistic update)
+                const tempId = 'temp_' + Date.now();
+                this.messages.push({
+                    from: this.currentUser.email,
+                    to: this.currentChat,
+                    message: message,
+                    timestamp: new Date().toISOString(),
+                    id: tempId,
+                    delivered: false,
+                    read: false,
+                    temp: true
+                });
+                this.renderMessages();
+
                 this.socket.emit('send_message', {
                     to: this.currentChat,
-                    message: message
+                    message: message,
+                    temp_id: tempId
                 });
 
                 this.elements.messageInput.value = '';
                 this.elements.messageInput.style.height = 'auto';
                 this.elements.messageInput.focus();
+                
+                // Re-enable send button
+                setTimeout(() => {
+                    this.elements.sendButton.disabled = false;
+                }, 500);
             }
 
             handleIncomingMessage(data) {
@@ -1305,17 +1323,23 @@
                 console.log('✅ Message sent confirmation:', data.id);
                 
                 if (data.to === this.currentChat) {
-                    // Add sent message to current conversation
-                    this.messages.push({
-                        from: this.currentUser.email,
-                        to: data.to,
-                        message: data.message,
-                        timestamp: data.timestamp,
-                        id: data.id,
-                        delivered: data.delivered || false,
-                        read: false
-                    });
-                    this.renderMessages();
+                    // Replace temp message with real one
+                    const tempId = data.temp_id;
+                    if (tempId) {
+                        const tempIndex = this.messages.findIndex(msg => msg.id === tempId);
+                        if (tempIndex !== -1) {
+                            this.messages[tempIndex] = {
+                                from: this.currentUser.email,
+                                to: data.to,
+                                message: data.message,
+                                timestamp: data.timestamp,
+                                id: data.id,
+                                delivered: data.delivered || false,
+                                read: false
+                            };
+                            this.renderMessages();
+                        }
+                    }
                 }
             }
 
