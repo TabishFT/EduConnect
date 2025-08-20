@@ -2172,7 +2172,11 @@ async def message_startup(
         # Create message using chat system
         message_id = str(uuid4())
         timestamp = datetime.utcnow().isoformat()
-        conversation_id = '_'.join(sorted([current_user.email, startup_email]))
+        
+        # Sanitize emails for Firebase path
+        safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
+        safe_startup = re.sub(r'[^A-Za-z0-9]', '_', startup_email)
+        conversation_id = '_'.join(sorted([safe_current, safe_startup]))
         
         message_obj = {
             'id': message_id,
@@ -2359,15 +2363,29 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         
         all_conversations = response.json() or {}
         
+        # Sanitize current user email for comparison
+        safe_current_email = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
+        
         for conv_id, conv_data in all_conversations.items():
             # Check if user is part of this conversation
-            if current_user.email in conv_id:
-                # Get the other user's email
+            if safe_current_email in conv_id:
+                # Get the other user's sanitized email
                 emails = conv_id.split('_')
-                other_email = emails[0] if emails[1] == current_user.email else emails[1]
+                other_safe_email = emails[0] if emails[1] == safe_current_email else emails[1]
                 
-                # Get conversation metadata
+                # Convert back to original email format (this is a limitation - we need to store original emails)
+                # For now, we'll need to get the original email from the conversation metadata
                 metadata = conv_data.get('metadata', {})
+                participants = metadata.get('participants', [])
+                other_email = None
+                for participant in participants:
+                    if participant != current_user.email:
+                        other_email = participant
+                        break
+                
+                if not other_email:
+                    continue  # Skip if we can't find the other participant
+                
                 if not metadata:
                     continue
                 
@@ -2471,7 +2489,10 @@ async def mark_messages_read(
         if not other_user:
             raise HTTPException(status_code=400, detail="Missing 'with' parameter")
         
-        conversation_id = '_'.join(sorted([current_user.email, other_user]))
+        # Sanitize emails for Firebase path
+        safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
+        safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
+        conversation_id = '_'.join(sorted([safe_current, safe_other]))
         
         # Use fallback Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
@@ -2543,7 +2564,13 @@ async def send_message(sid, data):
         # Create message
         message_id = str(uuid4())
         timestamp = datetime.utcnow().isoformat()
-        conversation_id = '_'.join(sorted([sender_email, recipient_email]))
+        
+        # Sanitize emails for Firebase path (replace @ and . with _)
+        safe_sender = re.sub(r'[^A-Za-z0-9]', '_', sender_email)
+        safe_recipient = re.sub(r'[^A-Za-z0-9]', '_', recipient_email)
+        conversation_id = '_'.join(sorted([safe_sender, safe_recipient]))
+        
+        print(f"📝 Sanitized conversation ID: {conversation_id}")
         
         message_obj = {
             'id': message_id,
@@ -2648,7 +2675,10 @@ async def mark_message_read(sid, data):
         if not message_id or not sender_email:
             return
         
-        conversation_id = '_'.join(sorted([reader_email, sender_email]))
+        # Sanitize emails for Firebase path
+        safe_reader = re.sub(r'[^A-Za-z0-9]', '_', reader_email)
+        safe_sender = re.sub(r'[^A-Za-z0-9]', '_', sender_email)
+        conversation_id = '_'.join(sorted([safe_reader, safe_sender]))
         
         # Use fallback Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
@@ -2686,7 +2716,10 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
             return
         
-        conversation_id = '_'.join(sorted([current_user, other_user]))
+        # Sanitize emails for Firebase path
+        safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user)
+        safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
+        conversation_id = '_'.join(sorted([safe_current, safe_other]))
         
         # Use fallback Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
