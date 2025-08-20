@@ -2552,14 +2552,12 @@ async def send_message(sid, data):
             await sio.emit('error', {'message': 'Missing recipient or message'}, room=sid)
             return
         
-        # Check if CHATS_FIREBASE_URL is configured, use fallback if needed
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
-            print(f"❌ No Firebase URL configured for chats")
+            print(f"❌ CHATS_FIREBASE_URL not configured")
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
-        
-        print(f"🔥 Using Firebase URL for chats: {chat_firebase_url}")
         
         # Create message
         message_id = str(uuid4())
@@ -2585,7 +2583,7 @@ async def send_message(sid, data):
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
         
         # Save to Firebase with better error handling
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}/{message_id}.json"
         
         try:
             response = requests.put(firebase_path, json=message_obj, timeout=15)
