@@ -2725,6 +2725,12 @@ async def send_message(sid, data):
         else:
             print(f"📭 Recipient {recipient_email} is offline")
         
+        # Clear conversations cache to force refresh
+        async with chat_cache['lock']:
+            chat_cache['conversations']['data'] = None
+            chat_cache['conversations']['timestamp'] = None
+            print("🔄 Conversations cache cleared for refresh")
+        
         # Confirm to sender
         await sio.emit('message_sent', {
             'to': recipient_email,

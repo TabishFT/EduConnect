@@ -1316,8 +1316,10 @@
                     this.showNotification(data.from, data.message);
                 }
                 
-                // Always reload conversations to update sidebar
-                this.loadConversations();
+                // Force reload conversations to update sidebar immediately
+                setTimeout(() => {
+                    this.loadConversations();
+                }, 100);
             }
 
             handleSentMessage(data) {
@@ -1343,8 +1345,10 @@
                     }
                 }
                 
-                // Reload conversations to show in sidebar
-                this.loadConversations();
+                // Force reload conversations to show in sidebar immediately
+                setTimeout(() => {
+                    this.loadConversations();
+                }, 100);
             }
 
             handleTyping() {
