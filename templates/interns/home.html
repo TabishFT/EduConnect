@@ -908,55 +908,6 @@
             details.classList.toggle('show');
         }
         
-        // Navigate between posts
-        function navigatePost(direction) {
-            if (direction === 'next' && currentPostIndex < filteredPosts.length - 1) {
-                currentPostIndex++;
-                updateActivePost();
-                
-                // Load more posts if near end
-                if (currentPostIndex >= filteredPosts.length - 2 && hasMorePosts && !isLoading) {
-                    loadPosts();
-                }
-            } else if (direction === 'prev' && currentPostIndex > 0) {
-                currentPostIndex--;
-                updateActivePost();
-            }
-        }
-        
-        // Update active post display
-        function updateActivePost() {
-            const cards = document.querySelectorAll('.post-card');
-            cards.forEach((card, index) => {
-                card.classList.remove('active', 'prev');
-                if (index === currentPostIndex) {
-                    card.classList.add('active');
-                } else if (index < currentPostIndex) {
-                    card.classList.add('prev');
-                }
-            });
-            
-            // Update view profile button
-            updateViewProfileButton();
-        }
-        
-        // Update view profile button for current post
-        function updateViewProfileButton() {
-            const btn = document.getElementById('viewProfileBtn');
-            if (filteredPosts[currentPostIndex]) {
-                const currentPost = filteredPosts[currentPostIndex];
-                btn.textContent = `View ${currentPost.startup_name} Profile`;
-                btn.onclick = () => viewProfile(currentPost.startup_name, currentPost.created_by_email);
-            }
-        }
-        
-        // View profile function
-        function viewProfile(startupName, email) {
-            if (startupName && email) {
-                window.location.href = `/startup/profile/view?startup_name=${encodeURIComponent(startupName)}&email=${encodeURIComponent(email)}`;
-            }
-        }
-        
         // Load posts on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadPosts();
@@ -1098,89 +1049,14 @@
                 container.appendChild(postCard);
             });
         
-            // Add "Load more posts" card only if there are more posts and we're at the last post
-            if (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1) {
-                const loadMoreCard = createLoadMoreCard();
-                container.appendChild(loadMoreCard);
-            }
-        
             updateViewProfileButton();
             setupSwipeHandlers();
             setupLazyLoading();
         }
         
-        // Updated createLoadMoreCard function with proper event handling
-        function createLoadMoreCard() {
-            const card = document.createElement('div');
-            card.className = 'post-card load-more-card';
-            card.setAttribute('data-index', filteredPosts.length);
+
         
-            card.innerHTML = `
-                <div class="load-more-content">
-                    <div class="load-more-icon">
-                        <svg viewBox="0 0 24 24" width="48" height="48">
-                            <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                        </svg>
-                    </div>
-                    <div class="load-more-text">Load More Posts</div>
-                    <div class="load-more-subtext">Tap to load 5 more posts</div>
-                    <button class="load-more-btn" id="loadMoreBtn">
-                        Load More
-                    </button>
-                </div>
-            `;
-        
-            // Add event listener properly
-            const loadMoreBtn = card.querySelector('#loadMoreBtn');
-            loadMoreBtn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                if (hasMorePosts && nextCursor && !isLoading) {
-                    console.log('🔄 Loading more posts via Load More button...');
-                    
-                    // Show loading state on button
-                    loadMoreBtn.innerHTML = 'Loading...';
-                    loadMoreBtn.disabled = true;
-                    
-                    // Remember current position
-                    const currentPosition = currentPostIndex;
-                    
-                    try {
-                        // Load more posts
-                        const response = await fetch(`/api/get_all_posts?limit=5&start_after=${nextCursor}`, {
-                            method: 'GET',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include'
-                        });
-                        
-                        const data = await response.json();
-                        if (data.success && data.posts) {
-                            allPosts = allPosts.concat(data.posts);
-                            nextCursor = data.next_cursor;
-                            hasMorePosts = data.has_more;
-                            filterPosts();
-                        }
-                        
-                        currentPostIndex = currentPosition;
-                        renderPosts();
-                        updateActivePost();
-                        
-                    } catch (error) {
-                        console.error('Error loading more posts:', error);
-                        // Reset button on error
-                        loadMoreBtn.innerHTML = 'Load More';
-                        loadMoreBtn.disabled = false;
-                    }
-                } else {
-                    console.log('❌ Cannot load more posts:', { hasMorePosts, nextCursor, isLoading });
-                }
-            });
-        
-            return card;
-        }
-        
-        function createPostCard(post, index) {
+         function createPostCard(post, index) {
             const card = document.createElement('div');
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
             card.setAttribute('data-index', index);
@@ -1207,7 +1083,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
                         </svg>
-                        <span>${post.likes_count || 0}</span>
+                        <span class="likes-count">${post.likes_count || 0}</span>
                     </button>
                     <button class="action-btn save-btn ${post.is_saved ? 'saved' : ''}" onclick="savePost('${post.id}', this)">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -1218,7 +1094,7 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
                         </svg>
-                        <span>${post.shares_count || 0}</span>
+                        <span class="shares-count">${post.shares_count || 0}</span>
                     </button>
                     <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}', '${post.created_by_email}')">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -1354,16 +1230,14 @@
         
         // Navigate to next post
         function nextPost() {
-            // Check if we're at the last regular post and need to show load more
-            if (currentPostIndex === filteredPosts.length - 1 && hasMorePosts && nextCursor) {
-                // Show load more card
-                renderPosts();
-                currentPostIndex = filteredPosts.length; // Move to load more card
-                updateActivePost();
-            } else if (currentPostIndex < filteredPosts.length - 1) {
-                // Normal navigation
+            if (currentPostIndex < filteredPosts.length - 1) {
                 currentPostIndex++;
                 updateActivePost();
+                
+                // Load more posts if near end
+                if (currentPostIndex >= filteredPosts.length - 2 && hasMorePosts && !isLoading) {
+                    loadPosts();
+                }
             }
         }
         
@@ -1378,7 +1252,6 @@
         // Update active post
         function updateActivePost() {
             const cards = document.querySelectorAll('.post-card');
-            const totalItems = filteredPosts.length + (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1 ? 1 : 0);
             
             cards.forEach((card, index) => {
                 card.classList.remove('active', 'prev');
@@ -1391,29 +1264,9 @@
             
             // Update the View Profile button text dynamically
             updateViewProfileButton();
-            updatePostIndicators();
         }
         
-        // Update post indicators
-        function updatePostIndicators() {
-            const indicatorsContainer = document.getElementById('postIndicators');
-            indicatorsContainer.innerHTML = '';
-        
-            // Total items including load more card only if it's currently shown
-            const totalItems = filteredPosts.length + (hasMorePosts && nextCursor && currentPostIndex >= filteredPosts.length - 1 ? 1 : 0);
-            
-            if (totalItems <= 1) return;
-        
-            for (let i = 0; i < totalItems; i++) {
-                const indicator = document.createElement('div');
-                indicator.className = `indicator ${i === currentPostIndex ? 'active' : ''}`;
-                indicator.addEventListener('click', () => {
-                    currentPostIndex = i;
-                    updateActivePost();
-                });
-                indicatorsContainer.appendChild(indicator);
-            }
-        }
+
         
         // Search functionality
         async function performSearch() {
@@ -1754,7 +1607,6 @@
             const viewProfileBtn = document.getElementById('viewProfileBtn');
             
             if (!viewProfileBtn) {
-                console.log('❌ View Profile button not found');
                 return;
             }
             
@@ -1940,6 +1792,8 @@ function showToast(message, type = 'info') {
         }
         
         // Make functions globally accessible
+        window.toggleDropdown = toggleDropdown;
+        window.togglePostDetails = togglePostDetails;
         window.viewProfile = viewProfile;
         window.filterPosts = filterPosts;
         window.loadPosts = loadPosts;
