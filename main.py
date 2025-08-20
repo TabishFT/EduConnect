@@ -2671,19 +2671,14 @@ async def send_message(sid, data):
         
         print(f"✅ Message saved successfully")
         
-        # Metadata is now included in the main chat document, no separate update needed
+        print(f"✅ Message saved and sent successfully: {sender_email} → {recipient_email}")
+        
+        # Check if recipient is online
+        is_delivered = recipient_email in user_sockets
         
         # Send to recipient if online
-        if recipient_email in user_sockets:
-            message_obj['delivered'] = True
+        if is_delivered:
             print(f"📤 Recipient {recipient_email} is online, delivering message")
-            
-            # Update delivery status in Firebase
-            try:
-                delivery_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/delivered.json"
-                requests.put(delivery_path, json=True, timeout=10)
-            except Exception as delivery_error:
-                print(f"⚠️ Delivery status update failed: {str(delivery_error)}")
             
             for recipient_sid in user_sockets[recipient_email]:
                 await sio.emit('receive_message', {
@@ -2692,11 +2687,6 @@ async def send_message(sid, data):
                     'timestamp': timestamp,
                     'id': message_id
                 }, room=recipient_sid)
-                
-                # Send delivery confirmation to sender
-                await sio.emit('message_delivered', {
-                    'message_id': message_id
-                }, room=sid)
         else:
             print(f"📭 Recipient {recipient_email} is offline")
         
@@ -2706,7 +2696,7 @@ async def send_message(sid, data):
             'message': message_text,
             'timestamp': timestamp,
             'id': message_id,
-            'delivered': message_obj['delivered']
+            'delivered': is_delivered
         }, room=sid)
         
         print(f"✅ Message sent successfully: {sender_email} → {recipient_email}")
