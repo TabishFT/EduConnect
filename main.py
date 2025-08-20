@@ -2404,35 +2404,29 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
         
-        # Get all conversations from Firebase
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations.json"
+        # Get all conversations from Firebase (new structure)
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats.json"
         response = requests.get(firebase_path, timeout=10)
         
         if response.status_code != 200:
             return {"success": True, "conversations": []}
         
-        all_conversations = response.json() or {}
+        all_chats = response.json() or {}
         
         # Sanitize current user email for comparison
         safe_current_email = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
         
-        for conv_id, conv_data in all_conversations.items():
+        for conv_id, chat_data in all_chats.items():
             # Check if user is part of this conversation
             if safe_current_email in conv_id:
-                # Get the other user's sanitized email
-                emails = conv_id.split('_')
-                other_safe_email = emails[0] if emails[1] == safe_current_email else emails[1]
-                
-                # Get metadata (support both old and new format)
-                metadata = conv_data.get('meta', conv_data.get('metadata', {}))
-                participants = metadata.get('p', metadata.get('participants', []))
+                participants = chat_data.get('participants', [])
                 other_email = None
                 for participant in participants:
                     if participant != current_user.email:
                         other_email = participant
                         break
                 
-                if not other_email or not metadata:
+                if not other_email:
                     continue
                 
                 # Get other user info from MongoDB
@@ -2442,15 +2436,14 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                 )
                 
                 if other_user:
-                    # Count unread messages (optimized)
-                    messages = conv_data.get('messages', {})
-                    unread_count = sum(1 for msg in messages.values() 
-                                     if (msg.get('t') or msg.get('to')) == current_user.email and not (msg.get('r', msg.get('read', False))))
+                    # Count unread messages
+                    messages = chat_data.get('messages', [])
+                    unread_count = sum(1 for msg in messages 
+                                     if msg.get('t') == current_user.email and not msg.get('r', False))
                     
-                    # Ensure we have a proper name - fallback to email if name is empty/null
+                    # Get user name
                     user_name = other_user.get("name")
                     if not user_name or user_name.strip() == "" or user_name == other_user["email"]:
-                        # Extract name from email (before @)
                         email_parts = other_user["email"].split('@')
                         if email_parts and len(email_parts[0]) > 0:
                             user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title()
@@ -2461,8 +2454,8 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                         "email": other_user["email"],
                         "name": user_name,
                         "role": other_user.get("role", "user"),
-                        "last_message": metadata.get('lm', metadata.get('last_message', '')),
-                        "last_message_time": metadata.get('lt', metadata.get('last_message_time', '')),
+                        "last_message": chat_data.get('last_msg', ''),
+                        "last_message_time": chat_data.get('last_time', ''),
                         "unread_count": unread_count,
                         "online": other_user["email"] in user_sockets
                     })
@@ -2545,18 +2538,24 @@ async def mark_messages_read(
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
         
-        # Get all messages in conversation
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        # Get chat data
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
         response = requests.get(firebase_path, timeout=10)
         
         if response.status_code == 200 and response.json():
-            messages = response.json()
+            chat_data = response.json()
+            messages = chat_data.get('messages', [])
             
             # Update read status for messages to current user
-            for msg_id, msg_data in messages.items():
-                if msg_data.get('to') == current_user.email and not msg_data.get('read', False):
-                    update_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{msg_id}/read.json"
-                    requests.put(update_path, json=True, timeout=10)
+            updated = False
+            for msg_data in messages:
+                if msg_data.get('t') == current_user.email and not msg_data.get('r', False):
+                    msg_data['r'] = True
+                    updated = True
+            
+            # Save back if any messages were marked as read
+            if updated:
+                requests.put(firebase_path, json=chat_data, timeout=10)
         
         return {"success": True}
         
@@ -2629,18 +2628,36 @@ async def send_message(sid, data):
         
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
         
-        # Save to Firebase with consistent path structure
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
+        # Save to Firebase using array structure (more efficient)
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
         
         try:
-            response = requests.put(firebase_path, json=message_obj, timeout=15)
-            print(f"🔥 Firebase response: {response.status_code} - {response.text[:200]}")
+            # Get existing messages first
+            get_response = requests.get(firebase_path, timeout=10)
+            existing_data = get_response.json() if get_response.status_code == 200 else {}
+            
+            # Add new message to messages array
+            if 'messages' not in existing_data:
+                existing_data['messages'] = []
+            
+            existing_data['messages'].append(message_obj)
+            
+            # Keep only last 50 messages to prevent bloat
+            if len(existing_data['messages']) > 50:
+                existing_data['messages'] = existing_data['messages'][-50:]
+            
+            # Update last message info
+            existing_data['last_msg'] = message_text[:50]
+            existing_data['last_time'] = timestamp
+            existing_data['participants'] = [sender_email, recipient_email]
+            
+            # Save back to Firebase
+            response = requests.put(firebase_path, json=existing_data, timeout=15)
+            print(f"🔥 Firebase response: {response.status_code}")
             
             if response.status_code not in [200, 201]:
-                print(f"❌ Firebase save failed: {response.status_code} - {response.text}")
-                if response.status_code == 401:
-                    print("❌ FIREBASE PERMISSION DENIED - Check database rules!")
-                await sio.emit('error', {'message': 'Failed to save message - Firebase permission denied'}, room=sid)
+                print(f"❌ Firebase save failed: {response.status_code}")
+                await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
                 return
                 
         except requests.exceptions.RequestException as e:
@@ -2650,19 +2667,7 @@ async def send_message(sid, data):
         
         print(f"✅ Message saved successfully")
         
-        # Update conversation metadata (optimized)
-        try:
-            conv_meta = {
-                'lm': message_text[:50],  # last_message (truncated to 50 chars)
-                'lt': timestamp,  # last_time
-                'p': [sender_email, recipient_email]  # participants
-            }
-            meta_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/meta.json"
-            meta_response = requests.put(meta_path, json=conv_meta, timeout=10)
-            print(f"📝 Metadata update: {meta_response.status_code}")
-        except Exception as meta_error:
-            print(f"⚠️ Metadata update failed: {str(meta_error)}")
-            # Don't fail the message send if metadata update fails
+        # Metadata is now included in the main chat document, no separate update needed
         
         # Send to recipient if online
         if recipient_email in user_sockets:
@@ -2776,51 +2781,49 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
         
-        # Get messages from Firebase with proper error handling
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
+        # Get messages from Firebase (new array structure)
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
         
         try:
-            response = requests.get(firebase_path, timeout=15)
+            response = requests.get(firebase_path, timeout=10)
             print(f"🔥 Firebase history response: {response.status_code}")
             
             if response.status_code == 200:
-                messages_data = response.json() or {}
+                chat_data = response.json() or {}
+                messages_array = chat_data.get('messages', [])
                 
-                # Filter out expired messages and sort by timestamp
+                # Filter out expired messages
                 valid_messages = []
                 current_time = datetime.utcnow()
                 
-                for msg_id, msg_data in messages_data.items():
+                for msg_data in messages_array:
                     if isinstance(msg_data, dict):
                         # Check if message has expired
-                        expires_at = msg_data.get('ex') or msg_data.get('expires_at')  # Support both formats
+                        expires_at = msg_data.get('ex')
                         if expires_at:
                             try:
                                 expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
                                 if current_time > expire_date:
-                                    print(f"🗑️ Skipping expired message {msg_id}")
                                     continue
                             except:
                                 pass
                         
-                        # Convert to standard format for frontend
+                        # Convert to standard format
                         standard_msg = {
-                            'id': msg_data.get('id', msg_id),
-                            'from': msg_data.get('f') or msg_data.get('from'),
-                            'to': msg_data.get('t') or msg_data.get('to'),
-                            'message': msg_data.get('m') or msg_data.get('message'),
-                            'timestamp': msg_data.get('ts') or msg_data.get('timestamp'),
-                            'read': msg_data.get('r', msg_data.get('read', False)),
-                            'delivered': msg_data.get('d', msg_data.get('delivered', False))
+                            'id': msg_data.get('id'),
+                            'from': msg_data.get('f'),
+                            'to': msg_data.get('t'),
+                            'message': msg_data.get('m'),
+                            'timestamp': msg_data.get('ts'),
+                            'read': msg_data.get('r', False),
+                            'delivered': msg_data.get('d', False)
                         }
                         valid_messages.append(standard_msg)
                 
-                # Sort messages by timestamp
-                sorted_messages = sorted(valid_messages, key=lambda x: x.get('timestamp', ''))
+                sorted_messages = valid_messages  # Already in order
                 print(f"💬 Found {len(sorted_messages)} valid messages")
                 
             else:
-                print(f"⚠️ No messages found or Firebase error: {response.status_code}")
                 sorted_messages = []
                 
         except requests.exceptions.RequestException as e:
@@ -2935,60 +2938,50 @@ def efficient_cleanup_firebase_messages():
         cutoff_time = (datetime.utcnow() - timedelta(minutes=2)).isoformat()
         deleted_count = 0
         
-        # Get all conversations
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations.json"
-        response = requests.get(firebase_path, params={'shallow': 'true'}, timeout=30)
+        # Get all chats
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats.json"
+        response = requests.get(firebase_path, timeout=30)
         
         if response.status_code == 200 and response.json():
-            conversation_ids = response.json().keys()
-            print(f"📂 Found {len(conversation_ids)} conversations to check")
+            all_chats = response.json()
+            print(f"📂 Found {len(all_chats)} chats to check")
             
-            for conv_id in conversation_ids:
+            for conv_id, chat_data in all_chats.items():
                 try:
-                    # Get all messages in this conversation
-                    messages_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages.json"
-                    messages_response = requests.get(messages_path, timeout=15)
+                    messages = chat_data.get('messages', [])
+                    if not messages:
+                        continue
                     
-                    if messages_response.status_code == 200 and messages_response.json():
-                        messages = messages_response.json()
-                        
-                        # Check each message for expiration
-                        for msg_id, msg_data in messages.items():
-                            if isinstance(msg_data, dict):
-                                # Check if message has expired (older than 2 minutes)
-                                msg_timestamp = msg_data.get('ts') or msg_data.get('timestamp', '')
-                                expires_at = msg_data.get('ex') or msg_data.get('expires_at', '')
-                                
-                                should_delete = False
-                                
-                                # Check expiration date if available
-                                if expires_at:
-                                    try:
-                                        expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-                                        if datetime.utcnow() > expire_date:
-                                            should_delete = True
-                                    except:
-                                        pass
-                                
-                                # Fallback: check timestamp if no expiration date
-                                if not should_delete and msg_timestamp:
-                                    try:
-                                        msg_date = datetime.fromisoformat(msg_timestamp.replace('Z', '+00:00'))
-                                        if msg_date < datetime.fromisoformat(cutoff_time):
-                                            should_delete = True
-                                    except:
-                                        pass
-                                
-                                # Delete expired message
-                                if should_delete:
-                                    delete_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
-                                    delete_response = requests.delete(delete_path, timeout=10)
-                                    if delete_response.status_code in [200, 204]:
+                    # Filter out expired messages
+                    valid_messages = []
+                    current_time = datetime.utcnow()
+                    
+                    for msg_data in messages:
+                        if isinstance(msg_data, dict):
+                            expires_at = msg_data.get('ex', '')
+                            should_keep = True
+                            
+                            if expires_at:
+                                try:
+                                    expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                                    if current_time > expire_date:
+                                        should_keep = False
                                         deleted_count += 1
-                                        print(f"🗑️ Deleted expired message {msg_id} from {conv_id}")
+                                except:
+                                    pass
+                            
+                            if should_keep:
+                                valid_messages.append(msg_data)
+                    
+                    # Update chat with filtered messages
+                    if len(valid_messages) != len(messages):
+                        chat_data['messages'] = valid_messages
+                        update_path = f"{chat_firebase_url.rstrip('/')}/chats/{conv_id}.json"
+                        requests.put(update_path, json=chat_data, timeout=10)
+                        print(f"🗑️ Cleaned {len(messages) - len(valid_messages)} expired messages from {conv_id}")
                                     
                 except Exception as conv_error:
-                    print(f"⚠️ Error processing conversation {conv_id}: {str(conv_error)}")
+                    print(f"⚠️ Error processing chat {conv_id}: {str(conv_error)}")
                     continue
         
         print(f"✅ Cleanup complete - deleted {deleted_count} expired messages")

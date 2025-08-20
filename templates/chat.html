@@ -873,6 +873,16 @@
                     this.messages = data.messages || [];
                     this.renderMessages();
                     
+                    // Update timestamps every minute
+                    if (this.timestampInterval) {
+                        clearInterval(this.timestampInterval);
+                    }
+                    this.timestampInterval = setInterval(() => {
+                        if (this.currentChat) {
+                            this.renderMessages();
+                        }
+                    }, 60000);
+                    
                     // Scroll to bottom after loading history
                     setTimeout(() => {
                         this.scrollToBottom();
