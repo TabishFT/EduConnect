@@ -280,9 +280,11 @@
             overflow-y: auto;
             transition: max-height 0.3s ease;
             -webkit-overflow-scrolling: touch;
+            display: none;
         }
 
         .post-details.show {
+            display: block;
             max-height: calc(100vh - 200px);
         }
 
