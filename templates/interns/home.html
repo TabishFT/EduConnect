@@ -881,26 +881,20 @@
             loadPosts();
         });
         
-        // Fast loadPosts function
+        // Ultra-fast loadPosts function
         async function loadPosts() {
             if (isLoading || !hasMorePosts) return;
             
             isLoading = true;
-            showLoading();
             
-            let apiUrl = `/api/get_all_posts?limit=3`;
+            let apiUrl = `/api/get_all_posts?limit=5`;
             if (nextCursor) apiUrl += `&start_after=${nextCursor}`;
             
             try {
                 const response = await fetch(apiUrl, {
                     method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
                 });
-                
-                if (!response.ok) {
-                    throw new Error(`API failed: ${response.status}`);
-                }
                 
                 const data = await response.json();
                 
@@ -914,7 +908,6 @@
                     if (!allPosts.length) showNoPostsState();
                 }
             } catch (error) {
-                console.error('Load error:', error);
                 if (!allPosts.length) showErrorState();
                 hasMorePosts = false;
             } finally {
@@ -926,27 +919,29 @@
         // Global function to handle "Load more posts" action
         async function loadMorePosts() {
             if (hasMorePosts && nextCursor && !isLoading) {
-                console.log('🔄 Loading more posts via Load More button...');
-                
-                // Remember current position
                 const currentPosition = currentPostIndex;
                 
                 try {
-                    // Load more posts
-                    await loadPosts();
+                    const response = await fetch(`/api/get_all_posts?limit=5&start_after=${nextCursor}`, {
+                        method: 'GET',
+                        credentials: 'include'
+                    });
                     
-                    // After loading, restore position and re-render
+                    const data = await response.json();
+                    if (data.success && data.posts) {
+                        allPosts = allPosts.concat(data.posts);
+                        nextCursor = data.next_cursor;
+                        hasMorePosts = data.has_more;
+                        filterPosts();
+                    }
+                    
                     currentPostIndex = currentPosition;
                     renderPosts();
                     updateActivePost();
                     
-                    console.log(`✅ Load more completed. Current position: ${currentPostIndex}`);
-                    
                 } catch (error) {
                     console.error('Error loading more posts:', error);
                 }
-            } else {
-                console.log('❌ Cannot load more posts:', { hasMorePosts, nextCursor, isLoading });
             }
         }
         
@@ -1059,7 +1054,7 @@
                     const currentPosition = currentPostIndex;
                     
                     try {
-                        // Load more posts with higher limit for load more
+                        // Load more posts
                         const response = await fetch(`/api/get_all_posts?limit=5&start_after=${nextCursor}`, {
                             method: 'GET',
                             headers: { 'Content-Type': 'application/json' },
@@ -1074,12 +1069,9 @@
                             filterPosts();
                         }
                         
-                        // After loading, restore position and re-render
                         currentPostIndex = currentPosition;
                         renderPosts();
                         updateActivePost();
-                        
-                        console.log(`✅ Load more completed. Current position: ${currentPostIndex}`);
                         
                     } catch (error) {
                         console.error('Error loading more posts:', error);
