@@ -869,8 +869,14 @@
                 });
 
                 this.socket.on('chat_history', (data) => {
+                    console.log('📜 Received chat history:', data.messages?.length || 0, 'messages');
                     this.messages = data.messages || [];
                     this.renderMessages();
+                    
+                    // Scroll to bottom after loading history
+                    setTimeout(() => {
+                        this.scrollToBottom();
+                    }, 100);
                 });
 
                 this.socket.on('user_typing', (data) => {
@@ -1112,9 +1118,14 @@
                 document.getElementById('chatStatus').className = `chat-status ${online ? 'online' : ''}`;
                 document.getElementById('chatOnlineIndicator').style.display = online ? 'block' : 'none';
 
-                // Load messages
+                // Clear previous messages and show loading
                 this.messages = [];
                 this.elements.messagesContainer.innerHTML = '<div class="loading">Loading messages</div>';
+                
+                // Join conversation room for real-time updates
+                this.socket.emit('join_conversation', { with: email });
+                
+                // Load chat history
                 this.socket.emit('get_chat_history', { with: email });
                 
                 // Update URL without page reload
@@ -1122,13 +1133,17 @@
                 newUrl.searchParams.set('with', email);
                 window.history.replaceState({}, '', newUrl);
 
-                // Mark as read
-                fetch('/api/chat/mark_read', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ with: email })
-                });
+                // Mark messages as read
+                try {
+                    await fetch('/api/chat/mark_read', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ with: email })
+                    });
+                } catch (error) {
+                    console.error('Error marking messages as read:', error);
+                }
 
                 // Mobile: hide sidebar
                 if (window.innerWidth <= 768) {
@@ -1136,7 +1151,9 @@
                 }
 
                 // Focus input
-                this.elements.messageInput.focus();
+                setTimeout(() => {
+                    this.elements.messageInput.focus();
+                }, 100);
             }
 
             renderMessages() {
@@ -1151,6 +1168,8 @@
                     return;
                 }
 
+                console.log('🎨 Rendering', this.messages.length, 'messages');
+                
                 this.elements.messagesContainer.innerHTML = this.messages.map(msg => {
                     const isSent = msg.from === this.currentUser.email;
                     
@@ -1183,9 +1202,7 @@
                 }).join('');
 
                 // Scroll to bottom
-                setTimeout(() => {
-                    this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
-                }, 100);
+                this.scrollToBottom();
 
                 // Mark visible received messages as read
                 if (this.currentChat) {
@@ -1200,6 +1217,14 @@
                         });
                     });
                 }
+            }
+            
+            scrollToBottom() {
+                setTimeout(() => {
+                    if (this.elements.messagesContainer) {
+                        this.elements.messagesContainer.scrollTop = this.elements.messagesContainer.scrollHeight;
+                    }
+                }, 50);
             }
 
             sendMessage() {
@@ -1217,7 +1242,10 @@
             }
 
             handleIncomingMessage(data) {
+                console.log('📨 Incoming message from:', data.from);
+                
                 if (data.from === this.currentChat) {
+                    // Add message to current conversation
                     this.messages.push({
                         from: data.from,
                         to: this.currentUser.email,
@@ -1228,17 +1256,26 @@
                         read: false
                     });
                     this.renderMessages();
+                    
+                    // Auto-mark as read since user is viewing the conversation
+                    this.socket.emit('mark_message_read', {
+                        message_id: data.id,
+                        from: data.from
+                    });
                 } else {
-                    // Show notification
+                    // Show notification for messages from other conversations
                     this.showNotification(data.from, data.message);
                 }
                 
-                // Reload conversations to update last message
+                // Reload conversations to update last message and unread counts
                 this.loadConversations();
             }
 
             handleSentMessage(data) {
+                console.log('✅ Message sent confirmation:', data.id);
+                
                 if (data.to === this.currentChat) {
+                    // Add sent message to current conversation
                     this.messages.push({
                         from: this.currentUser.email,
                         to: data.to,
@@ -1251,7 +1288,7 @@
                     this.renderMessages();
                 }
                 
-                // Reload conversations
+                // Reload conversations to update last message
                 this.loadConversations();
             }
 
@@ -1291,12 +1328,23 @@
             }
 
             closeMobileChat() {
+                // Leave current conversation room
+                if (this.currentChat) {
+                    this.socket.emit('leave_conversation', { with: this.currentChat });
+                }
+                
                 this.currentChat = null;
+                this.messages = [];
                 this.elements.chatArea.classList.add('no-conversation');
                 this.elements.sidebar.classList.add('open');
                 document.querySelectorAll('.conversation-item').forEach(item => {
                     item.classList.remove('active');
                 });
+                
+                // Clear URL parameter
+                const newUrl = new URL(window.location);
+                newUrl.searchParams.delete('with');
+                window.history.replaceState({}, '', newUrl);
             }
 
             showNotification(from, message) {

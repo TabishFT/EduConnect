@@ -2189,7 +2189,7 @@ async def message_startup(
             'startup_name': startup_name  # Additional context
         }
         
-        # Use fallback Firebase URL
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             raise HTTPException(status_code=500, detail="Chat service not configured")
@@ -2250,6 +2250,56 @@ sio = socketio.AsyncServer(
 socket_app = socketio.ASGIApp(sio, app)
 
 # Socket.IO Events
+@sio.event
+async def join_conversation(sid, data):
+    """Join a conversation room for real-time updates"""
+    try:
+        if sid not in connected_users:
+            return
+        
+        current_user = connected_users[sid]
+        other_user = data.get('with')
+        
+        if not other_user:
+            return
+        
+        # Create room name
+        safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user)
+        safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
+        room_name = '_'.join(sorted([safe_current, safe_other]))
+        
+        # Join the room
+        await sio.enter_room(sid, room_name)
+        print(f"💬 User {current_user} joined conversation room {room_name}")
+        
+    except Exception as e:
+        print(f"❌ Error joining conversation: {str(e)}")
+
+@sio.event
+async def leave_conversation(sid, data):
+    """Leave a conversation room"""
+    try:
+        if sid not in connected_users:
+            return
+        
+        current_user = connected_users[sid]
+        other_user = data.get('with')
+        
+        if not other_user:
+            return
+        
+        # Create room name
+        safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user)
+        safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
+        room_name = '_'.join(sorted([safe_current, safe_other]))
+        
+        # Leave the room
+        await sio.leave_room(sid, room_name)
+        print(f"🚪 User {current_user} left conversation room {room_name}")
+        
+    except Exception as e:
+        print(f"❌ Error leaving conversation: {str(e)}")
+
 @sio.event
 async def connect(sid, environ):
     """Handle new socket connections"""
@@ -2349,7 +2399,7 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
     try:
         conversations = []
         
-        # Use fallback Firebase URL if CHATS_FIREBASE_URL not configured
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
@@ -2494,7 +2544,7 @@ async def mark_messages_read(
         safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
         conversation_id = '_'.join(sorted([safe_current, safe_other]))
         
-        # Use fallback Firebase URL
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
@@ -2577,13 +2627,14 @@ async def send_message(sid, data):
             'message': message_text,
             'timestamp': timestamp,
             'read': False,
-            'delivered': False
+            'delivered': False,
+            'expires_at': (datetime.utcnow() + timedelta(days=7)).isoformat()  # Auto-delete after 1 week
         }
         
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
         
-        # Save to Firebase with better error handling
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}/{message_id}.json"
+        # Save to Firebase with consistent path structure
+        firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}.json"
         
         try:
             response = requests.put(firebase_path, json=message_obj, timeout=15)
@@ -2680,7 +2731,7 @@ async def mark_message_read(sid, data):
         safe_sender = re.sub(r'[^A-Za-z0-9]', '_', sender_email)
         conversation_id = '_'.join(sorted([safe_reader, safe_sender]))
         
-        # Use fallback Firebase URL
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             return
@@ -2716,34 +2767,74 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
             return
         
+        print(f"📜 Loading chat history: {current_user} <-> {other_user}")
+        
         # Sanitize emails for Firebase path
         safe_current = re.sub(r'[^A-Za-z0-9]', '_', current_user)
         safe_other = re.sub(r'[^A-Za-z0-9]', '_', other_user)
         conversation_id = '_'.join(sorted([safe_current, safe_other]))
         
-        # Use fallback Firebase URL
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
         
-        # Get messages from Firebase
+        # Get messages from Firebase with proper error handling
         firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
-        response = requests.get(firebase_path, timeout=10)
         
-        if response.status_code == 200:
-            messages = response.json() or {}
-            sorted_messages = sorted(messages.values(), key=lambda x: x['timestamp'])
-        else:
+        try:
+            response = requests.get(firebase_path, timeout=15)
+            print(f"🔥 Firebase history response: {response.status_code}")
+            
+            if response.status_code == 200:
+                messages_data = response.json() or {}
+                
+                # Filter out expired messages and sort by timestamp
+                valid_messages = []
+                current_time = datetime.utcnow()
+                
+                for msg_id, msg_data in messages_data.items():
+                    if isinstance(msg_data, dict):
+                        # Check if message has expired
+                        expires_at = msg_data.get('expires_at')
+                        if expires_at:
+                            try:
+                                expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                                if current_time > expire_date:
+                                    print(f"🗑️ Skipping expired message {msg_id}")
+                                    continue
+                            except:
+                                pass
+                        
+                        # Add message to valid list
+                        valid_messages.append(msg_data)
+                
+                # Sort messages by timestamp
+                sorted_messages = sorted(valid_messages, key=lambda x: x.get('timestamp', ''))
+                print(f"💬 Found {len(sorted_messages)} valid messages")
+                
+            else:
+                print(f"⚠️ No messages found or Firebase error: {response.status_code}")
+                sorted_messages = []
+                
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Firebase request error: {str(e)}")
             sorted_messages = []
         
+        # Send chat history to client
         await sio.emit('chat_history', {
             'with': other_user,
-            'messages': sorted_messages
+            'messages': sorted_messages,
+            'conversation_id': conversation_id
         }, room=sid)
         
+        print(f"✅ Chat history sent: {len(sorted_messages)} messages")
+        
     except Exception as e:
-        print(f"Error in get_chat_history: {str(e)}")
+        print(f"💥 Error in get_chat_history: {str(e)}")
+        import traceback
+        traceback.print_exc()
         await sio.emit('error', {'message': 'Failed to get chat history'}, room=sid)
 
 @sio.event
@@ -2824,19 +2915,20 @@ async def logout_get():
 
 
 
-# Paste the function
 def efficient_cleanup_firebase_messages():
-    """More efficient cleanup using Firebase queries"""
+    """Auto-delete messages older than 1 week using Firebase queries"""
     try:
-        print("🧹 Starting efficient Firebase cleanup...")
+        print("🧹 Starting weekly message cleanup...")
         
-        # Use fallback Firebase URL
+        # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             print("⚠️ Skipping cleanup - no Firebase URL configured")
             return
         
-        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        # Delete messages older than 1 week
+        cutoff_time = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        deleted_count = 0
         
         # Get all conversations
         firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations.json"
@@ -2844,35 +2936,68 @@ def efficient_cleanup_firebase_messages():
         
         if response.status_code == 200 and response.json():
             conversation_ids = response.json().keys()
+            print(f"📂 Found {len(conversation_ids)} conversations to check")
             
             for conv_id in conversation_ids:
-                # Get only old messages using Firebase query
-                messages_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages.json"
-                params = {
-                    'orderBy': '"timestamp"',
-                    'endAt': f'"{cutoff_time}"'
-                }
-                
-                old_messages_response = requests.get(messages_path, params=params, timeout=10)
-                
-                if old_messages_response.status_code == 200 and old_messages_response.json():
-                    old_messages = old_messages_response.json()
+                try:
+                    # Get all messages in this conversation
+                    messages_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages.json"
+                    messages_response = requests.get(messages_path, timeout=15)
                     
-                    # Delete each old message
-                    for msg_id in old_messages.keys():
-                        delete_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
-                        requests.delete(delete_path, timeout=10)
+                    if messages_response.status_code == 200 and messages_response.json():
+                        messages = messages_response.json()
+                        
+                        # Check each message for expiration
+                        for msg_id, msg_data in messages.items():
+                            if isinstance(msg_data, dict):
+                                # Check if message has expired (older than 1 week)
+                                msg_timestamp = msg_data.get('timestamp', '')
+                                expires_at = msg_data.get('expires_at', '')
+                                
+                                should_delete = False
+                                
+                                # Check expiration date if available
+                                if expires_at:
+                                    try:
+                                        expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                                        if datetime.utcnow() > expire_date:
+                                            should_delete = True
+                                    except:
+                                        pass
+                                
+                                # Fallback: check timestamp if no expiration date
+                                if not should_delete and msg_timestamp:
+                                    try:
+                                        msg_date = datetime.fromisoformat(msg_timestamp.replace('Z', '+00:00'))
+                                        if msg_date < datetime.fromisoformat(cutoff_time):
+                                            should_delete = True
+                                    except:
+                                        pass
+                                
+                                # Delete expired message
+                                if should_delete:
+                                    delete_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conv_id}/messages/{msg_id}.json"
+                                    delete_response = requests.delete(delete_path, timeout=10)
+                                    if delete_response.status_code in [200, 204]:
+                                        deleted_count += 1
+                                        print(f"🗑️ Deleted expired message {msg_id} from {conv_id}")
+                                    
+                except Exception as conv_error:
+                    print(f"⚠️ Error processing conversation {conv_id}: {str(conv_error)}")
+                    continue
         
-        print("✅ Efficient cleanup complete")
+        print(f"✅ Cleanup complete - deleted {deleted_count} expired messages")
         
     except Exception as e:
         print(f"❌ Cleanup error: {str(e)}")
+        import traceback
+        traceback.print_exc()
     
-    # Schedule next cleanup in 2 hours (less frequent since it's more efficient)
-    Timer(7200, efficient_cleanup_firebase_messages).start()
+    # Schedule next cleanup in 24 hours
+    Timer(86400, efficient_cleanup_firebase_messages).start()  # Run daily
 
-# START THE TIMER - Add this line after Socket.IO setup
-Timer(10, efficient_cleanup_firebase_messages).start()  # Start after 10 seconds
+# START THE CLEANUP TIMER
+Timer(60, efficient_cleanup_firebase_messages).start()  # Start after 1 minute
 
 #lets try commit  now
 # Update the main execution block
