@@ -238,22 +238,7 @@
             height: 100%;
             object-fit: contain;
             background: #000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .post-image img.loaded {
             opacity: 1;
-        }
-
-        .post-image .loading-spinner {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-top: 3px solid #f59e0b;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
         }
 
         @keyframes spin {
@@ -1179,10 +1164,9 @@
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
             card.setAttribute('data-index', index);
         
-            // Handle image display with lazy loading
+            // Handle image display with optimized lazy loading
             const imageHtml = post.image_url ? 
                 `<div class="post-image">
-                    <div class="loading-spinner"></div>
                     <img data-src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
                          class="lazy-image" loading="lazy"
                          onerror="this.parentElement.innerHTML='<div class=\\'placeholder-image\\'><svg viewBox=\\'0 0 24 24\\'><path d=\\'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z\\'/></svg></div>'">
@@ -1918,7 +1902,7 @@ function showToast(message, type = 'info') {
         // Auto-advance disabled
         // setTimeout(startAutoAdvance, 60000);
         
-        // Lazy loading setup
+        // Optimized lazy loading setup - instant load without spinner
         function setupLazyLoading() {
             const lazyImages = document.querySelectorAll('.lazy-image');
             
@@ -1926,17 +1910,11 @@ function showToast(message, type = 'info') {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        const spinner = img.parentElement.querySelector('.loading-spinner');
-                        
                         img.src = img.dataset.src;
-                        img.onload = () => {
-                            img.classList.add('loaded');
-                            if (spinner) spinner.remove();
-                        };
                         imageObserver.unobserve(img);
                     }
                 });
-            }, { rootMargin: '50px' });
+            }, { rootMargin: '100px' });
             
             lazyImages.forEach(img => imageObserver.observe(img));
         }
