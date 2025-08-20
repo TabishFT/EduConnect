@@ -874,58 +874,49 @@
         let searchTimeout = null;
         const postsContainer = document.getElementById('postsContainer');
         
-        // Sample data for testing
-        const samplePosts = [
-            {
-                id: '1',
-                startup_name: 'TechStartup',
-                tagline: 'Innovative solutions for tomorrow',
-                job_title: 'Software Developer Intern',
-                skills: 'JavaScript, React, Node.js',
-                description: 'Join our team to build cutting-edge web applications and gain hands-on experience with modern technologies.',
-                image_url: 'https://via.placeholder.com/400x300/ff6b6b/ffffff?text=TechStartup',
-                created_at: new Date().toISOString()
-            },
-            {
-                id: '2',
-                startup_name: 'DataCorp',
-                tagline: 'Data-driven insights',
-                job_title: 'Data Science Intern',
-                skills: 'Python, Machine Learning, SQL',
-                description: 'Work with large datasets and help us build predictive models to solve real-world business problems.',
-                image_url: null,
-                created_at: new Date(Date.now() - 86400000).toISOString()
-            }
-        ];
+
         
         // Load posts on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadPosts();
         });
         
-        // Optimized loadPosts function with reduced initial load
+        // Ultra-fast loadPosts function
         async function loadPosts() {
-            // Prevent multiple simultaneous requests
-            if (isLoading || !hasMorePosts) {
-                console.log('⏸️ Skipping load - already loading or no more posts');
-                return;
-            }
-        
-            // Set loading state
+            if (isLoading || !hasMorePosts) return;
+            
             isLoading = true;
             showLoading();
-        
-            // Build API URL with smaller initial load for faster response
-            let apiUrl = `/api/get_all_posts?limit=3`;
             
-            if (nextCursor) {
-                apiUrl += `&start_after=${nextCursor}`;
-            }
-        
-            console.log('🔄 Loading posts from:', apiUrl);
-        
+            let apiUrl = `/api/get_all_posts?limit=1`;
+            if (nextCursor) apiUrl += `&start_after=${nextCursor}`;
+            
             try {
                 const response = await fetch(apiUrl, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.posts?.length) {
+                    allPosts = allPosts.concat(data.posts);
+                    nextCursor = data.next_cursor;
+                    hasMorePosts = data.has_more;
+                    filterPosts();
+                } else {
+                    hasMorePosts = false;
+                    if (!allPosts.length) showNoPostsState();
+                }
+            } catch (error) {
+                if (!allPosts.length) showErrorState();
+                hasMorePosts = false;
+            } finally {
+                hideLoading();
+                isLoading = false;
+            }
+        }it fetch(apiUrl, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1164,12 +1155,9 @@
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
             card.setAttribute('data-index', index);
         
-            // Handle image display with optimized lazy loading
             const imageHtml = post.image_url ? 
                 `<div class="post-image">
-                    <img data-src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" 
-                         class="lazy-image" loading="lazy"
-                         onerror="this.parentElement.innerHTML='<div class=\\'placeholder-image\\'><svg viewBox=\\'0 0 24 24\\'><path d=\\'M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z\\'/></svg></div>'">
+                    <img data-src="${post.image_url}" alt="${escapeHtml(post.startup_name)}" class="lazy-image">
                  </div>` :
                 `<div class="placeholder-image">
                     <svg viewBox="0 0 24 24">
@@ -1902,21 +1890,20 @@ function showToast(message, type = 'info') {
         // Auto-advance disabled
         // setTimeout(startAutoAdvance, 60000);
         
-        // Optimized lazy loading setup - instant load without spinner
         function setupLazyLoading() {
-            const lazyImages = document.querySelectorAll('.lazy-image');
-            
-            const imageObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const img = entry.target;
-                        img.src = img.dataset.src;
-                        imageObserver.unobserve(img);
-                    }
-                });
-            }, { rootMargin: '100px' });
-            
-            lazyImages.forEach(img => imageObserver.observe(img));
+            document.querySelectorAll('.lazy-image').forEach(img => {
+                if (img.getBoundingClientRect().top < window.innerHeight + 200) {
+                    img.src = img.dataset.src;
+                } else {
+                    const observer = new IntersectionObserver(entries => {
+                        if (entries[0].isIntersecting) {
+                            img.src = img.dataset.src;
+                            observer.unobserve(img);
+                        }
+                    }, { rootMargin: '200px' });
+                    observer.observe(img);
+                }
+            });
         }
         
         // Settings navigation function
