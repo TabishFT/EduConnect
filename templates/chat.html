@@ -806,6 +806,8 @@
                 this.messages = [];
                 this.typingTimer = null;
                 this.searchTimer = null;
+                this.markingAsRead = false;
+                this.renderThrottle = null;
                 
                 this.elements = {
                     sidebar: document.getElementById('sidebar'),
@@ -895,22 +897,26 @@
                 
                 this.socket.on('message_read', (data) => {
                     // Update the read status of messages
+                    let updated = false;
                     this.messages.forEach(msg => {
-                        if (msg.id === data.message_id) {
+                        if (msg.id === data.message_id && !msg.read) {
                             msg.read = true;
+                            updated = true;
                         }
                     });
-                    this.renderMessages();
+                    if (updated) this.renderMessages();
                 });
 
                 this.socket.on('message_delivered', (data) => {
                     // Update delivery status
+                    let updated = false;
                     this.messages.forEach(msg => {
-                        if (msg.id === data.message_id) {
+                        if (msg.id === data.message_id && !msg.delivered) {
                             msg.delivered = true;
+                            updated = true;
                         }
                     });
-                    this.renderMessages();
+                    if (updated) this.renderMessages();
                 });
             }
 
@@ -1167,6 +1173,17 @@
             }
 
             renderMessages() {
+                // Throttle rendering to prevent infinite loops
+                if (this.renderThrottle) {
+                    clearTimeout(this.renderThrottle);
+                }
+                
+                this.renderThrottle = setTimeout(() => {
+                    this._doRenderMessages();
+                }, 50);
+            }
+            
+            _doRenderMessages() {
                 if (this.messages.length === 0) {
                     this.elements.messagesContainer.innerHTML = `
                         <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
@@ -1214,18 +1231,22 @@
                 // Scroll to bottom
                 this.scrollToBottom();
 
-                // Mark visible received messages as read
-                if (this.currentChat) {
+                // Mark visible received messages as read (throttled)
+                if (this.currentChat && !this.markingAsRead) {
                     const receivedMessages = this.messages.filter(msg => 
                         msg.from === this.currentChat && !msg.read
                     );
                     
-                    receivedMessages.forEach(msg => {
-                        this.socket.emit('mark_message_read', {
-                            message_id: msg.id,
-                            from: msg.from
+                    if (receivedMessages.length > 0) {
+                        this.markingAsRead = true;
+                        receivedMessages.forEach(msg => {
+                            this.socket.emit('mark_message_read', {
+                                message_id: msg.id,
+                                from: msg.from
+                            });
                         });
-                    });
+                        setTimeout(() => { this.markingAsRead = false; }, 1000);
+                    }
                 }
             }
             
@@ -1275,10 +1296,9 @@
                 } else {
                     // Show notification for messages from other conversations
                     this.showNotification(data.from, data.message);
+                    // Only reload conversations for other chats
+                    this.loadConversations();
                 }
-                
-                // Reload conversations to update last message and unread counts
-                this.loadConversations();
             }
 
             handleSentMessage(data) {
@@ -1297,9 +1317,6 @@
                     });
                     this.renderMessages();
                 }
-                
-                // Reload conversations to update last message
-                this.loadConversations();
             }
 
             handleTyping() {
