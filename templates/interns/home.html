@@ -94,16 +94,20 @@
         .dropdown-toggle {
             position: fixed;
             top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 20px;
             z-index: 1001;
-            background: rgba(0, 0, 0, 0.5);
+            background: #f59e0b;
             border: none;
             color: white;
-            padding: 8px;
+            padding: 12px;
             border-radius: 50%;
             cursor: pointer;
             backdrop-filter: blur(10px);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .controls {
@@ -279,7 +283,7 @@
         }
 
         .post-details.show {
-            max-height: 70vh;
+            max-height: calc(100vh - 200px);
         }
 
         .job-title {
@@ -487,6 +491,15 @@
                 height: 100%;
                 object-fit: cover;
             }
+            
+            .post-details {
+                display: none !important;
+            }
+            
+            .post-details.show {
+                display: block !important;
+                max-height: 60vh;
+            }
         }
 
         /* Mobile Responsive */
@@ -500,7 +513,12 @@
             }
 
             .post-details.show {
-                max-height: 80vh;
+                max-height: calc(100vh - 160px);
+            }
+            
+            .posts-container {
+                height: calc(100vh - 80px);
+                top: 0;
             }
 
             .action-buttons {
