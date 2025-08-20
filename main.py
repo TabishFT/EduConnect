@@ -2632,40 +2632,33 @@ async def send_message(sid, data):
         firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
         
         try:
-            # Get existing messages first
-            get_response = requests.get(firebase_path, timeout=10)
-            existing_data = get_response.json() if get_response.status_code == 200 and get_response.json() else {}
+            # Simple append to messages array
+            messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
             
-            # Ensure existing_data is a dict
-            if not isinstance(existing_data, dict):
-                existing_data = {}
+            # Get existing messages
+            get_response = requests.get(messages_path, timeout=5)
+            messages = get_response.json() if get_response.status_code == 200 and get_response.json() else []
             
-            # Add new message to messages array
-            if 'messages' not in existing_data:
-                existing_data['messages'] = []
+            if not isinstance(messages, list):
+                messages = []
             
-            existing_data['messages'].append(message_obj)
+            # Add new message
+            messages.append(message_obj)
             
-            # Keep only last 50 messages to prevent bloat
-            if len(existing_data['messages']) > 50:
-                existing_data['messages'] = existing_data['messages'][-50:]
+            # Keep only last 30 messages
+            if len(messages) > 30:
+                messages = messages[-30:]
             
-            # Update last message info
-            existing_data['last_msg'] = message_text[:50]
-            existing_data['last_time'] = timestamp
-            existing_data['participants'] = [sender_email, recipient_email]
-            
-            # Save back to Firebase
-            response = requests.put(firebase_path, json=existing_data, timeout=15)
-            print(f"🔥 Firebase response: {response.status_code}")
+            # Save messages
+            response = requests.put(messages_path, json=messages, timeout=10)
+            print(f"🔥 Firebase save: {response.status_code}")
             
             if response.status_code not in [200, 201]:
-                print(f"❌ Firebase save failed: {response.status_code}")
                 await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
                 return
                 
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Firebase request error: {str(e)}")
+        except Exception as e:
+            print(f"❌ Firebase error: {str(e)}")
             await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
             return
         
@@ -2775,34 +2768,20 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
         
-        # Get messages from Firebase (new array structure)
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
+        # Get messages from Firebase (simple array)
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
         
         try:
-            response = requests.get(firebase_path, timeout=10)
-            print(f"🔥 Firebase history response: {response.status_code}")
+            response = requests.get(messages_path, timeout=5)
+            print(f"🔥 Firebase history: {response.status_code}")
             
             if response.status_code == 200:
-                chat_data = response.json() or {}
-                messages_array = chat_data.get('messages', [])
+                messages_array = response.json() or []
                 
-                # Filter out expired messages
+                # Convert to standard format
                 valid_messages = []
-                current_time = datetime.utcnow()
-                
                 for msg_data in messages_array:
                     if isinstance(msg_data, dict):
-                        # Check if message has expired
-                        expires_at = msg_data.get('ex')
-                        if expires_at:
-                            try:
-                                expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
-                                if current_time > expire_date:
-                                    continue
-                            except:
-                                pass
-                        
-                        # Convert to standard format
                         standard_msg = {
                             'id': msg_data.get('id'),
                             'from': msg_data.get('f'),
@@ -2814,14 +2793,13 @@ async def get_chat_history(sid, data):
                         }
                         valid_messages.append(standard_msg)
                 
-                sorted_messages = valid_messages  # Already in order
-                print(f"💬 Found {len(sorted_messages)} valid messages")
-                
+                sorted_messages = valid_messages
+                print(f"💬 Found {len(sorted_messages)} messages")
             else:
                 sorted_messages = []
                 
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Firebase request error: {str(e)}")
+        except Exception as e:
+            print(f"❌ Firebase error: {str(e)}")
             sorted_messages = []
         
         # Send chat history to client
