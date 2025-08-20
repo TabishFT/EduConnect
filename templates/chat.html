@@ -1314,9 +1314,10 @@
                 } else {
                     // Show notification for messages from other conversations
                     this.showNotification(data.from, data.message);
-                    // Only reload conversations for other chats
-                    this.loadConversations();
                 }
+                
+                // Always reload conversations to update sidebar
+                this.loadConversations();
             }
 
             handleSentMessage(data) {
@@ -1341,6 +1342,9 @@
                         }
                     }
                 }
+                
+                // Reload conversations to show in sidebar
+                this.loadConversations();
             }
 
             handleTyping() {

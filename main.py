@@ -2113,6 +2113,14 @@ async def public_post_view(post_id: str, request: Request):
 CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
 SAVED_POSTS_FIREBASE_URL = os.getenv("FIREBASE_SAVED_POSTS_DATABASE", FIREBASE_URL)  # Use same as intern DB if not specified
 
+# Chat cache for ultra bandwidth saving
+chat_cache = {
+    'conversations': {'data': None, 'timestamp': None},
+    'messages': {},  # {conversation_id: {'data': [], 'timestamp': datetime}}
+    'lock': asyncio.Lock()
+}
+CHAT_CACHE_DURATION = timedelta(minutes=5)  # 5 minute cache
+
 # Debug: Print Firebase URLs at startup
 print(f"🔥 Firebase URLs configured:")
 print(f"   FIREBASE_URL: {FIREBASE_URL}")
@@ -2395,18 +2403,30 @@ async def disconnect(sid):
 # API endpoints
 @app.get("/api/chat/conversations")
 async def get_conversations(current_user: User = Depends(get_current_user)):
-    """Get list of existing conversations for the current user"""
+    """Get list of existing conversations with 5-minute caching"""
     try:
-        conversations = []
-        
         # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
         
-        # Get messages grouped by conversation (optimized structure)
-        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json"
-        response = requests.get(messages_path, timeout=10)
+        # Check cache first
+        async with chat_cache['lock']:
+            cache_valid = (
+                chat_cache['conversations']['data'] is not None and 
+                chat_cache['conversations']['timestamp'] is not None and
+                datetime.utcnow() - chat_cache['conversations']['timestamp'] < CHAT_CACHE_DURATION
+            )
+            
+            if cache_valid:
+                print("✨ Conversations Cache HIT")
+                return {"success": True, "conversations": chat_cache['conversations']['data']}
+        
+        print("🔥 Conversations Cache MISS - Fetching from Firebase")
+        
+        # Get only recent conversations (last 5) to reduce bandwidth
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json?limitToLast=5"
+        response = requests.get(messages_path, timeout=3)
         
         if response.status_code != 200:
             return {"success": True, "conversations": []}
@@ -2480,6 +2500,12 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         
         # Sort by last message time (newest first)
         conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
+        
+        # Update cache
+        async with chat_cache['lock']:
+            chat_cache['conversations']['data'] = conversations
+            chat_cache['conversations']['timestamp'] = datetime.utcnow()
+            print(f"✅ Conversations cached for 5 minutes")
         
         return {"success": True, "conversations": conversations}
         
@@ -2638,10 +2664,10 @@ async def send_message(sid, data):
             'f': sender_email,  # from (shortened)
             't': recipient_email,  # to (shortened)
             'm': message_text,  # message (shortened)
-            'ts': timestamp,  # timestamp (shortened)
+            'ts': datetime.now().isoformat(),  # Use local time instead of UTC
             'r': False,  # read (shortened)
             'd': False,  # delivered (shortened)
-            'ex': (datetime.utcnow() + timedelta(hours=24)).isoformat()  # expires_at (shortened)
+            'ex': (datetime.now() + timedelta(hours=12)).isoformat()  # expires after 12 hours
         }
         
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
@@ -2661,9 +2687,9 @@ async def send_message(sid, data):
             # Add new message
             messages.append(message_obj)
             
-            # Keep only last 10 messages per conversation (reduce bandwidth)
-            if len(messages) > 10:
-                messages = messages[-10:]
+            # Keep only last 7 messages per conversation (balanced bandwidth saving)
+            if len(messages) > 7:
+                messages = messages[-7:]
             
             # Save messages in single operation
             response = requests.put(messages_path, json=messages, timeout=10)
@@ -2802,32 +2828,43 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
         
-        # Get messages from Firebase (simple array)
-        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
+        # Get only last 7 messages to reduce bandwidth
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json?limitToLast=7"
         
         try:
-            response = requests.get(messages_path, timeout=5)
+            response = requests.get(messages_path, timeout=3)
             print(f"🔥 Firebase history: {response.status_code}")
             
             if response.status_code == 200:
                 messages_array = response.json() or []
                 
-                # Convert to standard format
+                # Convert to standard format (minimal data)
                 valid_messages = []
                 for msg_data in messages_array:
                     if isinstance(msg_data, dict):
+                        # Fix timezone - use local time
+                        timestamp = msg_data.get('ts')
+                        if timestamp:
+                            try:
+                                if 'Z' in timestamp or '+' in timestamp:
+                                    utc_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                                    local_time = utc_time.replace(tzinfo=None)
+                                    timestamp = local_time.isoformat()
+                            except:
+                                pass
+                        
                         standard_msg = {
                             'id': msg_data.get('id'),
                             'from': msg_data.get('f'),
                             'to': msg_data.get('t'),
                             'message': msg_data.get('m'),
-                            'timestamp': msg_data.get('ts'),
+                            'timestamp': timestamp,
                             'read': msg_data.get('r', False),
                             'delivered': msg_data.get('d', False)
                         }
                         valid_messages.append(standard_msg)
                 
-                sorted_messages = valid_messages
+                sorted_messages = valid_messages[-7:]  # Only last 7 messages
                 print(f"💬 Found {len(sorted_messages)} messages")
             else:
                 sorted_messages = []
@@ -2940,13 +2977,13 @@ def efficient_cleanup_firebase_messages():
             print("⚠️ Skipping cleanup - no Firebase URL configured")
             return
         
-        # Delete messages older than 24 hours
-        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        # Delete messages older than 12 hours (balanced cleanup)
+        cutoff_time = (datetime.utcnow() - timedelta(hours=12)).isoformat()
         deleted_count = 0
         
-        # Get all message conversations
-        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json"
-        response = requests.get(messages_path, timeout=30)
+        # Get all message conversations (with limit)
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json?shallow=true"
+        response = requests.get(messages_path, timeout=10)
         
         if response.status_code == 200 and response.json():
             all_conversations = response.json()
@@ -2998,11 +3035,11 @@ def efficient_cleanup_firebase_messages():
         import traceback
         traceback.print_exc()
     
-    # Schedule next cleanup in 1 hour
-    Timer(3600, efficient_cleanup_firebase_messages).start()  # Run every hour
+    # Schedule next cleanup in 10 minutes
+    Timer(600, efficient_cleanup_firebase_messages).start()  # Run every 10 minutes
 
 # START THE CLEANUP TIMER
-Timer(30, efficient_cleanup_firebase_messages).start()  # Start after 30 seconds
+Timer(10, efficient_cleanup_firebase_messages).start()  # Start after 10 seconds
 
 #lets try commit  now
 # Update the main execution block
