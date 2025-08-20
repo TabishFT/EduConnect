@@ -2634,7 +2634,11 @@ async def send_message(sid, data):
         try:
             # Get existing messages first
             get_response = requests.get(firebase_path, timeout=10)
-            existing_data = get_response.json() if get_response.status_code == 200 else {}
+            existing_data = get_response.json() if get_response.status_code == 200 and get_response.json() else {}
+            
+            # Ensure existing_data is a dict
+            if not isinstance(existing_data, dict):
+                existing_data = {}
             
             # Add new message to messages array
             if 'messages' not in existing_data:
