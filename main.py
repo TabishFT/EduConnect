@@ -2404,27 +2404,43 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         if not chat_firebase_url:
             return {"success": False, "error": "Chat service not configured"}
         
-        # Get all conversations from Firebase (new structure)
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats.json"
-        response = requests.get(firebase_path, timeout=10)
+        # Get messages grouped by conversation (optimized structure)
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json"
+        response = requests.get(messages_path, timeout=10)
         
         if response.status_code != 200:
             return {"success": True, "conversations": []}
         
-        all_chats = response.json() or {}
-        
-        # Sanitize current user email for comparison
+        all_conversations = response.json() or {}
         safe_current_email = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
         
-        for conv_id, chat_data in all_chats.items():
+        for conv_id, messages in all_conversations.items():
             # Check if user is part of this conversation
-            if safe_current_email in conv_id:
-                participants = chat_data.get('participants', [])
-                other_email = None
-                for participant in participants:
-                    if participant != current_user.email:
-                        other_email = participant
+            if safe_current_email in conv_id and isinstance(messages, list) and messages:
+                # Get other user from conversation ID
+                participants = conv_id.split('_')
+                other_user_safe = None
+                for p in participants:
+                    if p != safe_current_email:
+                        other_user_safe = p
                         break
+                
+                if not other_user_safe:
+                    continue
+                
+                # Convert safe email back to actual email
+                other_email = None
+                # Try to find the actual email by searching users
+                for msg in messages:
+                    if isinstance(msg, dict):
+                        msg_from = msg.get('f', '')
+                        msg_to = msg.get('t', '')
+                        if msg_from != current_user.email:
+                            other_email = msg_from
+                            break
+                        elif msg_to != current_user.email:
+                            other_email = msg_to
+                            break
                 
                 if not other_email:
                     continue
@@ -2435,11 +2451,13 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                     {"email": 1, "name": 1, "role": 1, "_id": 0}
                 )
                 
-                if other_user:
+                if other_user and messages:
                     # Count unread messages
-                    messages = chat_data.get('messages', [])
                     unread_count = sum(1 for msg in messages 
                                      if msg.get('t') == current_user.email and not msg.get('r', False))
+                    
+                    # Get last message
+                    last_msg = messages[-1] if messages else {}
                     
                     # Get user name
                     user_name = other_user.get("name")
@@ -2454,8 +2472,8 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                         "email": other_user["email"],
                         "name": user_name,
                         "role": other_user.get("role", "user"),
-                        "last_message": chat_data.get('last_msg', ''),
-                        "last_message_time": chat_data.get('last_time', ''),
+                        "last_message": last_msg.get('m', ''),
+                        "last_message_time": last_msg.get('ts', ''),
                         "unread_count": unread_count,
                         "online": other_user["email"] in user_sockets
                     })
@@ -2623,16 +2641,14 @@ async def send_message(sid, data):
             'ts': timestamp,  # timestamp (shortened)
             'r': False,  # read (shortened)
             'd': False,  # delivered (shortened)
-            'ex': (datetime.utcnow() + timedelta(minutes=2)).isoformat()  # expires_at (shortened)
+            'ex': (datetime.utcnow() + timedelta(hours=24)).isoformat()  # expires_at (shortened)
         }
         
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
         
-        # Save to Firebase using array structure (more efficient)
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats/{conversation_id}.json"
-        
+        # Save to Firebase using optimized array structure
         try:
-            # Simple append to messages array
+            # Use single path for all messages in conversation
             messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
             
             # Get existing messages
@@ -2645,11 +2661,11 @@ async def send_message(sid, data):
             # Add new message
             messages.append(message_obj)
             
-            # Keep only last 30 messages
-            if len(messages) > 30:
-                messages = messages[-30:]
+            # Keep only last 50 messages per conversation (optimized limit)
+            if len(messages) > 50:
+                messages = messages[-50:]
             
-            # Save messages
+            # Save messages in single operation
             response = requests.put(messages_path, json=messages, timeout=10)
             print(f"🔥 Firebase save: {response.status_code}")
             
@@ -2724,9 +2740,26 @@ async def mark_message_read(sid, data):
         if not chat_firebase_url:
             return
         
-        # Update read status in Firebase
-        read_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages/{message_id}/read.json"
-        response = requests.put(read_path, json=True, timeout=10)
+        # Update read status in Firebase (optimized)
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
+        
+        # Get messages and update read status
+        get_response = requests.get(messages_path, timeout=5)
+        if get_response.status_code == 200 and get_response.json():
+            messages = get_response.json()
+            if isinstance(messages, list):
+                # Find and update the specific message
+                for msg in messages:
+                    if msg.get('id') == message_id:
+                        msg['r'] = True
+                        break
+                
+                # Save updated messages
+                response = requests.put(messages_path, json=messages, timeout=10)
+            else:
+                response = None
+        else:
+            response = None
         
         if response.status_code in [200, 201]:
             # Notify sender if online
@@ -2906,22 +2939,21 @@ def efficient_cleanup_firebase_messages():
             print("⚠️ Skipping cleanup - no Firebase URL configured")
             return
         
-        # Delete messages older than 2 minutes (for testing)
-        cutoff_time = (datetime.utcnow() - timedelta(minutes=2)).isoformat()
+        # Delete messages older than 24 hours
+        cutoff_time = (datetime.utcnow() - timedelta(hours=24)).isoformat()
         deleted_count = 0
         
-        # Get all chats
-        firebase_path = f"{chat_firebase_url.rstrip('/')}/chats.json"
-        response = requests.get(firebase_path, timeout=30)
+        # Get all message conversations
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json"
+        response = requests.get(messages_path, timeout=30)
         
         if response.status_code == 200 and response.json():
-            all_chats = response.json()
-            print(f"📂 Found {len(all_chats)} chats to check")
+            all_conversations = response.json()
+            print(f"📂 Found {len(all_conversations)} conversations to check")
             
-            for conv_id, chat_data in all_chats.items():
+            for conv_id, messages in all_conversations.items():
                 try:
-                    messages = chat_data.get('messages', [])
-                    if not messages:
+                    if not isinstance(messages, list) or not messages:
                         continue
                     
                     # Filter out expired messages
@@ -2945,15 +2977,17 @@ def efficient_cleanup_firebase_messages():
                             if should_keep:
                                 valid_messages.append(msg_data)
                     
-                    # Update chat with filtered messages
+                    # Update conversation with filtered messages or delete if empty
                     if len(valid_messages) != len(messages):
-                        chat_data['messages'] = valid_messages
-                        update_path = f"{chat_firebase_url.rstrip('/')}/chats/{conv_id}.json"
-                        requests.put(update_path, json=chat_data, timeout=10)
+                        conv_path = f"{chat_firebase_url.rstrip('/')}/messages/{conv_id}.json"
+                        if valid_messages:
+                            requests.put(conv_path, json=valid_messages, timeout=10)
+                        else:
+                            requests.delete(conv_path, timeout=10)  # Delete empty conversation
                         print(f"🗑️ Cleaned {len(messages) - len(valid_messages)} expired messages from {conv_id}")
                                     
                 except Exception as conv_error:
-                    print(f"⚠️ Error processing chat {conv_id}: {str(conv_error)}")
+                    print(f"⚠️ Error processing conversation {conv_id}: {str(conv_error)}")
                     continue
         
         print(f"✅ Cleanup complete - deleted {deleted_count} expired messages")
@@ -2963,8 +2997,8 @@ def efficient_cleanup_firebase_messages():
         import traceback
         traceback.print_exc()
     
-    # Schedule next cleanup in 2 minutes for testing
-    Timer(120, efficient_cleanup_firebase_messages).start()  # Run every 2 minutes
+    # Schedule next cleanup in 1 hour
+    Timer(3600, efficient_cleanup_firebase_messages).start()  # Run every hour
 
 # START THE CLEANUP TIMER
 Timer(30, efficient_cleanup_firebase_messages).start()  # Start after 30 seconds
