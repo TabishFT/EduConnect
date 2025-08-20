@@ -881,14 +881,14 @@
             loadPosts();
         });
         
-        // Ultra-fast loadPosts function
+        // Fast loadPosts function
         async function loadPosts() {
             if (isLoading || !hasMorePosts) return;
             
             isLoading = true;
             showLoading();
             
-            let apiUrl = `/api/get_all_posts?limit=1`;
+            let apiUrl = `/api/get_all_posts?limit=3`;
             if (nextCursor) apiUrl += `&start_after=${nextCursor}`;
             
             try {
@@ -897,6 +897,10 @@
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include'
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`API failed: ${response.status}`);
+                }
                 
                 const data = await response.json();
                 
@@ -910,68 +914,9 @@
                     if (!allPosts.length) showNoPostsState();
                 }
             } catch (error) {
+                console.error('Load error:', error);
                 if (!allPosts.length) showErrorState();
                 hasMorePosts = false;
-            } finally {
-                hideLoading();
-                isLoading = false;
-            }
-        }it fetch(apiUrl, {
-                    method: 'GET',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    credentials: 'include'
-                });
-        
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ API Error:', errorText);
-                    throw new Error(`API request failed: ${response.status} - ${errorText}`);
-                }
-        
-                const data = await response.json();
-                console.log('📊 Received data:', data);
-        
-                if (data.success) {
-                    if (data.posts && data.posts.length > 0) {
-                        // Append new posts to existing ones
-                        allPosts = allPosts.concat(data.posts);
-                        
-                        // Update pagination info
-                        nextCursor = data.next_cursor;
-                        hasMorePosts = data.has_more || false;
-                        
-                        console.log(`✅ Loaded ${data.posts.length} posts. Total: ${allPosts.length}`);
-                        console.log(`📄 Pagination - Next cursor: ${nextCursor}, Has more: ${hasMorePosts}`);
-                        
-                        // Apply current filter and render
-                        filterPosts();
-                        
-                    } else {
-                        hasMorePosts = false;
-                        nextCursor = null;
-                        
-                        if (allPosts.length === 0) {
-                            console.log('📝 No posts found in database');
-                            showNoPostsState();
-                        }
-                    }
-                } else {
-                    console.error('❌ Server returned success=false:', data);
-                    throw new Error(data.message || 'Failed to load posts');
-                }
-        
-            } catch (error) {
-                console.error('💥 Error loading posts:', error);
-                
-                if (allPosts.length === 0) {
-                    showErrorState();
-                }
-                
-                hasMorePosts = false;
-                throw error;
-                
             } finally {
                 hideLoading();
                 isLoading = false;
