@@ -275,10 +275,11 @@
             max-height: 0;
             overflow-y: auto;
             transition: max-height 0.3s ease;
+            -webkit-overflow-scrolling: touch;
         }
 
         .post-details.show {
-            max-height: 60vh;
+            max-height: 70vh;
         }
 
         .job-title {
@@ -472,6 +473,22 @@
             color: #a0aec0;
         }
 
+        /* Desktop Responsive */
+        @media (min-width: 769px) {
+            .posts-container {
+                max-width: 500px;
+                margin: 0 auto;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+            
+            .post-image img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+        }
+
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .header {
@@ -482,59 +499,23 @@
                 display: none;
             }
 
-            .main-container {
-                padding: 15px;
-                min-height: calc(100vh - 160px);
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                overscroll-behavior: contain;
-            }
-
-            .controls {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 15px;
-            }
-
-            .search-container {
-                max-width: none;
-                order: -1;
-            }
-
-            .posts-container {
-                min-height: 600px;
-                overflow: hidden;
-                touch-action: pan-x pan-y;
-            }
-            
-            .post-card {
-                position: absolute; 
-            }
-
-            .post-content {
-                padding: 15px 20px;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .startup-name {
-                font-size: 20px;
+            .post-details.show {
+                max-height: 80vh;
             }
 
             .action-buttons {
+                bottom: 180px;
                 gap: 15px;
-                margin-top: 15px;
-                padding: 15px 0;
             }
 
             .action-btn {
-                padding: 10px 14px;
+                padding: 8px 12px;
                 font-size: 12px;
             }
 
             .action-btn svg {
-                width: 18px;
-                height: 18px;
+                width: 20px;
+                height: 20px;
             }
 
             /* Mobile Navigation */
@@ -597,6 +578,10 @@
         @media (min-width: 769px) {
             .mobile-nav {
                 display: none;
+            }
+            
+            body {
+                padding-bottom: 0;
             }
         }
 
