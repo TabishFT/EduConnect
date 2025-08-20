@@ -2423,6 +2423,7 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                 return {"success": True, "conversations": chat_cache['conversations']['data']}
         
         print("🔥 Conversations Cache MISS - Fetching from Firebase")
+        conversations = []
         
         # Get only recent conversations (last 5) to reduce bandwidth
         messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json?limitToLast=5"
@@ -2497,6 +2498,8 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                         "unread_count": unread_count,
                         "online": other_user["email"] in user_sockets
                     })
+        
+        print(f"📊 Total conversations found: {len(conversations)}")
         
         # Sort by last message time (newest first)
         conversations.sort(key=lambda x: x['last_message_time'], reverse=True)
