@@ -1370,54 +1370,65 @@
             }
 
             formatTime(timestamp) {
-                const date = new Date(timestamp);
-                const now = new Date();
-                const diff = now - date;
-
-                if (diff < 60000) return 'now';
-                if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
-                if (diff < 86400000) return Math.floor(diff / 3600000) + 'h';
-                if (diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+                if (!timestamp) return '';
                 
-                return date.toLocaleDateString();
+                try {
+                    const date = new Date(timestamp);
+                    if (isNaN(date.getTime())) return '';
+                    
+                    const now = new Date();
+                    const diff = now - date;
+
+                    if (diff < 60000) return 'now';
+                    if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
+                    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h';
+                    if (diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+                    
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                } catch (error) {
+                    return '';
+                }
             }
 
             formatMessageTime(timestamp) {
-                // Parse the ISO timestamp and convert to local time
-                const date = new Date(timestamp);
-                const now = new Date();
+                if (!timestamp) return '';
                 
-                // Check if it's today
-                const isToday = date.toDateString() === now.toDateString();
-                
-                if (isToday) {
-                    // Show time only for today's messages
-                    return date.toLocaleTimeString('en-US', { 
-                        hour: 'numeric', 
-                        minute: '2-digit',
-                        hour12: true 
-                    });
-                } else {
-                    // Show date and time for older messages
-                    const yesterday = new Date(now);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const isYesterday = date.toDateString() === yesterday.toDateString();
+                try {
+                    // Parse the ISO timestamp
+                    const date = new Date(timestamp);
                     
-                    if (isYesterday) {
-                        return 'Yesterday ' + date.toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit',
-                            hour12: true 
-                        });
+                    // Check if date is valid
+                    if (isNaN(date.getTime())) {
+                        return '';
                     }
                     
-                    return date.toLocaleDateString('en-US', { 
-                        month: 'short',
-                        day: 'numeric',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        hour12: true
-                    });
+                    const now = new Date();
+                    const diffMs = now - date;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    
+                    // WhatsApp-style formatting
+                    if (diffMins < 1) {
+                        return 'now';
+                    } else if (diffMins < 60) {
+                        return diffMins + 'm';
+                    } else if (diffHours < 24) {
+                        return diffHours + 'h';
+                    } else if (diffDays === 1) {
+                        return 'Yesterday';
+                    } else if (diffDays < 7) {
+                        return diffDays + 'd';
+                    } else {
+                        // For older messages, show date
+                        return date.toLocaleDateString('en-US', { 
+                            month: 'short',
+                            day: 'numeric'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error formatting timestamp:', timestamp, error);
+                    return '';
                 }
             }
 

@@ -2423,20 +2423,16 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                 emails = conv_id.split('_')
                 other_safe_email = emails[0] if emails[1] == safe_current_email else emails[1]
                 
-                # Convert back to original email format (this is a limitation - we need to store original emails)
-                # For now, we'll need to get the original email from the conversation metadata
-                metadata = conv_data.get('metadata', {})
-                participants = metadata.get('participants', [])
+                # Get metadata (support both old and new format)
+                metadata = conv_data.get('meta', conv_data.get('metadata', {}))
+                participants = metadata.get('p', metadata.get('participants', []))
                 other_email = None
                 for participant in participants:
                     if participant != current_user.email:
                         other_email = participant
                         break
                 
-                if not other_email:
-                    continue  # Skip if we can't find the other participant
-                
-                if not metadata:
+                if not other_email or not metadata:
                     continue
                 
                 # Get other user info from MongoDB
@@ -2446,10 +2442,10 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                 )
                 
                 if other_user:
-                    # Count unread messages
+                    # Count unread messages (optimized)
                     messages = conv_data.get('messages', {})
                     unread_count = sum(1 for msg in messages.values() 
-                                     if msg.get('to') == current_user.email and not msg.get('read', False))
+                                     if (msg.get('t') or msg.get('to')) == current_user.email and not (msg.get('r', msg.get('read', False))))
                     
                     # Ensure we have a proper name - fallback to email if name is empty/null
                     user_name = other_user.get("name")
@@ -2465,8 +2461,8 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                         "email": other_user["email"],
                         "name": user_name,
                         "role": other_user.get("role", "user"),
-                        "last_message": metadata.get('last_message', ''),
-                        "last_message_time": metadata.get('last_message_time', ''),
+                        "last_message": metadata.get('lm', metadata.get('last_message', '')),
+                        "last_message_time": metadata.get('lt', metadata.get('last_message_time', '')),
                         "unread_count": unread_count,
                         "online": other_user["email"] in user_sockets
                     })
@@ -2622,13 +2618,13 @@ async def send_message(sid, data):
         
         message_obj = {
             'id': message_id,
-            'from': sender_email,
-            'to': recipient_email,
-            'message': message_text,
-            'timestamp': timestamp,
-            'read': False,
-            'delivered': False,
-            'expires_at': (datetime.utcnow() + timedelta(days=7)).isoformat()  # Auto-delete after 1 week
+            'f': sender_email,  # from (shortened)
+            't': recipient_email,  # to (shortened)
+            'm': message_text,  # message (shortened)
+            'ts': timestamp,  # timestamp (shortened)
+            'r': False,  # read (shortened)
+            'd': False,  # delivered (shortened)
+            'ex': (datetime.utcnow() + timedelta(minutes=2)).isoformat()  # expires_at (shortened)
         }
         
         print(f"💾 Saving message to Firebase: {conversation_id}/{message_id}")
@@ -2654,14 +2650,14 @@ async def send_message(sid, data):
         
         print(f"✅ Message saved successfully")
         
-        # Update conversation metadata
+        # Update conversation metadata (optimized)
         try:
             conv_meta = {
-                'last_message': message_text,
-                'last_message_time': timestamp,
-                'participants': [sender_email, recipient_email]
+                'lm': message_text[:50],  # last_message (truncated to 50 chars)
+                'lt': timestamp,  # last_time
+                'p': [sender_email, recipient_email]  # participants
             }
-            meta_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/metadata.json"
+            meta_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/meta.json"
             meta_response = requests.put(meta_path, json=conv_meta, timeout=10)
             print(f"📝 Metadata update: {meta_response.status_code}")
         except Exception as meta_error:
@@ -2797,7 +2793,7 @@ async def get_chat_history(sid, data):
                 for msg_id, msg_data in messages_data.items():
                     if isinstance(msg_data, dict):
                         # Check if message has expired
-                        expires_at = msg_data.get('expires_at')
+                        expires_at = msg_data.get('ex') or msg_data.get('expires_at')  # Support both formats
                         if expires_at:
                             try:
                                 expire_date = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
@@ -2807,8 +2803,17 @@ async def get_chat_history(sid, data):
                             except:
                                 pass
                         
-                        # Add message to valid list
-                        valid_messages.append(msg_data)
+                        # Convert to standard format for frontend
+                        standard_msg = {
+                            'id': msg_data.get('id', msg_id),
+                            'from': msg_data.get('f') or msg_data.get('from'),
+                            'to': msg_data.get('t') or msg_data.get('to'),
+                            'message': msg_data.get('m') or msg_data.get('message'),
+                            'timestamp': msg_data.get('ts') or msg_data.get('timestamp'),
+                            'read': msg_data.get('r', msg_data.get('read', False)),
+                            'delivered': msg_data.get('d', msg_data.get('delivered', False))
+                        }
+                        valid_messages.append(standard_msg)
                 
                 # Sort messages by timestamp
                 sorted_messages = sorted(valid_messages, key=lambda x: x.get('timestamp', ''))
@@ -2916,9 +2921,9 @@ async def logout_get():
 
 
 def efficient_cleanup_firebase_messages():
-    """Auto-delete messages older than 1 week using Firebase queries"""
+    """Auto-delete messages older than 2 minutes using Firebase queries (for testing)"""
     try:
-        print("🧹 Starting weekly message cleanup...")
+        print("🧹 Starting message cleanup (2 min expiry for testing)...")
         
         # Use dedicated chat Firebase URL
         chat_firebase_url = CHATS_FIREBASE_URL
@@ -2926,8 +2931,8 @@ def efficient_cleanup_firebase_messages():
             print("⚠️ Skipping cleanup - no Firebase URL configured")
             return
         
-        # Delete messages older than 1 week
-        cutoff_time = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        # Delete messages older than 2 minutes (for testing)
+        cutoff_time = (datetime.utcnow() - timedelta(minutes=2)).isoformat()
         deleted_count = 0
         
         # Get all conversations
@@ -2950,9 +2955,9 @@ def efficient_cleanup_firebase_messages():
                         # Check each message for expiration
                         for msg_id, msg_data in messages.items():
                             if isinstance(msg_data, dict):
-                                # Check if message has expired (older than 1 week)
-                                msg_timestamp = msg_data.get('timestamp', '')
-                                expires_at = msg_data.get('expires_at', '')
+                                # Check if message has expired (older than 2 minutes)
+                                msg_timestamp = msg_data.get('ts') or msg_data.get('timestamp', '')
+                                expires_at = msg_data.get('ex') or msg_data.get('expires_at', '')
                                 
                                 should_delete = False
                                 
@@ -2993,11 +2998,11 @@ def efficient_cleanup_firebase_messages():
         import traceback
         traceback.print_exc()
     
-    # Schedule next cleanup in 24 hours
-    Timer(86400, efficient_cleanup_firebase_messages).start()  # Run daily
+    # Schedule next cleanup in 2 minutes for testing
+    Timer(120, efficient_cleanup_firebase_messages).start()  # Run every 2 minutes
 
 # START THE CLEANUP TIMER
-Timer(60, efficient_cleanup_firebase_messages).start()  # Start after 1 minute
+Timer(30, efficient_cleanup_firebase_messages).start()  # Start after 30 seconds
 
 #lets try commit  now
 # Update the main execution block
