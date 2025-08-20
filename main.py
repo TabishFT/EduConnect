@@ -2593,7 +2593,9 @@ async def send_message(sid, data):
             
             if response.status_code not in [200, 201]:
                 print(f"❌ Firebase save failed: {response.status_code} - {response.text}")
-                await sio.emit('error', {'message': 'Failed to save message'}, room=sid)
+                if response.status_code == 401:
+                    print("❌ FIREBASE PERMISSION DENIED - Check database rules!")
+                await sio.emit('error', {'message': 'Failed to save message - Firebase permission denied'}, room=sid)
                 return
                 
         except requests.exceptions.RequestException as e:
@@ -2729,16 +2731,10 @@ async def get_chat_history(sid, data):
         
         # Get messages from Firebase
         firebase_path = f"{chat_firebase_url.rstrip('/')}/conversations/{conversation_id}/messages.json"
-        params = {
-            'orderBy': '"timestamp"',
-            'limitToLast': 50  # Get last 50 messages
-        }
-        
-        response = requests.get(firebase_path, params=params, timeout=10)
+        response = requests.get(firebase_path, timeout=10)
         
         if response.status_code == 200:
             messages = response.json() or {}
-            # Convert to list and sort
             sorted_messages = sorted(messages.values(), key=lambda x: x['timestamp'])
         else:
             sorted_messages = []
