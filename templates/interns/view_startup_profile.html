@@ -689,31 +689,79 @@
         }
 
         // Direct Chat Function
-        function startDirectChat() {
+        async function startDirectChat() {
             if (!currentStartup) {
                 showToast('Startup data not available.', 'error');
                 return;
             }
 
-            // Get startup email from contact info - try multiple possible field names
-            const startupEmail = currentStartup.contactEmail || 
-                                currentStartup.email || 
-                                currentStartup.created_by_email ||
-                                currentStartup.contact_email;
+            // Get current user email to avoid self-chat
+            let currentUserEmail = null;
+            try {
+                const response = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await response.json();
+                currentUserEmail = data.user?.email;
+            } catch (error) {
+                console.error('Could not get current user email:', error);
+            }
+
+            // Get startup owner email from Firebase key (not contactEmail)
+            // Firebase key format: email_domain_com -> email@domain.com
+            let startupOwnerEmail = null;
+            if (currentStartup.firebaseKey) {
+                // Convert Firebase key back to email format
+                let emailCandidate = currentStartup.firebaseKey.replace(/_/g, '.');
+                
+                // Handle common patterns: email_domain_com -> email@domain.com
+                if (emailCandidate.includes('.gmail.com')) {
+                    startupOwnerEmail = emailCandidate.replace('.gmail.com', '@gmail.com');
+                } else if (emailCandidate.includes('.com')) {
+                    // Find the last .com and replace with @domain.com
+                    const parts = emailCandidate.split('.');
+                    if (parts.length >= 3) {
+                        const domain = parts.slice(-2).join('.');
+                        const username = parts.slice(0, -2).join('.');
+                        startupOwnerEmail = `${username}@${domain}`;
+                    }
+                } else {
+                    // Fallback: assume last part is domain
+                    const parts = emailCandidate.split('.');
+                    if (parts.length >= 2) {
+                        const domain = parts[parts.length - 1];
+                        const username = parts.slice(0, -1).join('.');
+                        startupOwnerEmail = `${username}@${domain}.com`;
+                    }
+                }
+            }
             
-            console.log('🔍 Looking for startup email in:', currentStartup);
-            console.log('📧 Found startup email:', startupEmail);
+            console.log('🔍 Startup data:', currentStartup);
+            console.log('🔑 Firebase key:', currentStartup.firebaseKey);
+            console.log('📧 Derived startup owner email:', startupOwnerEmail);
+            console.log('📧 Contact email (not used):', currentStartup.contactEmail);
+            console.log('👤 Current user email:', currentUserEmail);
             
-            if (!startupEmail) {
-                showToast('Startup contact email not available.', 'error');
-                console.error('❌ No email found in startup data:', currentStartup);
+            // Fallback: if we can't derive email from Firebase key, use contactEmail but warn user
+            if (!startupOwnerEmail) {
+                startupOwnerEmail = currentStartup.contactEmail;
+                if (!startupOwnerEmail) {
+                    showToast('Could not determine startup owner email.', 'error');
+                    console.error('❌ No Firebase key or contactEmail found in startup data:', currentStartup);
+                    return;
+                }
+                console.warn('⚠️ Using contactEmail as fallback - this might cause self-chat issues');
+            }
+
+            // Check if trying to message yourself
+            if (currentUserEmail && startupOwnerEmail === currentUserEmail) {
+                showToast('You cannot message yourself. This appears to be your own profile.', 'error');
+                console.error('❌ Attempting to message self:', startupOwnerEmail);
                 return;
             }
 
-            // Store the email in localStorage for chat to pick up
-            localStorage.setItem('startConversationWith', startupEmail);
+            // Store the startup owner email in localStorage for chat to pick up
+            localStorage.setItem('startConversationWith', startupOwnerEmail);
             
-            console.log('✅ Stored email for chat:', startupEmail);
+            console.log('✅ Stored startup owner email for chat:', startupOwnerEmail);
             
             // Redirect to chat page
             window.location.href = '/chat';

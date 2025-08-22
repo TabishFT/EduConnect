@@ -1674,6 +1674,7 @@ async def get_startup_profiles(
 
             startup_profile_data = {
                 'id': profile_id,
+                'firebaseKey': profile_id,  # Add Firebase key for chat functionality
                 'startupName': profile_data.get('startupName', '') or profile_data.get('startup_name', ''),
                 'logo': profile_data.get('logo', ''),
                 'foundingYear': profile_data.get('foundingYear', ''),
