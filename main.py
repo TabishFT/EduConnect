@@ -2482,9 +2482,42 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                             )
                             
                             if other_user:
-                                # Get user name
-                                user_name = other_user.get("name", "")
-                                if not user_name or user_name.strip() == "" or user_name == other_user["email"]:
+                                # PRIORITY: Get fullName from Firebase profiles first
+                                user_name = None
+                                
+                                try:
+                                    # Try to get fullName from Firebase profiles
+                                    safe_email = re.sub(r"[^A-Za-z0-9]", "_", other_user["email"])
+                                    
+                                    # Check intern profiles first
+                                    intern_path = f"{FIREBASE_URL.rstrip('/')}/interns/{safe_email}.json"
+                                    intern_response = requests.get(intern_path, timeout=3)
+                                    if intern_response.status_code == 200 and intern_response.json():
+                                        intern_data = intern_response.json()
+                                        firebase_name = intern_data.get('fullName', '')
+                                        if firebase_name and firebase_name.strip():
+                                            user_name = firebase_name
+                                    
+                                    # If not found in interns, check startup profiles
+                                    if not user_name:
+                                        startup_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+                                        startup_response = requests.get(startup_path, timeout=3)
+                                        if startup_response.status_code == 200 and startup_response.json():
+                                            startup_data = startup_response.json()
+                                            firebase_name = startup_data.get('startupName', '') or startup_data.get('contactName', '')
+                                            if firebase_name and firebase_name.strip():
+                                                user_name = firebase_name
+                                except:
+                                    pass  # Fail silently, use fallback
+                                
+                                # Fallback to MongoDB name if Firebase doesn't have it
+                                if not user_name:
+                                    user_name = other_user.get("name", "")
+                                    if not user_name or user_name.strip() == "" or user_name == other_user["email"]:
+                                        user_name = None
+                                
+                                # Final fallback: generate from email
+                                if not user_name:
                                     email_parts = other_user["email"].split('@')
                                     if email_parts and len(email_parts[0]) > 0:
                                         user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title()
@@ -2581,10 +2614,38 @@ async def search_users(
         for user in cursor:
             print(f"👤 Found user: {user['email']} (role: {user.get('role', 'unknown')})")
             
-            # Ensure we have a proper name - fallback to email if name is empty/null
+            # Get user name from MongoDB first, then try Firebase profiles
             user_name = user.get("name")
+            
+            # If MongoDB name is empty/invalid, try to get fullName from Firebase
             if not user_name or user_name.strip() == "" or user_name == user["email"]:
-                # Extract name from email (before @)
+                try:
+                    # Try to get fullName from Firebase profiles
+                    safe_email = re.sub(r"[^A-Za-z0-9]", "_", user["email"])
+                    
+                    # Check intern profiles first
+                    intern_path = f"{FIREBASE_URL.rstrip('/')}/interns/{safe_email}.json"
+                    intern_response = requests.get(intern_path, timeout=3)
+                    if intern_response.status_code == 200 and intern_response.json():
+                        intern_data = intern_response.json()
+                        firebase_name = intern_data.get('fullName', '')
+                        if firebase_name and firebase_name.strip():
+                            user_name = firebase_name
+                    
+                    # If not found in interns, check startup profiles
+                    if not user_name or user_name == user["email"]:
+                        startup_path = f"{STARTUP_FIREBASE_URL.rstrip('/')}/startups/{safe_email}.json"
+                        startup_response = requests.get(startup_path, timeout=3)
+                        if startup_response.status_code == 200 and startup_response.json():
+                            startup_data = startup_response.json()
+                            firebase_name = startup_data.get('startupName', '') or startup_data.get('contactName', '')
+                            if firebase_name and firebase_name.strip():
+                                user_name = firebase_name
+                except:
+                    pass  # Fail silently, use fallback
+            
+            # Final fallback: generate from email
+            if not user_name or user_name.strip() == "" or user_name == user["email"]:
                 email_parts = user["email"].split('@')
                 if email_parts and len(email_parts[0]) > 0:
                     user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title()
@@ -2599,6 +2660,7 @@ async def search_users(
             })
         
         print(f"📋 Returning {len(users)} users for search query '{q}'")
+        print(f"👤 User names: {[u['name'] for u in users]}")
         return {"success": True, "users": users}
         
     except Exception as e:
