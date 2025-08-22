@@ -38,7 +38,6 @@
         color: var(--text-primary);
         min-height: 100vh;
         overflow: auto;
-        padding-top: 70px;
     }
 
     /* Header Styles */
@@ -599,7 +598,7 @@
 
         .app-container {
             position: fixed;
-            top: 70px;
+            top: 0;
             left: 0;
             right: 0;
             bottom: 80px;
@@ -800,7 +799,6 @@
 </style>
 </head>
 <body>
-    
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
@@ -1077,10 +1075,12 @@
             // Typing indicator
             this.elements.messageInput.addEventListener('input', () => this.handleTyping());
 
-            // Mobile navigation
-            this.elements.mobileMenuToggle.addEventListener('click', () => {
-                this.elements.sidebar.classList.add('open');
-            });
+            // Mobile navigation (only if element exists)
+            if (this.elements.mobileMenuToggle) {
+                this.elements.mobileMenuToggle.addEventListener('click', () => {
+                    this.elements.sidebar.classList.remove('closed');
+                });
+            }
 
             this.elements.mobileBack.addEventListener('click', () => {
                 this.closeMobileChat();
@@ -1142,11 +1142,15 @@
 
         async loadConversations() {
             try {
+                console.log('🔄 Loading conversations...');
                 const response = await fetch('/api/chat/conversations', { credentials: 'include' });
                 const data = await response.json();
                 
+                console.log('📋 Conversations response:', data);
+                
                 if (data.success) {
                     this.conversations = data.conversations || [];
+                    console.log('💬 Found', this.conversations.length, 'conversations');
                     this.renderConversations();
                     
                     // Check for new messages
@@ -1156,10 +1160,15 @@
                     } else {
                         document.title = 'Messages - InternConnect';
                     }
+                } else {
+                    console.log('❌ Conversations API returned error:', data.message);
+                    this.conversations = [];
+                    this.renderConversations();
                 }
             } catch (error) {
-                console.error('Error loading conversations:', error);
-                // Don't show error, just keep trying
+                console.error('❌ Error loading conversations:', error);
+                this.conversations = [];
+                this.renderConversations();
             }
         }
 
