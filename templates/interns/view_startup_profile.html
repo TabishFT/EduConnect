@@ -695,16 +695,25 @@
                 return;
             }
 
-            // Get startup email from contact info
-            const startupEmail = currentStartup.contactEmail;
+            // Get startup email from contact info - try multiple possible field names
+            const startupEmail = currentStartup.contactEmail || 
+                                currentStartup.email || 
+                                currentStartup.created_by_email ||
+                                currentStartup.contact_email;
+            
+            console.log('🔍 Looking for startup email in:', currentStartup);
+            console.log('📧 Found startup email:', startupEmail);
             
             if (!startupEmail) {
                 showToast('Startup contact email not available.', 'error');
+                console.error('❌ No email found in startup data:', currentStartup);
                 return;
             }
 
             // Store the email in localStorage for chat to pick up
             localStorage.setItem('startConversationWith', startupEmail);
+            
+            console.log('✅ Stored email for chat:', startupEmail);
             
             // Redirect to chat page
             window.location.href = '/chat';

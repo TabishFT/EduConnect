@@ -1763,27 +1763,37 @@
         }
 
         async searchAndOpenChat(email) {
+            console.log(`🔍 searchAndOpenChat called with email: ${email}`);
+            
             // First check if conversation already exists
             const existingConv = this.conversations.find(conv => conv.email === email);
             if (existingConv) {
-                console.log('Found existing conversation, opening...');
+                console.log('✅ Found existing conversation, opening...');
                 this.openChat(email);
                 return;
             }
             
-            console.log('No existing conversation, searching for user...');
+            console.log('❌ No existing conversation, searching for user...');
             
             // If not in conversations, search for the user and open chat
             try {
-                const response = await fetch(`/api/chat/search?q=${encodeURIComponent(email)}`, { 
+                const searchUrl = `/api/chat/search?q=${encodeURIComponent(email)}`;
+                console.log(`📡 Calling search API: ${searchUrl}`);
+                
+                const response = await fetch(searchUrl, { 
                     credentials: 'include' 
                 });
+                
+                console.log(`🚦 Search API response status: ${response.status}`);
                 const data = await response.json();
+                console.log('📦 Search API response data:', data);
                 
                 if (data.success && data.users.length > 0) {
+                    console.log(`✅ Found ${data.users.length} users in search results`);
+                    
                     const user = data.users.find(u => u.email === email);
                     if (user) {
-                        console.log('User found, opening chat...');
+                        console.log('✅ Exact email match found, opening chat...', user);
                         
                         // Add to conversations if not exists
                         if (!this.conversations.find(c => c.email === email)) {
@@ -1802,13 +1812,69 @@
                         // Open chat with this user
                         this.openChat(email);
                     } else {
-                        console.log('User not found in search results');
+                        console.log('❌ User not found in search results - no exact email match');
+                        console.log('📋 Available users:', data.users.map(u => u.email));
+                        
+                        // Create a placeholder conversation for users found in search but not exact match
+                        const placeholderUser = {
+                            email: email,
+                            name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            role: 'startup',
+                            online: false
+                        };
+                        
+                        // Add to conversations
+                        if (!this.conversations.find(c => c.email === email)) {
+                            this.conversations.unshift({
+                                email: placeholderUser.email,
+                                name: placeholderUser.name,
+                                role: placeholderUser.role,
+                                last_message: '',
+                                last_message_time: new Date().toISOString(),
+                                unread_count: 0,
+                                online: placeholderUser.online
+                            });
+                            this.renderConversations();
+                        }
+                        
+                        // Open chat with this user
+                        this.openChat(email);
+                        
+                        console.log('✅ Created placeholder conversation for unregistered user:', email);
                     }
                 } else {
-                    console.log('No search results returned');
+                    console.log('❌ No search results returned, creating placeholder conversation');
+                    
+                    // Create a placeholder conversation for unregistered users
+                    const placeholderUser = {
+                        email: email,
+                        name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                        role: 'startup',
+                        online: false
+                    };
+                    
+                    // Add to conversations
+                    if (!this.conversations.find(c => c.email === email)) {
+                        this.conversations.unshift({
+                            email: placeholderUser.email,
+                            name: placeholderUser.name,
+                            role: placeholderUser.role,
+                            last_message: '',
+                            last_message_time: new Date().toISOString(),
+                            unread_count: 0,
+                            online: placeholderUser.online
+                        });
+                        this.renderConversations();
+                    }
+                    
+                    // Open chat with this user
+                    this.openChat(email);
+                    
+                    console.log('✅ Created placeholder conversation for:', email);
                 }
             } catch (error) {
-                console.error('Error searching for user:', error);
+                console.error('💥 Error searching for user:', error);
+                this.showError('Failed to search for user. Please try again.');
             }
         }
 
@@ -1908,6 +1974,38 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        showError(message) {
+            // Create or update error message display
+            let errorDiv = document.getElementById('chat-error-message');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.id = 'chat-error-message';
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #dc3545;
+                    color: white;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    z-index: 10000;
+                    max-width: 300px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                document.body.appendChild(errorDiv);
+            }
+            
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                if (errorDiv) {
+                    errorDiv.style.display = 'none';
+                }
+            }, 5000);
+        }
 
         // Add cleanup on page unload
         destroy() {
@@ -1928,6 +2026,12 @@
                     this.socket.emit('leave_conversation', { with: this.currentChat });
                 }
                 this.socket.disconnect();
+            }
+            
+            // Clean up error message
+            const errorDiv = document.getElementById('chat-error-message');
+            if (errorDiv) {
+                errorDiv.remove();
             }
         }
     }

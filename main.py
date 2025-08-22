@@ -2537,16 +2537,38 @@ async def search_users(
 ):
     """Search for users by name or email"""
     try:
+        print(f"🔍 Chat search query: '{q}' from user: {current_user.email}")
+        
         # Search in MongoDB
         search_regex = {"$regex": q, "$options": "i"}
         users = []
         
+        # First, let's see all users in the database for debugging
+        all_users_count = users_collection.count_documents({})
+        print(f"📊 Total users in MongoDB: {all_users_count}")
+        
+        # Check if the exact email exists
+        exact_user = users_collection.find_one({"email": q})
+        if exact_user:
+            print(f"✅ Found exact email match: {exact_user['email']} (role: {exact_user.get('role', 'unknown')})")
+        else:
+            print(f"❌ No exact email match for: {q}")
+            
+            # Let's see what emails we do have that are similar
+            similar_users = list(users_collection.find(
+                {"email": search_regex},
+                {"email": 1, "role": 1, "_id": 0}
+            ).limit(5))
+            print(f"🔍 Similar emails found: {[u['email'] for u in similar_users]}")
+        
+        # Try exact match first, then regex
         cursor = users_collection.find(
             {
                 "$and": [
                     {"email": {"$ne": current_user.email}},
                     {"$or": [
-                        {"email": search_regex},
+                        {"email": q},  # Exact match
+                        {"email": search_regex},  # Regex match
                         {"name": search_regex}
                     ]}
                 ]
@@ -2555,6 +2577,8 @@ async def search_users(
         ).limit(10)
         
         for user in cursor:
+            print(f"👤 Found user: {user['email']} (role: {user.get('role', 'unknown')})")
+            
             # Ensure we have a proper name - fallback to email if name is empty/null
             user_name = user.get("name")
             if not user_name or user_name.strip() == "" or user_name == user["email"]:
@@ -2572,10 +2596,13 @@ async def search_users(
                 "online": user["email"] in user_sockets
             })
         
+        print(f"📋 Returning {len(users)} users for search query '{q}'")
         return {"success": True, "users": users}
         
     except Exception as e:
-        print(f"Error searching users: {str(e)}")
+        print(f"❌ Error searching users: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to search users")
 
 @app.post("/api/chat/mark_read")
