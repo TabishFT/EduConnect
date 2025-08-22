@@ -919,6 +919,7 @@ async def get_intern_profiles(
             if profile_data and isinstance(profile_data, dict):
                 profiles_list.append({
                     'id': profile_id,
+                    'firebaseKey': profile_id,  # Add Firebase key for chat functionality
                     'profilePicture': profile_data.get('profilePicture', ''),
                     'fullName': profile_data.get('fullName', 'Unknown'),
                     'email': profile_data.get('email', ''),

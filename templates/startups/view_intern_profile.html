@@ -657,7 +657,7 @@
         </div>
 
         <div class="action-controls" id="action-controls" style="display: none;">
-            <a href="/message"><button class="btn-primary">Chat</button></a>
+            <button class="btn-primary" onclick="startDirectChat()">Chat</button>
             <button class="btn-outline" onclick="viewResume()">View Resume</button>
         </div>
     </div>
@@ -702,6 +702,83 @@
             setTimeout(() => {
                 toast.className = 'toast';
             }, 3000);
+        }
+
+        // Direct Chat Function
+        async function startDirectChat() {
+            if (!currentProfile) {
+                showToast('Profile data not available.', 'error');
+                return;
+            }
+
+            // Get current user email to avoid self-chat
+            let currentUserEmail = null;
+            try {
+                const response = await fetch('/api/auth/check', { credentials: 'include' });
+                const data = await response.json();
+                currentUserEmail = data.user?.email;
+            } catch (error) {
+                console.error('Could not get current user email:', error);
+            }
+
+            // Get intern email from Firebase key or email field
+            let internEmail = null;
+            if (currentProfile.firebaseKey) {
+                // Convert Firebase key back to email format
+                let emailCandidate = currentProfile.firebaseKey.replace(/_/g, '.');
+                
+                // Handle common patterns: email_domain_com -> email@domain.com
+                if (emailCandidate.includes('.gmail.com')) {
+                    internEmail = emailCandidate.replace('.gmail.com', '@gmail.com');
+                } else if (emailCandidate.includes('.com')) {
+                    // Find the last .com and replace with @domain.com
+                    const parts = emailCandidate.split('.');
+                    if (parts.length >= 3) {
+                        const domain = parts.slice(-2).join('.');
+                        const username = parts.slice(0, -2).join('.');
+                        internEmail = `${username}@${domain}`;
+                    }
+                } else {
+                    // Fallback: assume last part is domain
+                    const parts = emailCandidate.split('.');
+                    if (parts.length >= 2) {
+                        const domain = parts[parts.length - 1];
+                        const username = parts.slice(0, -1).join('.');
+                        internEmail = `${username}@${domain}.com`;
+                    }
+                }
+            }
+            
+            // Fallback: use email field if Firebase key derivation fails
+            if (!internEmail) {
+                internEmail = currentProfile.email;
+                if (!internEmail) {
+                    showToast('Could not determine intern email.', 'error');
+                    console.error('❌ No Firebase key or email found in profile data:', currentProfile);
+                    return;
+                }
+                console.warn('⚠️ Using email field as fallback');
+            }
+            
+            console.log('🔍 Profile data:', currentProfile);
+            console.log('🔑 Firebase key:', currentProfile.firebaseKey);
+            console.log('📧 Derived intern email:', internEmail);
+            console.log('👤 Current user email:', currentUserEmail);
+            
+            // Check if trying to message yourself
+            if (currentUserEmail && internEmail === currentUserEmail) {
+                showToast('You cannot message yourself.', 'error');
+                console.error('❌ Attempting to message self:', internEmail);
+                return;
+            }
+
+            // Store the intern email in localStorage for chat to pick up
+            localStorage.setItem('startConversationWith', internEmail);
+            
+            console.log('✅ Stored intern email for chat:', internEmail);
+            
+            // Redirect to chat page
+            window.location.href = '/chat';
         }
 
         // View Resume
