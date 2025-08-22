@@ -1013,6 +1013,7 @@
                 }
                 const data = await response.json();
                 this.currentUser = data.user;
+                this.currentUserEmail = data.user.email; // Set current user email
             } catch (error) {
                 console.error('Authentication error:', error);
                 window.location.href = '/login';
@@ -1764,6 +1765,13 @@
 
         async searchAndOpenChat(email) {
             console.log(`🔍 searchAndOpenChat called with email: ${email}`);
+            
+            // Check if trying to chat with self
+            if (email === this.currentUserEmail) {
+                console.log('❌ Cannot chat with yourself');
+                this.showError('You cannot start a conversation with yourself.');
+                return;
+            }
             
             // First check if conversation already exists
             const existingConv = this.conversations.find(conv => conv.email === email);
