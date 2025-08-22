@@ -614,14 +614,14 @@
             width: 100%;
             height: 100%;
             z-index: 20;
-            transform: translateX(-100%);
+            transform: translateX(0);
             transition: transform 0.3s;
             display: flex;
             flex-direction: column;
         }
 
-        .sidebar.open {
-            transform: translateX(0);
+        .sidebar.closed {
+            transform: translateX(-100%);
         }
 
         .sidebar-header {
@@ -1348,7 +1348,7 @@
 
             // Mobile: hide sidebar
             if (window.innerWidth <= 768) {
-                this.elements.sidebar.classList.remove('open');
+                this.elements.sidebar.classList.add('closed');
             }
 
             // Focus input
@@ -1615,7 +1615,7 @@
             this.elements.chatHeader.style.display = 'none';
             this.elements.messagesContainer.style.display = 'none';
             this.elements.messageInputContainer.style.display = 'none';
-            this.elements.sidebar.classList.add('open');
+            this.elements.sidebar.classList.remove('closed');
             document.querySelectorAll('.conversation-item').forEach(item => {
                 item.classList.remove('active');
             });
