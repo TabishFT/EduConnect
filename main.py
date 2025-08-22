@@ -2411,7 +2411,7 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         
         safe_current_email = re.sub(r'[^A-Za-z0-9]', '_', current_user.email)
         
-        # Get all conversation IDs where user is participant (shallow query for bandwidth)
+        # Get all conversation IDs where user is participant
         messages_path = f"{chat_firebase_url.rstrip('/')}/messages.json?shallow=true"
         response = requests.get(messages_path, timeout=5)
         
@@ -2419,17 +2419,24 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
         
         if response.status_code == 200 and response.json():
             all_conv_ids = response.json()
+            print(f"📁 Found {len(all_conv_ids)} total conversations")
             
             # Filter conversations where user is participant
             for conv_id in all_conv_ids:
                 if safe_current_email in conv_id:
-                    # Get only last 2 messages for each conversation (bandwidth optimization)
-                    conv_path = f"{chat_firebase_url.rstrip('/')}/messages/{conv_id}.json?limitToLast=2"
-                    conv_response = requests.get(conv_path, timeout=3)
+                    print(f"👤 User is in conversation: {conv_id}")
+                    
+                    # Get messages for this conversation
+                    conv_path = f"{chat_firebase_url.rstrip('/')}/messages/{conv_id}.json"
+                    conv_response = requests.get(conv_path, timeout=5)
                     
                     if conv_response.status_code == 200 and conv_response.json():
                         messages = conv_response.json()
-                        if isinstance(messages, list) and messages:
+                        
+                        # Handle both list and dict formats
+                        if isinstance(messages, list) and len(messages) > 0:
+                            print(f"✅ Found {len(messages)} messages in {conv_id}")
+                            
                             # Extract other user from conversation ID
                             parts = conv_id.split('_')
                             other_user_safe = next((p for p in parts if p != safe_current_email), None)
@@ -2439,34 +2446,40 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                             
                             # Find actual email from messages
                             other_email = None
+                            last_message = None
+                            last_timestamp = None
+                            unread_count = 0
+                            
+                            # Process messages to find details
                             for msg in messages:
                                 if isinstance(msg, dict):
+                                    # Get the other user's email
                                     if msg.get('f') != current_user.email:
                                         other_email = msg.get('f')
-                                        break
                                     elif msg.get('t') != current_user.email:
                                         other_email = msg.get('t')
-                                        break
+                                    
+                                    # Track last message
+                                    last_message = msg.get('m', '')
+                                    last_timestamp = msg.get('ts', '')
+                                    
+                                    # Count unread messages TO current user
+                                    if msg.get('t') == current_user.email and not msg.get('r', False):
+                                        unread_count += 1
                             
                             if not other_email:
+                                print(f"⚠️ Could not find other user email in {conv_id}")
                                 continue
                             
-                            # Get user info from MongoDB (cached query)
+                            print(f"💬 Other user: {other_email}, Last msg: {last_message[:30]}...")
+                            
+                            # Get user info from MongoDB
                             other_user = users_collection.find_one(
                                 {"email": other_email},
                                 {"email": 1, "name": 1, "role": 1, "_id": 0}
                             )
                             
                             if other_user:
-                                # Count unread messages
-                                unread_count = sum(1 for msg in messages 
-                                                 if isinstance(msg, dict) and 
-                                                 msg.get('t') == current_user.email and 
-                                                 not msg.get('r', False))
-                                
-                                # Get last message
-                                last_msg = messages[-1] if messages else {}
-                                
                                 # Get user name
                                 user_name = other_user.get("name", "")
                                 if not user_name or user_name.strip() == "" or user_name == other_user["email"]:
@@ -2480,22 +2493,42 @@ async def get_conversations(current_user: User = Depends(get_current_user)):
                                     "email": other_user["email"],
                                     "name": user_name,
                                     "role": other_user.get("role", "user"),
-                                    "last_message": last_msg.get('m', ''),
-                                    "last_message_time": last_msg.get('ts', ''),
+                                    "last_message": last_message,
+                                    "last_message_time": last_timestamp,
                                     "unread_count": unread_count,
                                     "online": other_user["email"] in user_sockets
                                 })
+                            else:
+                                print(f"⚠️ User {other_email} not found in MongoDB")
+                                # Still add the conversation even if user not in MongoDB
+                                email_parts = other_email.split('@')
+                                user_name = email_parts[0].replace('.', ' ').replace('_', ' ').title() if email_parts else other_email
+                                
+                                conversations.append({
+                                    "email": other_email,
+                                    "name": user_name,
+                                    "role": "user",
+                                    "last_message": last_message,
+                                    "last_message_time": last_timestamp,
+                                    "unread_count": unread_count,
+                                    "online": other_email in user_sockets
+                                })
+                        else:
+                            print(f"⚠️ No messages or invalid format in {conv_id}")
+        else:
+            print(f"📭 No conversations found in Firebase")
         
         # Sort by last message time (newest first)
         conversations.sort(key=lambda x: x.get('last_message_time', ''), reverse=True)
         
+        print(f"📊 Returning {len(conversations)} conversations for {current_user.email}")
         return {"success": True, "conversations": conversations}
         
     except Exception as e:
-        print(f"Error getting conversations: {str(e)}")
+        print(f"❌ Error getting conversations: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {"success": True, "conversations": []}
-    
-
 
 @app.get("/api/chat/search")
 async def search_users(
@@ -2603,7 +2636,6 @@ async def get_chat_users(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to get users")
 
 # Socket.IO events
-
 @sio.event
 async def get_chat_history(sid, data):
     """Get chat history - optimized for bandwidth"""
@@ -2614,7 +2646,7 @@ async def get_chat_history(sid, data):
         
         current_user = connected_users[sid]
         other_user = data.get('with')
-        limit = data.get('limit', 20)  # Default to 20 messages max
+        limit = data.get('limit', 50)  # Increase default limit to get more messages
         
         if not other_user:
             await sio.emit('error', {'message': 'Missing user parameter'}, room=sid)
@@ -2632,20 +2664,23 @@ async def get_chat_history(sid, data):
             await sio.emit('error', {'message': 'Chat service not configured'}, room=sid)
             return
         
-        # Get limited messages for bandwidth optimization
-        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json?limitToLast={limit}"
+        # Get all messages for this conversation
+        messages_path = f"{chat_firebase_url.rstrip('/')}/messages/{conversation_id}.json"
         
         try:
             response = requests.get(messages_path, timeout=5)
-            print(f"🔥 Firebase history: {response.status_code}")
+            print(f"🔥 Firebase history response: {response.status_code}")
+            
+            sorted_messages = []
             
             if response.status_code == 200 and response.json():
                 messages_array = response.json()
                 
                 # Convert to standard format
-                valid_messages = []
                 if isinstance(messages_array, list):
-                    for msg_data in messages_array[-limit:]:  # Limit messages
+                    print(f"📚 Found {len(messages_array)} total messages")
+                    
+                    for msg_data in messages_array[-limit:]:  # Get last N messages
                         if isinstance(msg_data, dict):
                             standard_msg = {
                                 'id': msg_data.get('id'),
@@ -2656,12 +2691,11 @@ async def get_chat_history(sid, data):
                                 'read': msg_data.get('r', False),
                                 'delivered': msg_data.get('d', False)
                             }
-                            valid_messages.append(standard_msg)
-                
-                sorted_messages = valid_messages
-                print(f"💬 Sending {len(sorted_messages)} messages")
+                            sorted_messages.append(standard_msg)
+                    
+                    print(f"💬 Sending {len(sorted_messages)} messages to client")
             else:
-                sorted_messages = []
+                print(f"📭 No messages found for conversation {conversation_id}")
                 
         except Exception as e:
             print(f"❌ Firebase error: {str(e)}")
@@ -2678,8 +2712,9 @@ async def get_chat_history(sid, data):
         
     except Exception as e:
         print(f"💥 Error in get_chat_history: {str(e)}")
+        import traceback
+        traceback.print_exc()
         await sio.emit('error', {'message': 'Failed to get chat history'}, room=sid)
-
 
 
 @sio.event
