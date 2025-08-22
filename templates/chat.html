@@ -436,6 +436,24 @@
         font-family: inherit;
     }
 
+    /* Mobile input fixes */
+    @media (max-width: 768px) {
+        .message-input {
+            font-size: 16px; /* Prevent zoom on iOS */
+            -webkit-appearance: none;
+            border-radius: 0;
+        }
+        
+        .message-input-box {
+            min-height: 44px; /* iOS minimum touch target */
+        }
+        
+        .send-button {
+            min-width: 44px;
+            min-height: 44px;
+        }
+    }
+
     .send-button {
         width: 45px;
         height: 45px;
@@ -576,11 +594,16 @@
 
         body {
             padding-bottom: 80px;
+            overflow: hidden;
         }
 
         .app-container {
-            position: relative;
-            height: calc(100vh - 150px);
+            position: fixed;
+            top: 70px;
+            left: 0;
+            right: 0;
+            bottom: 80px;
+            height: auto;
             min-height: unset;
             flex-direction: column;
             overflow: hidden;
@@ -618,16 +641,18 @@
             display: flex;
             flex-direction: column;
             position: relative;
+            overflow: hidden;
         }
 
         .chat-header {
             padding: 15px 20px;
-            position: fixed;
-            top: 70px;
+            position: relative;
+            top: 0;
             left: 0;
             right: 0;
-            z-index: 100;
+            z-index: 10;
             background: var(--sidebar-bg);
+            flex-shrink: 0;
         }
 
         .messages-container {
@@ -635,25 +660,30 @@
             flex: 1;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            padding-top: 80px;
-            padding-bottom: 90px;
             min-height: 0;
+            background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 60 0 L 0 0 0 60" fill="none" stroke="%23151515" stroke-width="1"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100%25" height="100%25" fill="url(%23grid)" /%3E%3C/svg%3E');
         }
 
         .message-input-container {
             padding: 15px;
-            position: fixed;
-            bottom: 80px;
+            position: relative;
+            bottom: 0;
             left: 0;
             right: 0;
-            z-index: 100;
+            z-index: 10;
             background: var(--sidebar-bg);
             border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
 
         .typing-indicator {
             padding: 10px 15px;
-            bottom: 160px;
+            position: absolute;
+            bottom: 70px;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            background: var(--chat-bg);
         }
 
         .mobile-menu-toggle {
@@ -678,25 +708,30 @@
             max-width: 80%;
         }
 
-        /* When keyboard is open */
-        .message-input-container:focus-within {
-            position: fixed;
-            bottom: 0;
+        /* Keyboard handling */
+        .message-input:focus {
+            outline: none;
         }
 
-        /* Hide mobile nav when keyboard is likely open */
+        /* When keyboard opens, adjust layout */
         @media (max-height: 500px) {
             .mobile-nav {
                 display: none;
             }
 
-            .message-input-container {
+            .app-container {
                 bottom: 0;
             }
 
-            .app-container {
-                height: 100vh;
+            body {
+                padding-bottom: 0;
             }
+        }
+
+        /* Ensure proper scrolling on iOS */
+        .messages-container {
+            -webkit-overflow-scrolling: touch;
+            overflow-scrolling: touch;
         }
     }
 
@@ -765,18 +800,7 @@
 </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <nav class="nav-links">
-            <a href="javascript:history.back()">Back</a>
-            <a href="/settings">Settings</a>
-        </nav>
-    </header>
-
-    <button class="mobile-menu-toggle" id="mobileMenuToggle">
-        <i class="fas fa-comments"></i>
-    </button>
-
+    
     <div class="app-container">
         <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
@@ -1075,47 +1099,43 @@
                 }
             });
 
-            // Add this inside your ChatApp class in setupEventListeners() method:
+            // Mobile keyboard and scrolling handling
+            this.elements.messageInput.addEventListener('focus', () => {
+                if (window.innerWidth <= 768) {
+                    // Scroll to bottom when keyboard opens
+                    setTimeout(() => {
+                        this.scrollToBottom();
+                    }, 300);
+                }
+            });
 
-// Handle focus to adjust for mobile keyboard
-this.elements.messageInput.addEventListener('focus', () => {
-    if (window.innerWidth <= 768) {
-        // Scroll to bottom when keyboard opens
-        setTimeout(() => {
-            this.scrollToBottom();
-            // Adjust viewport for keyboard
-            document.body.style.height = window.innerHeight + 'px';
-        }, 300);
-    }
-});
+            // Handle resize events (keyboard open/close)
+            let lastHeight = window.innerHeight;
+            window.addEventListener('resize', () => {
+                if (window.innerWidth <= 768) {
+                    const currentHeight = window.innerHeight;
+                    const mobileNav = document.querySelector('.mobile-nav');
+                    
+                    if (currentHeight < lastHeight * 0.75) {
+                        // Keyboard is likely open
+                        if (mobileNav) mobileNav.style.display = 'none';
+                        if (this.currentChat) {
+                            setTimeout(() => this.scrollToBottom(), 100);
+                        }
+                    } else if (currentHeight > lastHeight * 0.75) {
+                        // Keyboard is likely closed
+                        if (mobileNav) mobileNav.style.display = 'flex';
+                    }
+                    lastHeight = currentHeight;
+                }
+            });
 
-this.elements.messageInput.addEventListener('blur', () => {
-    if (window.innerWidth <= 768) {
-        // Reset viewport when keyboard closes
-        document.body.style.height = '';
-        // Re-enable mobile nav
-        document.querySelector('.mobile-nav').style.display = 'flex';
-    }
-});
-
-// Handle resize events (keyboard open/close)
-let lastHeight = window.innerHeight;
-window.addEventListener('resize', () => {
-    if (window.innerWidth <= 768) {
-        const currentHeight = window.innerHeight;
-        if (currentHeight < lastHeight * 0.75) {
-            // Keyboard is likely open
-            document.querySelector('.mobile-nav').style.display = 'none';
-            if (this.currentChat) {
-                this.scrollToBottom();
-            }
-        } else if (currentHeight > lastHeight * 0.75) {
-            // Keyboard is likely closed
-            document.querySelector('.mobile-nav').style.display = 'flex';
-        }
-        lastHeight = currentHeight;
-    }
-});
+            // Prevent zoom on input focus (iOS)
+            this.elements.messageInput.addEventListener('touchstart', (e) => {
+                if (window.innerWidth <= 768) {
+                    e.target.style.fontSize = '16px';
+                }
+            });
 
 
         }
