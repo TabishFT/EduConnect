@@ -1813,87 +1813,78 @@
         }
 
         formatTime(timestamp) {
-    if (!timestamp) return '';
-    
-    try {
-        // Ensure we're working with a proper Date object in local timezone
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) return '';
-        
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
+            if (!timestamp) return '';
+            
+            try {
+                const date = new Date(timestamp);
+                if (isNaN(date.getTime())) return '';
+                
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) {
-            return 'now';
-        } else if (diffMins < 60) {
-            return `${diffMins}m`;
-        } else if (diffHours < 24) {
-            // Use local timezone for time display
-            return date.toLocaleTimeString('en-IN', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false,
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            });
-        } else if (diffDays < 7) {
-            return date.toLocaleDateString('en-IN', { weekday: 'short' });
-        } else {
-            return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+                if (diffMins < 1) {
+                    return 'now';
+                } else if (diffMins < 60) {
+                    return `${diffMins}m`;
+                } else if (diffHours < 24) {
+                    return date.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else if (diffDays < 7) {
+                    return date.toLocaleDateString('en-US', { weekday: 'short' });
+                } else {
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                }
+            } catch (error) {
+                return '';
+            }
         }
-    } catch (error) {
-        console.error('Error formatting time:', error);
-        return '';
-    }
-}
 
-formatMessageTime(timestamp) {
-    if (!timestamp) return '';
-    
-    try {
-        // Ensure we're working with a proper Date object in local timezone
-        const date = new Date(timestamp);
-        if (isNaN(date.getTime())) return '';
-        
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffHours = Math.floor(diffMs / 3600000);
-        const diffDays = Math.floor(diffMs / 86400000);
-        
-        // Show actual time for recent messages, date for older ones
-        if (diffHours < 24) {
-            // Use local timezone for time display
-            return date.toLocaleTimeString('en-IN', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false,
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            });
-        } else if (diffDays < 7) { // Less than a week
-            return date.toLocaleDateString('en-IN', { 
-                weekday: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            });
-        } else {
-            return date.toLocaleDateString('en-IN', { 
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false,
-                timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
-            });
+        formatMessageTime(timestamp) {
+            if (!timestamp) return '';
+            
+            try {
+                const date = new Date(timestamp);
+                if (isNaN(date.getTime())) return '';
+                
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                // Show actual time for recent messages, date for older ones
+                if (diffHours < 24) {
+                    return date.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else if (diffDays < 7) { // Less than a week
+                    return date.toLocaleDateString('en-US', { 
+                        weekday: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else {
+                    return date.toLocaleDateString('en-US', { 
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                }
+            } catch (error) {
+                console.error('Timestamp error:', error);
+                return '';
+            }
         }
-    } catch (error) {
-        console.error('Timestamp error:', error);
-        return '';
-    }
-}
 
         
 
