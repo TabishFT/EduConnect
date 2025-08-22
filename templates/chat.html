@@ -1816,7 +1816,14 @@
             if (!timestamp) return '';
             
             try {
-                const date = new Date(timestamp);
+                // Parse timestamp and convert to local time
+                let date = new Date(timestamp);
+                
+                // If timestamp doesn't include timezone info, treat as UTC
+                if (!timestamp.includes('Z') && !timestamp.includes('+') && !timestamp.includes('-')) {
+                    date = new Date(timestamp + 'Z');
+                }
+                
                 if (isNaN(date.getTime())) return '';
                 
                 const now = new Date();
@@ -1849,7 +1856,14 @@
             if (!timestamp) return '';
             
             try {
-                const date = new Date(timestamp);
+                // Parse timestamp and convert to local time
+                let date = new Date(timestamp);
+                
+                // If timestamp doesn't include timezone info, treat as UTC
+                if (!timestamp.includes('Z') && !timestamp.includes('+') && !timestamp.includes('-')) {
+                    date = new Date(timestamp + 'Z');
+                }
+                
                 if (isNaN(date.getTime())) return '';
                 
                 const now = new Date();

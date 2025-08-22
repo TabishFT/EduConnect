@@ -642,7 +642,7 @@
         </div>
 
         <div class="action-controls" id="action-controls" style="display: none;">
-            <button class="btn-primary" onclick="openMessageModal()">Send Message</button>
+            <button class="btn-primary" onclick="startDirectChat()">Send Message</button>
         </div>
     </div>
 
@@ -688,7 +688,29 @@
             }, 3000);
         }
 
-        // Message Modal Functions
+        // Direct Chat Function
+        function startDirectChat() {
+            if (!currentStartup) {
+                showToast('Startup data not available.', 'error');
+                return;
+            }
+
+            // Get startup email from contact info
+            const startupEmail = currentStartup.contactEmail;
+            
+            if (!startupEmail) {
+                showToast('Startup contact email not available.', 'error');
+                return;
+            }
+
+            // Store the email in localStorage for chat to pick up
+            localStorage.setItem('startConversationWith', startupEmail);
+            
+            // Redirect to chat page
+            window.location.href = '/chat';
+        }
+
+        // Message Modal Functions (kept for backward compatibility)
         function openMessageModal() {
             document.getElementById('messageModal').style.display = 'block';
         }
