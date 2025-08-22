@@ -437,20 +437,81 @@
 
     /* Mobile input fixes */
     @media (max-width: 768px) {
-        .message-input {
-            font-size: 16px; /* Prevent zoom on iOS */
-            -webkit-appearance: none;
-            border-radius: 0;
-        }
-        
-        .message-input-box {
-            min-height: 44px; /* iOS minimum touch target */
-        }
-        
-        .send-button {
-            min-width: 44px;
-            min-height: 44px;
-        }
+         .message-input-container {
+        padding: 12px 8px; /* Reduced padding for mobile */
+        position: relative;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background: var(--sidebar-bg);
+        border-top: 1px solid var(--border-color);
+        flex-shrink: 0;
+    }
+
+    .message-input-wrapper {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px; /* Reduced gap for mobile */
+        padding: 0 4px; /* Small padding to prevent edge touching */
+    }
+
+    .message-input-box {
+        flex: 1;
+        background: var(--input-bg);
+        border-radius: 25px;
+        padding: 10px 15px; /* Slightly reduced padding */
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 44px; /* iOS minimum touch target */
+        max-width: calc(100% - 60px); /* Leave space for send button */
+    }
+
+    .message-input {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 16px; /* Prevent zoom on iOS */
+        outline: none;
+        resize: none;
+        max-height: 120px;
+        font-family: inherit;
+        -webkit-appearance: none;
+        border-radius: 0;
+        width: 100%; /* Ensure full width within container */
+    }
+
+    .send-button {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    flex-shrink: 0;
+    position: relative; /* Ensure proper positioning */
+}
+
+    .send-button:active {
+        transform: scale(0.95); /* Visual feedback on tap */
+        background: var(--primary-hover);
+    }
+
+    .send-button i {
+        font-size: 18px; /* Slightly smaller icon for mobile */
+    }
+
+    /* Ensure proper layout when keyboard is open */
+    .message-input-container:has(.message-input:focus) {
+        padding-bottom: 15px; /* Extra padding when typing */
+    }
     }
 
     .send-button {
@@ -663,17 +724,7 @@
             background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" xmlns="http://www.w3.org/2000/svg"%3E%3Cdefs%3E%3Cpattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"%3E%3Cpath d="M 60 0 L 0 0 0 60" fill="none" stroke="%23151515" stroke-width="1"/%3E%3C/pattern%3E%3C/defs%3E%3Crect width="100%25" height="100%25" fill="url(%23grid)" /%3E%3C/svg%3E');
         }
 
-        .message-input-container {
-            padding: 15px 10px 15px 15px;
-            position: relative;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            z-index: 10;
-            background: var(--sidebar-bg);
-            border-top: 1px solid var(--border-color);
-            flex-shrink: 0;
-        }
+        
 
         .typing-indicator {
             padding: 10px 15px;
