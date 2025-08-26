@@ -971,21 +971,6 @@
                 ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
             </div>
         </div>` : ''}
-        ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `Data.education.map(edu => `
-                <div class="preview-item">
-                    ${hasValue(edu.degree) ? `<h4>${edu.degree}</h4>` : ''}
-                    ${hasValue(edu.institution) ? `<p class="institution">${edu.institution}</p>` : ''}
-                    ${hasValue(edu.year) ? `<p class="date">${edu.year}</p>` : ''}
-                </div>
-            `).join('')}
-        </div>` : ''}
-        ${profileData.skills && profileData.skills.length > 0 ? `
-        <div class="preview-section-item">
-            <h3>Skills</h3>
-            <div class="skills-container">
-                ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-            </div>
-        </div>` : ''}
         ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `
         <div class="preview-section-item">
             <h3>Contact Information</h3>
