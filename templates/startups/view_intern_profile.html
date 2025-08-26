@@ -933,6 +933,46 @@
             <h3>Education</h3>
             ${profileData.education.map(edu => `
                 <div class="preview-item">
+                    <h4>${edu.degree || 'Degree'}</h4>
+                    <p class="institution">${edu.institution || 'Institution'}</p>
+                    ${hasValue(edu.year) ? `<p class="date">${edu.year}</p>` : ''}
+                    ${hasValue(edu.description) ? `<p>${edu.description}</p>` : ''}
+                </div>
+            `).join('')}
+        </div>` : ''}
+        ${(profileData.experience && profileData.experience.length > 0) ? `
+        <div class="preview-section-item">
+            <h3>Experience</h3>
+            ${profileData.experience.map(exp => `
+                <div class="preview-item">
+                    <h4>${exp.position || 'Position'}</h4>
+                    <p class="institution">${exp.company || 'Company'}</p>
+                    ${hasValue(exp.duration) ? `<p class="date">${exp.duration}</p>` : ''}
+                    ${hasValue(exp.description) ? `<p>${exp.description}</p>` : ''}
+                </div>
+            `).join('')}
+        </div>` : ''}
+        ${(profileData.projects && profileData.projects.length > 0) ? `
+        <div class="preview-section-item">
+            <h3>Projects</h3>
+            ${profileData.projects.map(project => `
+                <div class="preview-item">
+                    <h4>${project.title || 'Project'}</h4>
+                    ${hasValue(project.description) ? `<p>${project.description}</p>` : ''}
+                    ${hasValue(project.technologies) ? `<p><strong>Technologies:</strong> ${project.technologies}</p>` : ''}
+                    ${hasValue(project.link) ? `<p><strong>Link:</strong> <a href="${project.link.startsWith('http') ? project.link : 'https://' + project.link}" target="_blank">${project.link}</a></p>` : ''}
+                </div>
+            `).join('')}
+        </div>` : ''}
+        ${(profileData.skills && profileData.skills.length > 0) ? `
+        <div class="preview-section-item">
+            <h3>Skills</h3>
+            <div class="skills-container">
+                ${profileData.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+            </div>
+        </div>` : ''}
+        ${(hasValue(profileData.email) || hasValue(profileData.phone) || hasValue(profileData.linkedin) || hasValue(profileData.twitter) || hasValue(profileData.github)) ? `Data.education.map(edu => `
+                <div class="preview-item">
                     ${hasValue(edu.degree) ? `<h4>${edu.degree}</h4>` : ''}
                     ${hasValue(edu.institution) ? `<p class="institution">${edu.institution}</p>` : ''}
                     ${hasValue(edu.year) ? `<p class="date">${edu.year}</p>` : ''}
@@ -979,7 +1019,7 @@
                 loadingDiv.id = 'loading-indicator';
                 loadingDiv.style.cssText = 'text-align: center; padding: 50px; color: var(--foreground);';
                 loadingDiv.innerHTML = '<p>Loading profile...</p>';
-                document.querySelector('.main-container').appendChild(loadingDiv);
+                document.querySelector('.container').appendChild(loadingDiv);
                 
                 // Fetch all intern profiles and find the one with matching email
                 const response = await fetch('/get_intern_profiles', {
