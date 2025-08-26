@@ -411,6 +411,40 @@
             background: rgba(34, 197, 94, 0.3);
         }
 
+        .apply-btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .apply-btn:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .apply-btn.applied {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            cursor: not-allowed;
+        }
+
+        .apply-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .apply-text {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
         .save-btn.saved {
             background: rgba(34, 197, 94, 0.2);
             color: #22c55e;
@@ -1083,6 +1117,12 @@
                 
                 <!-- Instagram-style Action Buttons -->
                 <div class="action-buttons">
+                    <button class="action-btn apply-btn ${post.is_applied ? 'applied' : ''}" onclick="applyToPost('${post.id}', this)" ${post.is_applied ? 'disabled' : ''}>
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <span class="apply-text">${post.is_applied ? 'Applied' : 'Apply'}</span>
+                    </button>
                     <button class="action-btn like-btn ${post.is_liked ? 'liked' : ''}" onclick="likePost('${post.id}', this)">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73z"/>
@@ -1093,12 +1133,6 @@
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                         </svg>
-                    </button>
-                    <button class="action-btn share-btn" onclick="sharePost('${post.id}', this)">
-                        <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/>
-                        </svg>
-                        <span class="shares-count">${post.shares_count || 0}</span>
                     </button>
                     <button class="action-btn message-btn" onclick="messageStartup('${escapeHtml(post.startup_name)}', '${post.created_by_email}')">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
@@ -1474,6 +1508,55 @@
             });
         }
         
+        function applyToPost(postId, button) {
+            console.log('Applying to post:', postId);
+            
+            // Check if already applied
+            if (button.classList.contains('applied') || button.disabled) {
+                showToast('You have already applied to this position', 'info');
+                return;
+            }
+            
+            // Show loading state
+            const applyText = button.querySelector('.apply-text');
+            const originalText = applyText.textContent;
+            applyText.textContent = 'Applying...';
+            button.disabled = true;
+            
+            fetch(`/api/apply_to_post/${postId}`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.classList.add('applied');
+                    applyText.textContent = 'Applied';
+                    button.disabled = true;
+                    showToast('Application submitted successfully!', 'success');
+                    
+                    // Add animation
+                    button.style.transform = 'scale(1.1)';
+                    setTimeout(() => {
+                        button.style.transform = '';
+                    }, 300);
+                } else {
+                    applyText.textContent = originalText;
+                    button.disabled = false;
+                    showToast(data.message || 'Failed to submit application', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error applying to post:', error);
+                applyText.textContent = originalText;
+                button.disabled = false;
+                showToast('Failed to submit application', 'error');
+            });
+        }
+
        async function sharePost(postId, button) {
             console.log('Sharing post:', postId);
             

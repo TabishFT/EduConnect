@@ -1970,6 +1970,221 @@ async def get_saved_posts(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.post("/api/apply_to_post/{post_id}")
+async def apply_to_post(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Apply to a post - only for interns
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        if current_user.role != "intern":
+            raise HTTPException(status_code=403, detail="Only interns can apply to posts")
+        
+        # Get the post data first to validate it exists
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        post_data = response.json()
+        if not post_data:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        # Check if already applied
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        existing_application_path = f"{APPLICATIONS_FIREBASE_URL.rstrip('/')}/applications/{post_id}/{safe_email}.json"
+        existing_response = requests.get(existing_application_path, timeout=10)
+        
+        if existing_response.status_code == 200 and existing_response.json():
+            return {
+                "success": False,
+                "message": "You have already applied to this position"
+            }
+        
+        # Get intern profile data
+        intern_profile_path = f"{FIREBASE_URL.rstrip('/')}/interns/{safe_email}.json"
+        profile_response = requests.get(intern_profile_path, timeout=10)
+        
+        intern_profile = {}
+        if profile_response.status_code == 200:
+            intern_profile = profile_response.json() or {}
+        
+        # Create application entry
+        application_data = {
+            "post_id": post_id,
+            "intern_email": current_user.email,
+            "intern_name": intern_profile.get('fullName', current_user.name or current_user.email),
+            "applied_at": datetime.utcnow().isoformat(),
+            "status": "pending",
+            "post_data": post_data,  # Store post data for quick access
+            "intern_profile": intern_profile  # Store intern profile for quick access
+        }
+        
+        # Save application to Firebase
+        application_path = f"{APPLICATIONS_FIREBASE_URL.rstrip('/')}/applications/{post_id}/{safe_email}.json"
+        save_response = requests.put(application_path, json=application_data, timeout=10)
+        
+        if save_response.status_code not in [200, 201]:
+            raise HTTPException(status_code=500, detail="Failed to submit application")
+        
+        # Update post application count
+        current_count = post_data.get('application_count', 0)
+        update_data = {'application_count': current_count + 1}
+        update_response = requests.patch(firebase_path, json=update_data, timeout=10)
+        
+        return {
+            "success": True,
+            "message": "Application submitted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error applying to post: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/post_applications/{post_id}")
+async def get_post_applications(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Get all applications for a specific post - only for startups who own the post
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        if current_user.role != "startup":
+            raise HTTPException(status_code=403, detail="Only startups can view applications")
+        
+        # Verify the post belongs to the current user
+        firebase_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+        response = requests.get(firebase_path, timeout=10)
+        
+        if response.status_code != 200:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        post_data = response.json()
+        if not post_data:
+            raise HTTPException(status_code=404, detail="Post not found")
+        
+        if post_data.get('created_by_email') != current_user.email:
+            raise HTTPException(status_code=403, detail="You can only view applications for your own posts")
+        
+        # Get applications for this post
+        applications_path = f"{APPLICATIONS_FIREBASE_URL.rstrip('/')}/applications/{post_id}.json"
+        apps_response = requests.get(applications_path, timeout=10)
+        
+        if apps_response.status_code != 200:
+            return {
+                "success": True,
+                "post": post_data,
+                "applications": []
+            }
+        
+        applications_data = apps_response.json() or {}
+        
+        # Convert to list and sort by applied_at (newest first)
+        applications = []
+        for intern_id, app_data in applications_data.items():
+            if app_data and isinstance(app_data, dict):
+                applications.append({
+                    "intern_id": intern_id,
+                    "intern_email": app_data.get("intern_email"),
+                    "intern_name": app_data.get("intern_name"),
+                    "applied_at": app_data.get("applied_at"),
+                    "status": app_data.get("status", "pending"),
+                    "intern_profile": app_data.get("intern_profile", {})
+                })
+        
+        # Sort by applied_at (newest first)
+        applications.sort(key=lambda x: x.get("applied_at", ""), reverse=True)
+        
+        return {
+            "success": True,
+            "post": post_data,
+            "applications": applications
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting post applications: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.get("/api/my_applications")
+async def get_my_applications(current_user: User = Depends(get_current_user)):
+    """
+    Get all posts with applications for the current startup
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        if current_user.role != "startup":
+            raise HTTPException(status_code=403, detail="Only startups can view applications")
+        
+        # Get all applications
+        applications_path = f"{APPLICATIONS_FIREBASE_URL.rstrip('/')}/applications.json"
+        response = requests.get(applications_path, timeout=10)
+        
+        if response.status_code != 200:
+            return {
+                "success": True,
+                "posts_with_applications": []
+            }
+        
+        all_applications = response.json() or {}
+        posts_with_apps = []
+        
+        for post_id, applications in all_applications.items():
+            if applications and isinstance(applications, dict):
+                # Get post data to check if it belongs to current user
+                post_path = f"{POSTS_FIREBASE_URL.rstrip('/')}/posts/{post_id}.json"
+                post_response = requests.get(post_path, timeout=10)
+                
+                if post_response.status_code == 200:
+                    post_data = post_response.json()
+                    if post_data and post_data.get('created_by_email') == current_user.email:
+                        # Convert applications to list
+                        app_list = []
+                        for intern_id, app_data in applications.items():
+                            if app_data and isinstance(app_data, dict):
+                                app_list.append({
+                                    "intern_id": intern_id,
+                                    "intern_email": app_data.get("intern_email"),
+                                    "intern_name": app_data.get("intern_name"),
+                                    "applied_at": app_data.get("applied_at"),
+                                    "status": app_data.get("status", "pending"),
+                                    "intern_profile": app_data.get("intern_profile", {})
+                                })
+                        
+                        # Sort by applied_at (newest first)
+                        app_list.sort(key=lambda x: x.get("applied_at", ""), reverse=True)
+                        
+                        posts_with_apps.append({
+                            "post_id": post_id,
+                            "post_data": post_data,
+                            "applications": app_list,
+                            "application_count": len(app_list)
+                        })
+        
+        # Sort posts by creation date (newest first)
+        posts_with_apps.sort(key=lambda x: x.get("post_data", {}).get("created_at", ""), reverse=True)
+        
+        return {
+            "success": True,
+            "posts_with_applications": posts_with_apps
+        }
+        
+    except Exception as e:
+        print(f"Error getting my applications: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/interns/home")
 async def interns_home_page(request: Request, current_user: User = Depends(get_current_user)):
     """
@@ -2114,6 +2329,7 @@ async def public_post_view(post_id: str, request: Request):
 # Add this at the top with other Firebase URLs
 CHATS_FIREBASE_URL = os.getenv("FIREBASE_CHATS_DATABASE")
 SAVED_POSTS_FIREBASE_URL = os.getenv("FIREBASE_SAVED_POSTS_DATABASE", FIREBASE_URL)  # Use same as intern DB if not specified
+APPLICATIONS_FIREBASE_URL = os.getenv("FIREBASE_APPLICATIONS_DATABASE", FIREBASE_URL)  # Use same as intern DB if not specified
 
 # Chat cache for ultra bandwidth saving
 chat_cache = {

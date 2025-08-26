@@ -965,11 +965,76 @@
             actionControls.style.display = 'block';
         }
 
+        // Load profile by email
+        async function loadProfileByEmail(email) {
+            try {
+                console.log('🔍 Loading profile for email:', email);
+                
+                // Show loading state
+                document.getElementById('profile-content').style.display = 'none';
+                document.getElementById('no-data-message').style.display = 'none';
+                
+                // Create loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = 'loading-indicator';
+                loadingDiv.style.cssText = 'text-align: center; padding: 50px; color: var(--foreground);';
+                loadingDiv.innerHTML = '<p>Loading profile...</p>';
+                document.querySelector('.main-container').appendChild(loadingDiv);
+                
+                // Fetch all intern profiles and find the one with matching email
+                const response = await fetch('/get_intern_profiles', {
+                    credentials: 'include'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch profiles');
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.profiles) {
+                    // Find profile with matching email
+                    const profile = data.profiles.find(p => p.email === email);
+                    
+                    if (profile) {
+                        console.log('✅ Found profile:', profile);
+                        displayProfile(profile);
+                        // Remove loading indicator
+                        const loading = document.getElementById('loading-indicator');
+                        if (loading) loading.remove();
+                    } else {
+                        throw new Error('Profile not found');
+                    }
+                } else {
+                    throw new Error('Failed to load profiles');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading profile by email:', error);
+                // Remove loading indicator
+                const loading = document.getElementById('loading-indicator');
+                if (loading) loading.remove();
+                
+                document.getElementById('no-data-message').style.display = 'block';
+                document.getElementById('profile-content').style.display = 'none';
+            }
+        }
+
         // Initialize page
         document.addEventListener('DOMContentLoaded', function () {
             console.log('🚀 Page loaded, initializing profile view...');
 
-            // Get profile data from localStorage (set by home.html)
+            // Check for email-based profile loading first (from applications)
+            const selectedEmail = localStorage.getItem('selectedInternEmail');
+            if (selectedEmail) {
+                console.log('📧 Loading profile by email:', selectedEmail);
+                loadProfileByEmail(selectedEmail);
+                // Clear the email from localStorage after use
+                localStorage.removeItem('selectedInternEmail');
+                return;
+            }
+
+            // Fallback to existing profile data method (from home.html)
             const profileDataString = localStorage.getItem('selectedInternProfile');
 
             if (profileDataString) {

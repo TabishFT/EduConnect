@@ -432,7 +432,8 @@
             </div>
 
             <!-- Saved Posts Card (Only for Interns) -->
-            <div class="settings-card" id="savedPostsCard" onclick="window.location.href='/saved-posts'" style="display: none;">
+            <div class="settings-card" id="savedPostsCard" onclick="window.location.href='/saved-posts'"
+                style="display: none;">
                 <div class="card-header">
                     <div class="card-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -476,6 +477,32 @@
                 </p>
                 <div class="card-action">
                     <button class="action-btn secondary">Get Help</button>
+                    <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9,18 15,12 9,6"></polyline>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Applications Card (Only for Startups) -->
+            <div class="settings-card" onclick="showApplications()" id="applicationsCard" style="display: none;">
+                <div class="card-header">
+                    <div class="card-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="card-title">Applications</h3>
+                    </div>
+                </div>
+                <p class="card-description">
+                    View and manage intern applications for your job posts
+                </p>
+                <div class="card-action">
+                    <span>View applications</span>
                     <svg class="arrow-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="9,18 15,12 9,6"></polyline>
@@ -542,7 +569,7 @@
         const userEmail = '{{ user.email if user else "" }}';
 
         // Show/hide saved posts card based on user role
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             const savedPostsCard = document.getElementById('savedPostsCard');
             if (userRole === 'intern' && savedPostsCard) {
                 savedPostsCard.style.display = 'block';
@@ -615,16 +642,16 @@
                 const response = await fetch('/api/saved_posts', {
                     credentials: 'include'
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (!data.success) {
                     showError('Failed to load saved posts');
                     return;
                 }
-                
+
                 const savedPosts = data.saved_posts || [];
-                
+
                 let postsHtml = '';
                 if (savedPosts.length === 0) {
                     postsHtml = `
@@ -640,7 +667,7 @@
                     postsHtml = savedPosts.map(savedPost => {
                         const post = savedPost.post_data;
                         const savedDate = new Date(savedPost.saved_at).toLocaleDateString();
-                        
+
                         return `
                             <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 15px;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
@@ -668,7 +695,7 @@
                         `;
                     }).join('');
                 }
-                
+
                 const modalContent = `
                     <div style="background: var(--background); padding: 30px; border-radius: 12px; border: 1px solid var(--border); max-width: 800px; max-height: 80vh; overflow-y: auto; margin: 20px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -680,7 +707,7 @@
                         </div>
                     </div>
                 `;
-                
+
                 const overlay = document.createElement('div');
                 overlay.id = 'savedPostsOverlay';
                 overlay.style.cssText = `
@@ -691,7 +718,7 @@
                 `;
                 overlay.innerHTML = modalContent;
                 document.body.appendChild(overlay);
-                
+
             } catch (error) {
                 console.error('Error loading saved posts:', error);
                 showError('Failed to load saved posts');
@@ -709,15 +736,15 @@
             if (!confirm('Are you sure you want to remove this saved post?')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch(`/api/unsave_post/${postId}`, {
                     method: 'POST',
                     credentials: 'include'
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (data.success) {
                     showSuccess('Post removed from saved posts');
                     // Refresh the saved posts modal
@@ -747,6 +774,121 @@
             closeSavedPosts();
             localStorage.setItem('startConversationWith', startupName);
             window.location.href = '/chat';
+        }
+
+        async function showApplications() {
+            try {
+                // Fetch applications
+                const response = await fetch('/api/my_applications', {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError('Failed to load applications');
+                    return;
+                }
+
+                const postsWithApps = data.posts_with_applications || [];
+
+                let applicationsHtml = '';
+                if (postsWithApps.length === 0) {
+                    applicationsHtml = `
+                        <div style="text-align: center; padding: 40px; color: var(--muted);">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 20px; opacity: 0.5;">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                            <h3 style="margin-bottom: 10px;">No Applications Yet</h3>
+                            <p>No interns have applied to your posts yet. Keep posting great opportunities!</p>
+                        </div>
+                    `;
+                } else {
+                    applicationsHtml = postsWithApps.map(postWithApps => {
+                        const post = postWithApps.post_data;
+                        const applications = postWithApps.applications;
+
+                        const applicantsHtml = applications.map(app => {
+                            const appliedDate = new Date(app.applied_at).toLocaleDateString();
+                            return `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--input-bg); border-radius: 8px; margin-bottom: 8px;">
+                                    <div>
+                                        <strong style="color: var(--foreground);">${app.intern_name}</strong>
+                                        <p style="color: var(--muted); font-size: 14px; margin: 4px 0;">Applied on ${appliedDate}</p>
+                                        <span style="background: var(--accent); color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px;">${app.status}</span>
+                                    </div>
+                                    <button onclick="viewInternProfile('${app.intern_email}')" style="background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                        View Profile
+                                    </button>
+                                </div>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div style="background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                                    ${post.image_url ?
+                                `<img src="${post.image_url}" alt="Post" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;">` :
+                                `<div style="width: 60px; height: 60px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">${post.startup_name.charAt(0)}</div>`
+                            }
+                                    <div>
+                                        <h4 style="color: var(--accent); margin-bottom: 5px;">${post.startup_name}</h4>
+                                        ${post.tagline ? `<p style="color: var(--muted); font-size: 14px; margin-bottom: 5px;">${post.tagline}</p>` : ''}
+                                        <h3 style="margin-bottom: 5px;">${post.job_title}</h3>
+                                        <p style="color: var(--muted); font-size: 14px;">${applications.length} application${applications.length !== 1 ? 's' : ''}</p>
+                                    </div>
+                                </div>
+                                
+                                <div style="margin-top: 15px;">
+                                    <h4 style="margin-bottom: 10px; color: var(--foreground);">Applicants:</h4>
+                                    ${applicantsHtml}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                const modalContent = `
+                    <div style="background: var(--background); padding: 30px; border-radius: 12px; border: 1px solid var(--border); max-width: 900px; max-height: 80vh; overflow-y: auto; margin: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h2 style="color: var(--accent); margin: 0;">Applications (${postsWithApps.reduce((total, post) => total + post.applications.length, 0)})</h2>
+                            <button onclick="closeApplications()" style="background: none; border: none; color: var(--muted); font-size: 24px; cursor: pointer; padding: 5px;">&times;</button>
+                        </div>
+                        <div style="max-height: 60vh; overflow-y: auto;">
+                            ${applicationsHtml}
+                        </div>
+                    </div>
+                `;
+
+                const overlay = document.createElement('div');
+                overlay.id = 'applicationsOverlay';
+                overlay.style.cssText = `
+                    position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+                    background: rgba(0,0,0,0.8); z-index: 1000; 
+                    display: flex; align-items: center; justify-content: center;
+                    backdrop-filter: blur(5px); padding: 20px;
+                `;
+                overlay.innerHTML = modalContent;
+                document.body.appendChild(overlay);
+
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                showError('Failed to load applications');
+            }
+        }
+
+        function closeApplications() {
+            const overlay = document.getElementById('applicationsOverlay');
+            if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        function viewInternProfile(internEmail) {
+            // Store intern email and redirect to view profile page
+            localStorage.setItem('selectedInternEmail', internEmail);
+            window.location.href = '/intern/profile/view';
         }
 
         function openHelpFeedback() {
@@ -869,6 +1011,14 @@
         document.addEventListener('DOMContentLoaded', function () {
             // Set up My Profile link based on user role
             setupMyProfileLink();
+
+            // Show applications card only for startups
+            if (userRole === 'startup') {
+                const applicationsCard = document.getElementById('applicationsCard');
+                if (applicationsCard) {
+                    applicationsCard.style.display = 'block';
+                }
+            }
 
             // Add hover effects and animations
             const cards = document.querySelectorAll('.settings-card');
