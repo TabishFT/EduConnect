@@ -367,18 +367,22 @@
             flex-direction: column;
             align-items: center;
             gap: 5px;
-            background: none;
-            border: none;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0, 0, 0, 0.7);
             color: white;
             cursor: pointer;
             font-size: 12px;
             transition: all 0.2s ease;
             padding: 10px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
         }
 
         .action-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.7);
+            border-color: rgba(0, 0, 0, 0.9);
             color: white;
+            transform: scale(1.05);
         }
 
         .action-btn:active {
@@ -412,8 +416,9 @@
         }
 
         .apply-btn {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+            border: 2px solid rgba(59, 130, 246, 0.8) !important;
+            color: white !important;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -422,15 +427,19 @@
             font-weight: 600;
             font-size: 14px;
             transition: all 0.3s ease;
+            flex-direction: row;
         }
 
         .apply-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
+            border-color: rgba(37, 99, 235, 1) !important;
             transform: scale(1.05);
             box-shadow: 0 6px 25px rgba(59, 130, 246, 0.4);
         }
 
         .apply-btn.applied {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            border-color: rgba(16, 185, 129, 0.8) !important;
             cursor: not-allowed;
         }
 
@@ -1060,7 +1069,7 @@
         }
         
         // Render posts
-        function renderPosts() {
+        async function renderPosts() {
             const container = document.getElementById('postsContainer');
             if (!container) {
                 console.error('Posts container not found');
@@ -1081,6 +1090,10 @@
             if (errorElement) errorElement.style.display = 'none';
             if (noPostsElement) noPostsElement.style.display = 'none';
         
+            // Check application status for posts
+            const postsWithStatus = await checkApplicationStatus(filteredPosts);
+            filteredPosts = postsWithStatus;
+        
             // Render regular posts
             filteredPosts.forEach((post, index) => {
                 const postCard = createPostCard(post, index);
@@ -1094,6 +1107,29 @@
         
 
         
+        // Check application status for posts
+        async function checkApplicationStatus(posts) {
+            const postsWithStatus = await Promise.all(posts.map(async (post) => {
+                try {
+                    const response = await fetch(`/api/check_application_status/${post.id}`, {
+                        credentials: 'include'
+                    });
+                    const data = await response.json();
+                    return {
+                        ...post,
+                        is_applied: data.success ? data.has_applied : false
+                    };
+                } catch (error) {
+                    console.error('Error checking application status:', error);
+                    return {
+                        ...post,
+                        is_applied: false
+                    };
+                }
+            }));
+            return postsWithStatus;
+        }
+
          function createPostCard(post, index) {
             const card = document.createElement('div');
             card.className = `post-card ${index === currentPostIndex ? 'active' : ''}`;
@@ -1879,6 +1915,7 @@ function showToast(message, type = 'info') {
         }
         
         // Make functions globally accessible
+        window.applyToPost = applyToPost;
         window.toggleDropdown = toggleDropdown;
         window.togglePostDetails = togglePostDetails;
         window.viewProfile = viewProfile;

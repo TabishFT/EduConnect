@@ -2185,6 +2185,36 @@ async def get_my_applications(current_user: User = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.get("/api/check_application_status/{post_id}")
+async def check_application_status(post_id: str, current_user: User = Depends(get_current_user)):
+    """
+    Check if current user has applied to a specific post
+    """
+    try:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        
+        if current_user.role != "intern":
+            return {"success": True, "has_applied": False}
+        
+        # Check if application exists
+        safe_email = re.sub(r"[^A-Za-z0-9]", "_", current_user.email)
+        application_path = f"{APPLICATIONS_FIREBASE_URL.rstrip('/')}/applications/{post_id}/{safe_email}.json"
+        
+        response = requests.get(application_path, timeout=10)
+        
+        has_applied = response.status_code == 200 and response.json() is not None
+        
+        return {
+            "success": True,
+            "has_applied": has_applied
+        }
+        
+    except Exception as e:
+        print(f"Error checking application status: {str(e)}")
+        return {"success": True, "has_applied": False}
+
+
 @app.get("/interns/home")
 async def interns_home_page(request: Request, current_user: User = Depends(get_current_user)):
     """

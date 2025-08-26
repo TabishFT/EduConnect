@@ -349,6 +349,124 @@
             }
         }
 
+        /* Notification Styles */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            min-width: 350px;
+            max-width: 400px;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification-content {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            gap: 12px;
+        }
+
+        .notification-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .notification-text {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .notification-message {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .notification-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .notification-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .view-btn {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+            border-color: rgba(255, 255, 255, 0.9);
+        }
+
+        .view-btn:hover {
+            background: white;
+            color: #5a67d8;
+        }
+
+        .close-btn {
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border-radius: 50%;
+        }
+
+        /* Mobile notification adjustments */
+        @media (max-width: 768px) {
+            .notification {
+                top: 10px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+                max-width: none;
+            }
+
+            .notification-content {
+                padding: 12px;
+            }
+
+            .notification-title {
+                font-size: 14px;
+            }
+
+            .notification-message {
+                font-size: 13px;
+            }
+        }
+
         /* Desktop - Hide Mobile Nav */
         @media (min-width: 769px) {
             .mobile-nav {
@@ -1044,6 +1162,105 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape') {
                 closeHelp();
+            }
+        });
+
+        // Application notification functions
+        function showApplicationNotification(data) {
+            const notification = document.getElementById('applicationNotification');
+            const messageElement = document.getElementById('notificationMessage');
+
+            if (!notification || !messageElement) return;
+
+            messageElement.textContent = data.message;
+            notification.classList.add('show');
+            notification.style.display = 'block';
+
+            // Auto-hide after 8 seconds
+            setTimeout(() => {
+                closeNotification();
+            }, 8000);
+
+            // Play notification sound
+            try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIG2m98OScTgwOUarm7blmGgU7k9n1unEiBC13yO/eizEIHWq+8+OWT');
+                audio.volume = 0.3;
+                audio.play().catch(() => { });
+            } catch (e) { }
+        }
+
+        function closeNotification() {
+            const notification = document.getElementById('applicationNotification');
+            if (notification) {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }
+        }
+
+        function refreshApplications() {
+            closeNotification();
+            // Refresh the applications section
+            if (typeof loadApplications === 'function') {
+                loadApplications();
+            } else {
+                location.reload();
+            }
+        }
+
+        // Socket.IO connection for real-time notifications
+        let socket = null;
+
+        function initializeSocket() {
+            try {
+                // Initialize Socket.IO connection
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    upgrade: true,
+                    rememberUpgrade: true
+                });
+
+                socket.on('connect', () => {
+                    console.log('✅ Socket connected for notifications');
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('❌ Socket disconnected');
+                });
+
+                socket.on('new_application_notification', (data) => {
+                    console.log('📧 Received application notification:', data);
+                    showApplicationNotification(data);
+
+                    // If we're on the applications tab, refresh it
+                    const applicationsCard = document.getElementById('applicationsCard');
+                    if (applicationsCard && applicationsCard.style.display !== 'none') {
+                        setTimeout(() => {
+                            if (typeof loadApplications === 'function') {
+                                loadApplications();
+                            }
+                        }, 1000);
+                    }
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('❌ Socket connection error:', error);
+                });
+
+            } catch (error) {
+                console.error('❌ Error initializing socket:', error);
+            }
+        }
+    </script>
+
+    <!-- Socket.IO for real-time notifications -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Initialize Socket.IO when page loads (only for startups)
+        document.addEventListener('DOMContentLoaded', function () {
+            if (userRole === 'startup') {
+                initializeSocket();
             }
         });
     </script>
