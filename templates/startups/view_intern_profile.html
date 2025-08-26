@@ -1024,7 +1024,8 @@
                     if (profile) {
                         console.log('✅ Found profile:', profile);
                         displayProfile(profile);
-                        // Remove loading indicator
+                        // Show profile content and remove loading indicator
+                        document.getElementById('profile-content').style.display = 'block';
                         const loading = document.getElementById('loading-indicator');
                         if (loading) loading.remove();
                     } else {
@@ -1067,6 +1068,7 @@
                     const profileData = JSON.parse(profileDataString);
                     console.log('📊 Loaded profile data:', profileData);
                     displayProfile(profileData);
+                    document.getElementById('profile-content').style.display = 'block';
                 } catch (error) {
                     console.error('❌ Error parsing profile data:', error);
                     document.getElementById('no-data-message').style.display = 'block';
