@@ -503,7 +503,7 @@
     <div class="container" id="container">
 
         <div class="form-container sign-up-container">
-            <form id="signup-form" onsubmit="return handleSignup(event)">
+            <form id="signup-form">
                 <h1>Create Account</h1>
                  <div class="social-container">
                     <a href="/auth/google/login" class="social" aria-label="Sign up with Google" onclick="return checkOAuthAvailability(event)"><i class="fab fa-google"></i></a>
@@ -521,7 +521,7 @@
                     <i class="fas fa-eye password-toggle" onclick="togglePassword('signup-confirm-password', this)"></i>
                 </div>
                 <div id="signup-error" class="error-message"></div>
-                <button type="submit">Sign Up</button>
+                <button type="submit" id="signup-btn">Sign Up</button>
                  <p class="mobile-text">Already have an account? <a href="#" onclick="togglePanel(event)">Sign In</a></p>
             </form>
         </div>
@@ -634,6 +634,14 @@
         // OTP verification state
         let otpSent = false;
         let userEmail = '';
+
+        // Attach event listener on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupForm = document.getElementById('signup-form');
+            if (signupForm) {
+                signupForm.addEventListener('submit', handleSignup);
+            }
+        });
 
         // Signup form submission handle karne ka function
         async function handleSignup(e) {
