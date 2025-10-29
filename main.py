@@ -84,8 +84,11 @@ db = client["startup_intern_db"]
 users_collection = db["users"]
 
 # Create indexes for better query performance
-users_collection.create_index([("email", ASCENDING)], unique=True)
-users_collection.create_index([("role", ASCENDING)])
+try:
+    users_collection.create_index([("email", ASCENDING)], unique=True)
+    users_collection.create_index([("role", ASCENDING)])
+except Exception as e:
+    print(f"⚠️ Index creation skipped: {str(e)}")
 
 # Security contexts
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
