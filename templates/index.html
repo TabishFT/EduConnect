@@ -604,39 +604,35 @@
             return { valid: true, message: 'Strong password ✓', strength: 'strong' };
         }
 
-        // Real-time password strength check
+        // OTP verification state
+        let otpSent = false;
+        let userEmail = '';
+
+        // Function to toggle panels
+        function togglePanel(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            const container = document.getElementById('container');
+            container.classList.toggle('right-panel-active');
+            document.getElementById('signup-error').textContent = '';
+            document.getElementById('signin-error').textContent = '';
+        }
+
+        // Initialize all event listeners on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Password strength check
             const signupPassword = document.getElementById('signup-password');
             const strengthDiv = document.getElementById('password-strength');
-            
-            if (signupPassword) {
+            if (signupPassword && strengthDiv) {
                 signupPassword.addEventListener('input', (e) => {
                     const result = validatePasswordStrength(e.target.value);
                     strengthDiv.textContent = result.message;
                     strengthDiv.className = `password-strength ${result.strength}`;
                 });
             }
-        });
 
-        // Function to toggle panels
-        function togglePanel(event) {
-            if (event) {
-                event.preventDefault(); // Link click ko default action se rokna
-            }
-            const container = document.getElementById('container');
-            container.classList.toggle('right-panel-active');
-
-             // Toggle karte waqt error messages clear karna
-            document.getElementById('signup-error').textContent = '';
-            document.getElementById('signin-error').textContent = '';
-        }
-
-        // OTP verification state
-        let otpSent = false;
-        let userEmail = '';
-
-        // Attach event listener on page load
-        document.addEventListener('DOMContentLoaded', () => {
+            // Signup form submission
             const signupForm = document.getElementById('signup-form');
             if (signupForm) {
                 signupForm.addEventListener('submit', handleSignup);
