@@ -638,6 +638,10 @@ async def verify_otp(data: dict, response: Response):
         if not email or not otp or not password:
             raise HTTPException(status_code=400, detail="Email, OTP and password required")
         
+        # Truncate password to 72 bytes for bcrypt
+        if len(password.encode('utf-8')) > 72:
+            password = password[:72]
+        
         # Check if OTP exists
         if email not in otp_storage:
             raise HTTPException(status_code=400, detail="OTP not found or expired")
