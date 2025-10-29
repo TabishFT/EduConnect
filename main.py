@@ -34,6 +34,10 @@ import threading
 from collections import defaultdict
 import time
 from uuid import uuid4
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import random
 
 
 templates = Jinja2Templates(directory="templates")
@@ -540,7 +544,146 @@ async def view_intern_profile_page(request: Request, current_user: User = Depend
         raise e
 
 
+# --------------------- OTP Storage ---------------------
+otp_storage = {}  # {email: {"otp": code, "expires": timestamp}}
+
+def send_otp_email(email: str, otp: str):
+    """Send OTP via Gmail SMTP"""
+    try:
+        sender_email = "choni.yt.01@gmail.com"
+        app_password = os.getenv("OTP_SENDER")
+        
+        if not app_password:
+            raise Exception("OTP_SENDER not configured")
+        
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = email
+        msg['Subject'] = "Your EduConnect Verification Code"
+        
+        body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; padding: 20px;">
+                <h2 style="color: #E6A55E;">Welcome to EduConnect!</h2>
+                <p>Your verification code is:</p>
+                <h1 style="color: #1A1F2C; background: #E6A55E; padding: 15px; text-align: center; border-radius: 8px; letter-spacing: 5px;">{otp}</h1>
+                <p>This code will expire in 10 minutes.</p>
+                <p style="color: #666; font-size: 12px;">If you didn't request this code, please ignore this email.</p>
+            </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(body, 'html'))
+        
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, app_password)
+            server.send_message(msg)
+        
+        return True
+    except Exception as e:
+        print(f"Email send error: {str(e)}")
+        return False
+
 # --------------------- Authentication Routes ---------------------
+
+@app.post("/api/send-otp")
+async def send_otp(data: dict):
+    """Send OTP to email for signup verification"""
+    try:
+        email = data.get("email")
+        if not email:
+            raise HTTPException(status_code=400, detail="Email required")
+        
+        # Check if email already exists
+        if get_user(email=email):
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Generate 6-digit OTP
+        otp = str(random.randint(100000, 999999))
+        
+        # Store OTP with 10 minute expiry
+        otp_storage[email] = {
+            "otp": otp,
+            "expires": datetime.utcnow() + timedelta(minutes=10)
+        }
+        
+        # Send email
+        if send_otp_email(email, otp):
+            return {"success": True, "message": "OTP sent to your email"}
+        else:
+            raise HTTPException(status_code=500, detail="Failed to send OTP")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Send OTP error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.post("/api/verify-otp")
+async def verify_otp(data: dict, response: Response):
+    """Verify OTP and create account"""
+    try:
+        email = data.get("email")
+        otp = data.get("otp")
+        password = data.get("password")
+        
+        if not email or not otp or not password:
+            raise HTTPException(status_code=400, detail="Email, OTP and password required")
+        
+        # Check if OTP exists
+        if email not in otp_storage:
+            raise HTTPException(status_code=400, detail="OTP not found or expired")
+        
+        stored_data = otp_storage[email]
+        
+        # Check if OTP expired
+        if datetime.utcnow() > stored_data["expires"]:
+            del otp_storage[email]
+            raise HTTPException(status_code=400, detail="OTP expired")
+        
+        # Verify OTP
+        if stored_data["otp"] != otp:
+            raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+        # OTP verified - create account
+        user_dict = {
+            "email": email,
+            "name": email.split('@')[0],  # Use email prefix as name
+            "password": get_password_hash(password),
+            "id": str(datetime.utcnow().timestamp()),
+            "created_at": datetime.utcnow(),
+            "auth_provider": "email",
+            "role": None
+        }
+        
+        users_collection.insert_one(user_dict)
+        
+        # Clear OTP
+        del otp_storage[email]
+        
+        # Create access token
+        access_token = create_access_token(
+            data={"sub": email},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=IS_PRODUCTION,
+            samesite='Lax',
+            max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        )
+        
+        return {"success": True, "redirect_url": "/select_role"}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Verify OTP error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/signup")
 async def signup(user: UserCreate, response: Response):

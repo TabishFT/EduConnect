@@ -508,11 +508,9 @@
                  <div class="social-container">
                     <a href="/auth/google/login" class="social" aria-label="Sign up with Google" onclick="return checkOAuthAvailability(event)"><i class="fab fa-google"></i></a>
                     <a href="/auth/github/login" class="social" aria-label="Sign up with Github" onclick="return checkOAuthAvailability(event)"><i class="fab fa-github"></i></a>
-                    <a href="/auth/linkedin/login" class="social" aria-label="Sign up with Linkedin" onclick="return checkOAuthAvailability(event)"><i class="fab fa-linkedin-in"></i></a>
                 </div>
                 <span>or use your email for registration</span>
-                <input type="text" name="name" placeholder="Name" required />
-                <input type="email" name="email" placeholder="Email" required />
+                <input type="email" id="signup-email" name="email" placeholder="Email" required />
                 <div class="password-container">
                     <input type="password" id="signup-password" name="password" placeholder="Password" required />
                     <i class="fas fa-eye password-toggle" onclick="togglePassword('signup-password', this)"></i>
@@ -534,7 +532,6 @@
                  <div class="social-container">
                     <a href="/auth/google/login" class="social" aria-label="Sign in with Google" onclick="return checkOAuthAvailability(event)"><i class="fab fa-google"></i></a>
                     <a href="/auth/github/login" class="social" aria-label="Sign in with Github" onclick="return checkOAuthAvailability(event)"><i class="fab fa-github"></i></a>
-                    <a href="/auth/linkedin/login" class="social" aria-label="Sign in with Linkedin" onclick="return checkOAuthAvailability(event)"><i class="fab fa-linkedin-in"></i></a>
                 </div>
                 <span>or use your account</span>
                 <input type="email" name="email" placeholder="Email" required />
@@ -634,6 +631,10 @@
             document.getElementById('signin-error').textContent = '';
         }
 
+        // OTP verification state
+        let otpSent = false;
+        let userEmail = '';
+
         // Signup form submission handle karne ka function
         async function handleSignup(e) {
             e.preventDefault();
@@ -641,8 +642,9 @@
             const formData = new FormData(form);
             const errorEl = document.getElementById('signup-error');
             errorEl.textContent = '';
+            errorEl.style.color = 'var(--error)';
             
-            // Check if passwords match
+            const email = formData.get('email');
             const password = formData.get('password');
             const confirmPassword = formData.get('confirmPassword');
             
@@ -658,35 +660,90 @@
                 return false;
             }
 
-            try {
-                const response = await fetch('/signup', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify({
-                        email: formData.get('email'),
-                        password: formData.get('password'),
-                        name: formData.get('name')
-                    })
-                });
+            if (!otpSent) {
+                // Step 1: Send OTP
+                try {
+                    const response = await fetch('/api/send-otp', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ email })
+                    });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Signup failed. Please try again.');
-                }
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Failed to send OTP');
+                    }
 
-                const data = await response.json();
-                if (data.redirect_url) {
-                    window.location.replace(data.redirect_url);
-                } else {
-                    window.location.replace('/home'); // Fallback redirect
+                    // OTP sent successfully
+                    otpSent = true;
+                    userEmail = email;
+                    
+                    // Disable email field
+                    document.getElementById('signup-email').disabled = true;
+                    
+                    // Add OTP input field
+                    const otpInput = document.createElement('input');
+                    otpInput.type = 'text';
+                    otpInput.id = 'otp-input';
+                    otpInput.name = 'otp';
+                    otpInput.placeholder = 'Enter 6-digit OTP';
+                    otpInput.required = true;
+                    otpInput.maxLength = 6;
+                    otpInput.pattern = '[0-9]{6}';
+                    
+                    // Insert OTP field after email
+                    const emailInput = document.getElementById('signup-email');
+                    emailInput.parentNode.insertBefore(otpInput, emailInput.nextSibling);
+                    
+                    // Change button text
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.textContent = 'Verify & Sign Up';
+                    
+                    // Show success message
+                    errorEl.style.color = '#10B981';
+                    errorEl.textContent = 'OTP sent to your email! Check your inbox.';
+                    
+                } catch (error) {
+                    console.error('Send OTP error:', error);
+                    errorEl.textContent = error.message;
                 }
-            } catch (error) {
-                console.error('Signup error:', error);
-                errorEl.textContent = error.message;
+            } else {
+                // Step 2: Verify OTP and create account
+                const otp = formData.get('otp');
+                
+                if (!otp || otp.length !== 6) {
+                    errorEl.textContent = 'Please enter valid 6-digit OTP';
+                    return false;
+                }
+                
+                try {
+                    const response = await fetch('/api/verify-otp', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            email: userEmail,
+                            otp: otp,
+                            password: password
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Verification failed');
+                    }
+
+                    const data = await response.json();
+                    if (data.redirect_url) {
+                        window.location.replace(data.redirect_url);
+                    } else {
+                        window.location.replace('/home');
+                    }
+                } catch (error) {
+                    console.error('Verify OTP error:', error);
+                    errorEl.style.color = 'var(--error)';
+                    errorEl.textContent = error.message;
+                }
             }
         }
 
