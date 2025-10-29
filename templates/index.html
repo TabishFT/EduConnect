@@ -425,6 +425,75 @@
             text-align: center;
         }
 
+        /* OTP Modal */
+        .otp-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .otp-modal.active {
+            display: flex;
+        }
+
+        .otp-modal-content {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 0.625rem;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .otp-modal h2 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .otp-modal p {
+            margin: 0.5rem 0 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .otp-input {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.5rem;
+            text-align: center;
+            letter-spacing: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .otp-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .otp-buttons button {
+            flex: 1;
+            padding: 0.75rem 1.5rem;
+        }
+
         /* Mobile Responsive Design */
         @media (max-width: 768px) {
              body {
@@ -526,6 +595,20 @@
             </form>
         </div>
 
+        <!-- OTP Modal -->
+        <div id="otp-modal" class="otp-modal">
+            <div class="otp-modal-content">
+                <h2>Verify Your Email</h2>
+                <p>Enter the 6-digit code sent to<br><strong id="otp-email-display"></strong></p>
+                <input type="text" id="otp-input" class="otp-input" maxlength="6" pattern="[0-9]{6}" placeholder="000000" />
+                <div id="otp-modal-error" class="error-message"></div>
+                <div class="otp-buttons">
+                    <button type="button" class="ghost" onclick="closeOtpModal()">Cancel</button>
+                    <button type="button" onclick="verifyOtp()">Verify</button>
+                </div>
+            </div>
+        </div>
+
         <div class="form-container sign-in-container">
              <form id="signin-form" onsubmit="return handleSignin(event)">
                 <h1>Welcome Back</h1>
@@ -605,8 +688,54 @@
         }
 
         // OTP verification state
-        let otpSent = false;
-        let userEmail = '';
+        let signupData = null;
+
+        function closeOtpModal() {
+            document.getElementById('otp-modal').classList.remove('active');
+            document.getElementById('otp-input').value = '';
+            document.getElementById('otp-modal-error').textContent = '';
+            signupData = null;
+        }
+
+        async function verifyOtp() {
+            const otp = document.getElementById('otp-input').value;
+            const errorEl = document.getElementById('otp-modal-error');
+            errorEl.textContent = '';
+
+            if (!otp || otp.length !== 6) {
+                errorEl.textContent = 'Please enter 6-digit OTP';
+                return;
+            }
+
+            if (!signupData) {
+                errorEl.textContent = 'Session expired. Please try again.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        email: signupData.email,
+                        otp: otp,
+                        password: signupData.password
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Verification failed');
+                }
+
+                const data = await response.json();
+                closeOtpModal();
+                window.location.replace(data.redirect_url || '/home');
+            } catch (error) {
+                errorEl.textContent = error.message;
+            }
+        }
 
         // Function to toggle panels
         function togglePanel(event) {
@@ -639,12 +768,14 @@
             }
         });
 
-        // Signup form submission handle karne ka function
+        // Signup form submission
         async function handleSignup(e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
             const errorEl = document.getElementById('signup-error');
+            const submitBtn = document.getElementById('signup-btn');
+            
             errorEl.textContent = '';
             errorEl.style.color = 'var(--error)';
             
@@ -652,102 +783,42 @@
             const password = formData.get('password');
             const confirmPassword = formData.get('confirmPassword');
             
-            // Validate password strength
             const passwordValidation = validatePasswordStrength(password);
             if (!passwordValidation.valid) {
                 errorEl.textContent = passwordValidation.message;
-                return false;
+                return;
             }
             
             if (password !== confirmPassword) {
                 errorEl.textContent = "Passwords do not match";
-                return false;
+                return;
             }
 
-            if (!otpSent) {
-                // Step 1: Send OTP
-                try {
-                    const response = await fetch('/api/send-otp', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ email })
-                    });
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending OTP...';
 
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.detail || 'Failed to send OTP');
-                    }
+            try {
+                const response = await fetch('/api/send-otp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email })
+                });
 
-                    // OTP sent successfully
-                    otpSent = true;
-                    userEmail = email;
-                    
-                    // Disable email field
-                    document.getElementById('signup-email').disabled = true;
-                    
-                    // Add OTP input field
-                    const otpInput = document.createElement('input');
-                    otpInput.type = 'text';
-                    otpInput.id = 'otp-input';
-                    otpInput.name = 'otp';
-                    otpInput.placeholder = 'Enter 6-digit OTP';
-                    otpInput.required = true;
-                    otpInput.maxLength = 6;
-                    otpInput.pattern = '[0-9]{6}';
-                    
-                    // Insert OTP field after email
-                    const emailInput = document.getElementById('signup-email');
-                    emailInput.parentNode.insertBefore(otpInput, emailInput.nextSibling);
-                    
-                    // Change button text
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    submitBtn.textContent = 'Verify & Sign Up';
-                    
-                    // Show success message
-                    errorEl.style.color = '#10B981';
-                    errorEl.textContent = 'OTP sent to your email! Check your inbox.';
-                    
-                } catch (error) {
-                    console.error('Send OTP error:', error);
-                    errorEl.textContent = error.message;
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to send OTP');
                 }
-            } else {
-                // Step 2: Verify OTP and create account
-                const otp = formData.get('otp');
+
+                signupData = { email, password };
+                document.getElementById('otp-email-display').textContent = email;
+                document.getElementById('otp-modal').classList.add('active');
+                document.getElementById('otp-input').focus();
                 
-                if (!otp || otp.length !== 6) {
-                    errorEl.textContent = 'Please enter valid 6-digit OTP';
-                    return false;
-                }
-                
-                try {
-                    const response = await fetch('/api/verify-otp', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        credentials: 'include',
-                        body: JSON.stringify({
-                            email: userEmail,
-                            otp: otp,
-                            password: password
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.detail || 'Verification failed');
-                    }
-
-                    const data = await response.json();
-                    if (data.redirect_url) {
-                        window.location.replace(data.redirect_url);
-                    } else {
-                        window.location.replace('/home');
-                    }
-                } catch (error) {
-                    console.error('Verify OTP error:', error);
-                    errorEl.style.color = 'var(--error)';
-                    errorEl.textContent = error.message;
-                }
+            } catch (error) {
+                errorEl.textContent = error.message;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign Up';
             }
         }
 
