@@ -2,7 +2,8 @@ fastapi
 uvicorn
 pymongo
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt==4.1.2
+passlib==1.7.4
 python-dotenv
 fastapi-sso
 email-validator
