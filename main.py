@@ -185,6 +185,9 @@ class RoleSelection(BaseModel):
 # --------------------- Helper Functions ---------------------
 
 def verify_password(plain_password, hashed_password):
+    # Bcrypt has 72 byte limit
+    if len(plain_password.encode('utf-8')) > 72:
+        plain_password = plain_password[:72]
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password):
