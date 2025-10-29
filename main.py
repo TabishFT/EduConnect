@@ -34,10 +34,11 @@ import threading
 from collections import defaultdict
 import time
 from uuid import uuid4
+import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-import random
+import ssl
 
 
 templates = Jinja2Templates(directory="templates")
@@ -548,9 +549,9 @@ async def view_intern_profile_page(request: Request, current_user: User = Depend
 otp_storage = {}  # {email: {"otp": code, "expires": timestamp}}
 
 def send_otp_email(email: str, otp: str):
-    """Send OTP via Gmail SMTP"""
+    """Send OTP via Gmail SMTP SSL (port 465)"""
     try:
-        sender_email = "choni.yt.01@gmail.com"
+        sender_email = "techstartupts@gmail.com"
         app_password = os.getenv("OTP_SENDER")
         
         if not app_password:
@@ -575,8 +576,8 @@ def send_otp_email(email: str, otp: str):
         
         msg.attach(MIMEText(body, 'html'))
         
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as server:
             server.login(sender_email, app_password)
             server.send_message(msg)
         
