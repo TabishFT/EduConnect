@@ -39,6 +39,53 @@
             font-family: 'Poppins', sans-serif;
             height: 100vh;
             padding: 1rem; /* Body padding (desktop) */
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Cursor trailing effect */
+        .cursor-trail {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            animation: trailFade 0.5s ease-out forwards;
+        }
+
+        @keyframes trailFade {
+            0% {
+                opacity: 0.7;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.2);
+            }
+        }
+
+        /* Subtle animated background gradient */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 50%, rgba(230, 165, 94, 0.02) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 50%, rgba(230, 165, 94, 0.015) 0%, transparent 50%);
+            animation: gradientMove 15s ease infinite;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        @keyframes gradientMove {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-5%, -5%); }
         }
 
         h1 {
@@ -81,13 +128,35 @@
             font-weight: bold;
             letter-spacing: 0.0625rem;
             text-transform: uppercase;
-            transition: background-color 0.2s ease, transform 80ms ease-in;
+            transition: all 0.3s ease;
             cursor: pointer;
             border-radius: var(--radius);
             margin-top: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
         }
         button:hover {
             background-color: var(--accent-hover); /* Button hover background */
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(230, 165, 94, 0.3);
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
         }
 
         button:active {
@@ -130,8 +199,43 @@
             margin: 0.5rem 0;
             width: 100%;
             border-radius: var(--radius);
-            transition: background-color 0.2s ease, border-color 0.2s ease;
+            transition: all 0.3s ease;
         }
+
+        .password-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-container input {
+            padding-right: 2.5rem;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: rgba(249, 247, 247, 0.5);
+            transition: color 0.2s ease;
+            font-size: 1rem;
+        }
+
+        .password-toggle:hover {
+            color: var(--accent);
+        }
+
+        .password-strength {
+            font-size: 0.7rem;
+            margin-top: 0.25rem;
+            color: rgba(249, 247, 247, 0.6);
+            text-align: left;
+        }
+
+        .password-strength.weak { color: var(--error); }
+        .password-strength.medium { color: #F59E0B; }
+        .password-strength.strong { color: #10B981; }
         input::placeholder {
             color: rgba(249, 247, 247, 0.5); /* Lighter placeholder text */
         }
@@ -140,6 +244,8 @@
             outline: none;
             background-color: var(--input-focus-bg); /* Slightly lighter on focus */
             border-color: var(--accent); /* Highlight border on focus */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(230, 165, 94, 0.15);
         }
 
         .container {
@@ -152,6 +258,19 @@
             max-width: 100%;
             min-height: 30rem;
             border: 1px solid var(--border); /* Add subtle border to container */
+            z-index: 1;
+            animation: containerFadeIn 0.6s ease-out;
+        }
+
+        @keyframes containerFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .form-container {
@@ -290,6 +409,8 @@
         .social-container a:hover {
             background-color: rgba(255, 255, 255, 0.1); /* Subtle background hover */
             color: var(--accent); /* Icon color changes to accent on hover */
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(230, 165, 94, 0.2);
         }
 
         .mobile-text {
@@ -385,15 +506,22 @@
             <form id="signup-form" onsubmit="return handleSignup(event)">
                 <h1>Create Account</h1>
                  <div class="social-container">
-                    <a href="/auth/google/login" class="social" aria-label="Sign up with Google"><i class="fab fa-google"></i></a>
-                    <a href="/auth/github/login" class="social" aria-label="Sign up with Github"><i class="fab fa-github"></i></a>
-                    <a href="/auth/linkedin/login" class="social" aria-label="Sign up with Linkedin"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="/auth/google/login" class="social" aria-label="Sign up with Google" onclick="return checkOAuthAvailability(event)"><i class="fab fa-google"></i></a>
+                    <a href="/auth/github/login" class="social" aria-label="Sign up with Github" onclick="return checkOAuthAvailability(event)"><i class="fab fa-github"></i></a>
+                    <a href="/auth/linkedin/login" class="social" aria-label="Sign up with Linkedin" onclick="return checkOAuthAvailability(event)"><i class="fab fa-linkedin-in"></i></a>
                 </div>
                 <span>or use your email for registration</span>
                 <input type="text" name="name" placeholder="Name" required />
                 <input type="email" name="email" placeholder="Email" required />
-                <input type="password" name="password" placeholder="Password" required />
-                <input type="password" name="confirmPassword" placeholder="Confirm Password" required />
+                <div class="password-container">
+                    <input type="password" id="signup-password" name="password" placeholder="Password" required />
+                    <i class="fas fa-eye password-toggle" onclick="togglePassword('signup-password', this)"></i>
+                </div>
+                <div id="password-strength" class="password-strength"></div>
+                <div class="password-container">
+                    <input type="password" id="signup-confirm-password" name="confirmPassword" placeholder="Confirm Password" required />
+                    <i class="fas fa-eye password-toggle" onclick="togglePassword('signup-confirm-password', this)"></i>
+                </div>
                 <div id="signup-error" class="error-message"></div>
                 <button type="submit">Sign Up</button>
                  <p class="mobile-text">Already have an account? <a href="#" onclick="togglePanel(event)">Sign In</a></p>
@@ -404,13 +532,16 @@
              <form id="signin-form" onsubmit="return handleSignin(event)">
                 <h1>Welcome Back</h1>
                  <div class="social-container">
-                    <a href="/auth/google/login" class="social" aria-label="Sign in with Google"><i class="fab fa-google"></i></a>
-                    <a href="/auth/github/login" class="social" aria-label="Sign in with Github"><i class="fab fa-github"></i></a>
-                    <a href="/auth/linkedin/login" class="social" aria-label="Sign in with Linkedin"><i class="fab fa-linkedin-in"></i></a>
+                    <a href="/auth/google/login" class="social" aria-label="Sign in with Google" onclick="return checkOAuthAvailability(event)"><i class="fab fa-google"></i></a>
+                    <a href="/auth/github/login" class="social" aria-label="Sign in with Github" onclick="return checkOAuthAvailability(event)"><i class="fab fa-github"></i></a>
+                    <a href="/auth/linkedin/login" class="social" aria-label="Sign in with Linkedin" onclick="return checkOAuthAvailability(event)"><i class="fab fa-linkedin-in"></i></a>
                 </div>
                 <span>or use your account</span>
                 <input type="email" name="email" placeholder="Email" required />
-                <input type="password" name="password" placeholder="Password" required />
+                <div class="password-container">
+                    <input type="password" id="signin-password" name="password" placeholder="Password" required />
+                    <i class="fas fa-eye password-toggle" onclick="togglePassword('signin-password', this)"></i>
+                </div>
                  <div id="signin-error" class="error-message"></div>
                 <button type="submit">Sign In</button>
                  <p class="mobile-text">Don't have an account? <a href="#" onclick="togglePanel(event)">Sign Up</a></p>
@@ -434,6 +565,62 @@
     </div>
 
     <script>
+        // Check if OAuth is available (localhost check)
+        function checkOAuthAvailability(event) {
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                event.preventDefault();
+                alert('OAuth login is not available on localhost.\n\nPlease use Email/Password to sign in/up for local testing.\n\nOAuth works only on production: https://myeduconnect.onrender.com');
+                return false;
+            }
+            return true;
+        }
+
+        // Password toggle function
+        function togglePassword(inputId, icon) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // Password strength validation
+        function validatePasswordStrength(password) {
+            const minLength = 8;
+            const hasUpperCase = /[A-Z]/.test(password);
+            const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            if (password.length < minLength) {
+                return { valid: false, message: 'At least 8 characters required', strength: 'weak' };
+            }
+            if (!hasUpperCase) {
+                return { valid: false, message: 'At least 1 uppercase letter required', strength: 'weak' };
+            }
+            if (!hasSpecialChar) {
+                return { valid: false, message: 'At least 1 special character required (!@#$%^&*)', strength: 'medium' };
+            }
+            return { valid: true, message: 'Strong password ✓', strength: 'strong' };
+        }
+
+        // Real-time password strength check
+        document.addEventListener('DOMContentLoaded', () => {
+            const signupPassword = document.getElementById('signup-password');
+            const strengthDiv = document.getElementById('password-strength');
+            
+            if (signupPassword) {
+                signupPassword.addEventListener('input', (e) => {
+                    const result = validatePasswordStrength(e.target.value);
+                    strengthDiv.textContent = result.message;
+                    strengthDiv.className = `password-strength ${result.strength}`;
+                });
+            }
+        });
+
         // Function to toggle panels
         function togglePanel(event) {
             if (event) {
@@ -458,6 +645,13 @@
             // Check if passwords match
             const password = formData.get('password');
             const confirmPassword = formData.get('confirmPassword');
+            
+            // Validate password strength
+            const passwordValidation = validatePasswordStrength(password);
+            if (!passwordValidation.valid) {
+                errorEl.textContent = passwordValidation.message;
+                return false;
+            }
             
             if (password !== confirmPassword) {
                 errorEl.textContent = "Passwords do not match";
@@ -586,6 +780,25 @@
                 console.error('Error checking authentication status:', error);
             }
         })();
+
+        // Cursor trailing effect
+        let lastTrailTime = 0;
+        document.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            if (now - lastTrailTime > 40) {
+                const trail = document.createElement('div');
+                trail.className = 'cursor-trail';
+                trail.style.left = e.clientX + 'px';
+                trail.style.top = e.clientY + 'px';
+                document.body.appendChild(trail);
+
+                setTimeout(() => {
+                    trail.remove();
+                }, 500);
+                
+                lastTrailTime = now;
+            }
+        });
 
     </script>
 </body>

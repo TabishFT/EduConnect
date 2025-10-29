@@ -38,6 +38,30 @@
             position: relative;
         }
 
+        .cursor-trail {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transform: translate(-50%, -50%);
+            animation: trailFade 0.6s ease-out forwards;
+        }
+
+        @keyframes trailFade {
+            0% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.3);
+            }
+        }
+
         body::before {
             content: '';
             position: fixed;
@@ -49,7 +73,7 @@
             background-size: cover;
             background-repeat: no-repeat;
             background-position: center;
-            opacity: 0.03;
+            opacity: 0.15;
             z-index: 0;
             pointer-events: none;
         }
@@ -657,6 +681,19 @@
             }
         }
 
+        .typing-text {
+            display: inline-block;
+            border-right: 3px solid var(--accent);
+            padding-right: 5px;
+            animation: blink 0.7s step-end infinite;
+        }
+
+        @keyframes blink {
+            50% {
+                border-color: transparent;
+            }
+        }
+
         @media (max-width: 480px) {
             .hero-title {
                 font-size: 2rem;
@@ -693,7 +730,7 @@
                 <div class="hero-card">
                     <h1 class="hero-title">
                         Collaborative Platform
-                        <span class="gradient-text">for Interns and Starups</span>
+                        <span class="gradient-text">for <span class="typing-text" id="typingText"></span></span>
                     </h1>
                     <p class="hero-description">
                         Internship seekers and startups, meet here! Get experienced, build projects, and grow together.
@@ -703,70 +740,75 @@
             </div>
         </section>
 
-        <section class="features">
-            <div class="features-container">
-                <h2 class="section-title">Why Choose Us?</h2>
-                <div class="accent-bar"></div>
-                <p class="section-description">
-                    Empowering students to launch their careers through real-world startup experiences and collaborative
-                    innovation.
-                </p>
 
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <div class="icon-container">
-                            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                            </svg>
-                        </div>
-                        <h3 class="feature-title">Startup or Internship Pathways</h3>
-                        <p class="feature-description">
-                            Whether you're ready to build your own venture or explore hands-on internships, our platform
-                            provides the ideal space to get started.
-                        </p>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="icon-container">
-                            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-                            </svg>
-                        </div>
-                        <h3 class="feature-title">Real Project Experience</h3>
-                        <p class="feature-description">
-                            Gain valuable, hands-on experience by working on real projects that strengthen your portfolio
-                            and boost your confidence.
-                        </p>
-                    </div>
-
-                    <div class="feature-card">
-                        <div class="icon-container">
-                            <svg class="feature-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
-                        </div>
-                        <h3 class="feature-title">Peer Collaboration Network</h3>
-                        <p class="feature-description">
-                            Connect and collaborate with like-minded students to co-create, innovate, and build something
-                            impactful together.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
     </div>
 
     <script>
         function handleGetStarted() {
             window.location.href = '/login';
         }
+
+        // Typing animation for "Interns" and "Startups"
+        const words = ['Interns', 'Startups'];
+        let wordIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        const typingElement = document.getElementById('typingText');
+        const typingSpeed = 150;
+        const deletingSpeed = 100;
+        const pauseTime = 2000;
+
+        function type() {
+            const currentWord = words[wordIndex];
+            
+            if (isDeleting) {
+                typingElement.textContent = currentWord.substring(0, charIndex - 1);
+                charIndex--;
+            } else {
+                typingElement.textContent = currentWord.substring(0, charIndex + 1);
+                charIndex++;
+            }
+
+            if (!isDeleting && charIndex === currentWord.length) {
+                setTimeout(() => {
+                    isDeleting = true;
+                    type();
+                }, pauseTime);
+                return;
+            }
+
+            if (isDeleting && charIndex === 0) {
+                isDeleting = false;
+                wordIndex = (wordIndex + 1) % words.length;
+            }
+
+            const speed = isDeleting ? deletingSpeed : typingSpeed;
+            setTimeout(type, speed);
+        }
+
+        // Start typing animation after page load
+        window.addEventListener('load', () => {
+            setTimeout(type, 500);
+        });
+
+        // Cursor trailing circles - throttled for performance
+        let lastTrailTime = 0;
+        document.addEventListener('mousemove', (e) => {
+            const now = Date.now();
+            if (now - lastTrailTime > 30) {
+                const trail = document.createElement('div');
+                trail.className = 'cursor-trail';
+                trail.style.left = e.clientX + 'px';
+                trail.style.top = e.clientY + 'px';
+                document.body.appendChild(trail);
+
+                setTimeout(() => {
+                    trail.remove();
+                }, 600);
+                
+                lastTrailTime = now;
+            }
+        });
     </script>
 </body>
 

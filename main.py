@@ -72,16 +72,24 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
 
 # MongoDB setup with connection pooling
-client = MongoClient(
-    os.getenv("MONGODB_URL"),
-    tlsCAFile=certifi.where(),
-    maxPoolSize=50,
-    waitQueueTimeoutMS=2000,
-    connectTimeoutMS=2000,
-    socketTimeoutMS=2000
-)
-db = client["startup_intern_db"]
-users_collection = db["users"]
+try:
+    client = MongoClient(
+        os.getenv("MONGODB_URL"),
+        tlsCAFile=certifi.where(),
+        maxPoolSize=50,
+        serverSelectionTimeoutMS=5000,
+        connectTimeoutMS=5000,
+        socketTimeoutMS=5000
+    )
+    # Test connection
+    client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+except Exception as e:
+    print(f"⚠️ MongoDB connection failed: {str(e)}")
+    print("⚠️ Server will start but database features won't work")
+    client = None
+db = client["startup_intern_db"] if client is not None else None
+users_collection = db["users"] if db is not None else None
 
 # Create indexes for better query performance
 try:
@@ -735,17 +743,27 @@ async def linkedin_callback(request: Request):
 
 
 #imagekit:
-imagekit = ImageKit(
-    private_key=os.getenv("IMAGEKIT_PRIVATE_KEY"),
-    public_key=os.getenv("IMAGEKIT_PUBLIC_KEY"),
-    url_endpoint="https://ik.imagekit.io/iupyun2hd"
-)
+try:
+    imagekit = ImageKit(
+        private_key=os.getenv("IMAGEKIT_PRIVATE_KEY"),
+        public_key=os.getenv("IMAGEKIT_PUBLIC_KEY"),
+        url_endpoint="https://ik.imagekit.io/iupyun2hd"
+    )
+    print("✅ ImageKit (profiles) initialized successfully")
+except Exception as e:
+    print(f"⚠️ ImageKit (profiles) initialization failed: {str(e)}")
+    imagekit = None
 
-posts_imagekit = ImageKit(
-    private_key=os.getenv("POSTS_IMAGEKIT_PRIVATE_KEY"),
-    public_key=os.getenv("POSTS_IMAGEKIT_PUBLIC_KEY"),
-    url_endpoint="https://ik.imagekit.io/educonnect"
-)
+try:
+    posts_imagekit = ImageKit(
+        private_key=os.getenv("POSTS_IMAGEKIT_PRIVATE_KEY"),
+        public_key=os.getenv("POSTS_IMAGEKIT_PUBLIC_KEY"),
+        url_endpoint="https://ik.imagekit.io/educonnect"
+    )
+    print("✅ ImageKit (posts) initialized successfully")
+except Exception as e:
+    print(f"⚠️ ImageKit (posts) initialization failed: {str(e)}")
+    posts_imagekit = None
 
 
 
@@ -3402,10 +3420,10 @@ Timer(10, efficient_cleanup_firebase_messages).start()  # Start after 10 seconds
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(
-        socket_app,  # Use socket_app instead of app
+        "main:socket_app",  # Import string for reload support
         host="0.0.0.0",
         port=8000,
-        reload=True,  # Set to False in production
+        reload=True,
         proxy_headers=True,
         forwarded_allow_ips="*"
     )
