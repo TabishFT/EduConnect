@@ -35,13 +35,52 @@
 
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: var(--background);
+  background: linear-gradient(135deg, #1A1F2C 0%, #0F1419 100%);
   color: var(--foreground);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   padding: 2rem 0;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(230, 165, 94, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(230, 165, 94, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cursor-trail {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: trailFade 0.5s ease-out forwards;
+}
+
+@keyframes trailFade {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
 }
 
 /* Layout */
@@ -53,6 +92,8 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 /* Header for Preview Page */
@@ -87,8 +128,10 @@ body {
 /* Startup Info Section in Preview */
 .preview-startup-header {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 2rem;
+  text-align: center;
+  gap: 1.5rem;
   margin-bottom: 2.5rem;
   padding-bottom: 1.5rem;
   border-bottom: 1px solid var(--border);
@@ -100,18 +143,18 @@ body {
 
 /* Logo Styling */
 .startup-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: var(--radius);
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
   object-fit: cover;
   border: 2px solid var(--accent);
 }
 
 /* Placeholder for logo */
 .placeholder-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: var(--radius);
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
   background-color: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
@@ -304,20 +347,29 @@ body {
 }
 
 .btn-outline {
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, var(--accent) 0%, #F3C88C 100%);
+  color: #111824;
+  border: none;
   border-radius: var(--radius);
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 2rem;
   font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(230, 165, 94, 0.3);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-outline:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(230, 165, 94, 0.4), 0 0 0 1px rgba(230, 165, 94, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-outline:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
 }
 
 /* Message for no data */
@@ -356,8 +408,8 @@ body {
   }
   
   .placeholder-logo, .startup-logo {
-    width: 80px;
-    height: 80px;
+    width: 120px;
+    height: 120px;
   }
   
   .preview-startup-info h2 {
@@ -745,17 +797,17 @@ document.addEventListener('DOMContentLoaded', function() {
           }
   
           const previewHTML = `
-              <div class="startup-header">  
-                  <div class="startup-logo">
+              <div class="preview-startup-header">  
+                  <div class="preview-logo">
                       ${logoUrl ?
                           `<img src="${logoUrl}" alt="Startup Logo" class="startup-logo">` :
                           `<div class="placeholder-logo">No Logo</div>`}
                   </div>
-                  <div class="startup-info">
+                  <div class="preview-startup-info">
                       <h2>${startupProfileData.startupName || 'Startup Name'}</h2>
                       ${hasValue(startupProfileData.foundingYear) ? `<p class="founding-year">Founded: ${startupProfileData.foundingYear}</p>` : ''}
                       ${hasValue(startupProfileData.locationType) ? `
-                          <p class="location-info">
+                          <p class="location">
                               <strong>Location:</strong> ${startupProfileData.locationType}
                               ${(startupProfileData.locationType === 'physical' || startupProfileData.locationType === 'hybrid') && hasValue(startupProfileData.physicalLocation) ? 
                                   ` - ${startupProfileData.physicalLocation}` : ''}
@@ -813,7 +865,24 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Continue button not found!');
     }
 
+    // Cursor trailing effect
+    let lastTrailTime = 0;
+    document.addEventListener('mousemove', (e) => {
+      const now = Date.now();
+      if (now - lastTrailTime > 40) {
+        const trail = document.createElement('div');
+        trail.className = 'cursor-trail';
+        trail.style.left = e.clientX + 'px';
+        trail.style.top = e.clientY + 'px';
+        document.body.appendChild(trail);
 
+        setTimeout(() => {
+          trail.remove();
+        }, 500);
+        
+        lastTrailTime = now;
+      }
+    });
   });
   </script>
 

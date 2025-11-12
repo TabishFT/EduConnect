@@ -39,12 +39,51 @@
 
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: var(--background);
+  background: linear-gradient(135deg, #1A1F2C 0%, #0F1419 100%);
   color: var(--foreground);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(230, 165, 94, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(230, 165, 94, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cursor-trail {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: trailFade 0.5s ease-out forwards;
+}
+
+@keyframes trailFade {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
 }
 
 /* Typography */
@@ -87,6 +126,8 @@ a:hover {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 header {
@@ -98,6 +139,7 @@ header {
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
+  position: relative;
 }
 
 .header-container {
@@ -152,6 +194,8 @@ nav a.active {
 main {
   flex: 1;
   padding: 4rem 0;
+  position: relative;
+  z-index: 1;
 }
 
 .intro {
@@ -702,7 +746,7 @@ select option {
           <div class="form-row">
             <div class="form-group half">
               <label for="founding-year">Founding Year*</label>
-              <input type="number" id="founding-year" min="1900" max="2025" required>
+              <input type="number" id="founding-year" min="1900" max="2024" required>
             </div>
             
             <div class="form-group half">
@@ -1235,6 +1279,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Initial setup: Show the first step
   showStep(currentStep);
+
+  // Cursor trailing effect
+  let lastTrailTime = 0;
+  document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - lastTrailTime > 40) {
+      const trail = document.createElement('div');
+      trail.className = 'cursor-trail';
+      trail.style.left = e.clientX + 'px';
+      trail.style.top = e.clientY + 'px';
+      document.body.appendChild(trail);
+
+      setTimeout(() => {
+        trail.remove();
+      }, 500);
+      
+      lastTrailTime = now;
+    }
+  });
 
   // Startup Profile Save Logic (Apply Button)
   const applyBtn = document.getElementById('apply-btn');

@@ -485,41 +485,83 @@ body {
 
 /* Header Styles */
 .header {
-    background: rgba(0, 0, 0, 0.3);
-    padding: 15px 20px;
+    background: rgba(17, 24, 39, 0.95);
+    padding: 1.25rem 0;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    backdrop-filter: blur(10px);
+    justify-content: center;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     position: sticky;
     top: 0;
     z-index: 100;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.header-container {
+    max-width: 1200px;
+    width: 100%;
+    padding: 0 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
-    background: white;
-    color: #1a1a2e;
-    padding: 8px 16px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 18px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    text-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
+    position: relative;
+    padding-bottom: 0.25rem;
+}
+
+.logo::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 40%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    border-radius: 2px;
 }
 
 .nav-links {
     display: flex;
-    gap: 30px;
+    gap: 2rem;
 }
 
 .nav-links a {
-    color: white;
+    color: var(--foreground);
     text-decoration: none;
     font-weight: 500;
-    transition: color 0.3s;
+    position: relative;
+    padding-bottom: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+    transition: width 0.3s ease;
+}
+
+.nav-links a:hover::after,
+.nav-links a.active::after {
+    width: 100%;
 }
 
 .nav-links a:hover,
 .nav-links a.active {
-    color: #f59e0b;
+    color: var(--accent);
 }
 
 /* Mobile Navigation */
@@ -743,12 +785,14 @@ body {
 <body>
   <!-- Header -->
   <header class="header">
-      <div class="logo">InternConnect</div>
-      <nav class="nav-links">
-          <a href="#" class="active">Home</a>
-          <a href="/chat">Messages</a>
-          <a href="/settings">Settings</a>
-      </nav>
+      <div class="header-container">
+          <div class="logo">EduConnect</div>
+          <nav class="nav-links">
+              <a href="#" class="active">Home</a>
+              <a href="/chat">Messages</a>
+              <a href="/settings">Settings</a>
+          </nav>
+      </div>
   </header>
 
   <!-- Main Content -->

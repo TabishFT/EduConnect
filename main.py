@@ -35,10 +35,8 @@ from collections import defaultdict
 import time
 from uuid import uuid4
 import random
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-import ssl
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 
 templates = Jinja2Templates(directory="templates")
@@ -555,20 +553,15 @@ async def view_intern_profile_page(request: Request, current_user: User = Depend
 otp_storage = {}  # {email: {"otp": code, "expires": timestamp}}
 
 def send_otp_email(email: str, otp: str):
-    """Send OTP via Gmail SMTP SSL (port 465)"""
+    """Send OTP via SendGrid API"""
     try:
-        sender_email = "techstartupts@gmail.com"
-        app_password = os.getenv("OTP_SENDER")
+        sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
+        sender_email = os.getenv("SENDGRID_FROM_EMAIL", "techstartupts@gmail.com")
         
-        if not app_password:
-            raise Exception("OTP_SENDER not configured")
+        if not sendgrid_api_key:
+            raise Exception("SENDGRID_API_KEY not configured")
         
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = email
-        msg['Subject'] = "Your EduConnect Verification Code"
-        
-        body = f"""
+        html_content = f"""
         <html>
             <body style="font-family: Arial, sans-serif; padding: 20px;">
                 <h2 style="color: #E6A55E;">Welcome to EduConnect!</h2>
@@ -580,16 +573,21 @@ def send_otp_email(email: str, otp: str):
         </html>
         """
         
-        msg.attach(MIMEText(body, 'html'))
+        message = Mail(
+            from_email=sender_email,
+            to_emails=email,
+            subject="Your EduConnect Verification Code",
+            html_content=html_content
+        )
         
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, context=context) as server:
-            server.login(sender_email, app_password)
-            server.send_message(msg)
+        sg = SendGridAPIClient(sendgrid_api_key)
+        response = sg.send(message)
         
+        print(f"SendGrid response status: {response.status_code}")
         return True
+        
     except Exception as e:
-        print(f"Email send error: {str(e)}")
+        print(f"SendGrid email send error: {str(e)}")
         return False
 
 # --------------------- Authentication Routes ---------------------

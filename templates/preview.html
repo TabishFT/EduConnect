@@ -32,18 +32,57 @@
   --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   --accent: #E6A55E;
   --accent-hover: #D89144;
-  --error: #DC2626; /* Error color */
+  --error: #DC2626;
+}
+
+.cursor-trail {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: trailFade 0.5s ease-out forwards;
+}
+
+@keyframes trailFade {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
 }
 
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: var(--background);
+  background: linear-gradient(135deg, #1A1F2C 0%, #0F1419 100%);
   color: var(--foreground);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 2rem 0; /* Body mein upar neeche padding */
+  padding: 0;
+  position: relative;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(230, 165, 94, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(230, 165, 94, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 .toast {
   position: fixed;
@@ -59,16 +98,58 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Layout */
-.container {
-  /* कंप्यूटर पर प्रीव्यू की चौड़ाई कम करने के लिए max-width को 700px किया गया */
-  max-width: 700px; /* Thoda wider container preview ke liye */
-  width: 100%; /* Ensure container takes width */
+header {
+  padding: 1.25rem 0;
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
-  flex: 1; /* Container ko available space lene dena */
-  display: flex; /* Flex container banana */
-  flex-direction: column; /* Content ko vertically align karna */
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 2px;
+}
+
+.container {
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 /* Header for Preview Page */
@@ -116,18 +197,18 @@ body {
 
 /* Profile Picture Styling */
 .profile-picture {
-  width: 100px; /* Thoda chhota size */
-  height: 100px;
-  border-radius: 50%;
-  object-fit: cover; /* Ensure image covers the area without distortion */
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
+  object-fit: cover;
   border: 2px solid var(--accent);
 }
 
 /* Placeholder for image */
 .placeholder-img {
-  width: 100px; /* Thoda chhota size */
-  height: 100px;
-  border-radius: 50%;
+  width: 150px;
+  height: 150px;
+  border-radius: 8px;
   background-color: rgba(255, 255, 255, 0.05);
   display: flex;
   align-items: center;
@@ -290,21 +371,30 @@ body {
   padding-bottom: 1rem; /* Neeche padding, nav bar ke liye adjust ho sakta hai */
 }
 
-.btn-outline { /* Same style as index.html */
-  background: transparent;
-  color: var(--foreground);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.btn-outline {
+  background: linear-gradient(135deg, var(--accent) 0%, #F3C88C 100%);
+  color: #111824;
+  border: none;
   border-radius: var(--radius);
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 2rem;
   font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  box-shadow: 0 4px 16px rgba(230, 165, 94, 0.3);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  display: inline-block;
 }
 
 .btn-outline:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(230, 165, 94, 0.4), 0 0 0 1px rgba(230, 165, 94, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-outline:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
 }
 
 /* Message for no data */
@@ -341,8 +431,8 @@ body {
       margin-bottom: 1rem;
   }
    .placeholder-img, .profile-picture {
-       width: 80px;
-       height: 80px;
+       width: 120px;
+       height: 120px;
    }
    .preview-name h2 {
        font-size: 1.5rem; /* Mobile par naam ka size kam */
@@ -389,6 +479,11 @@ body {
 </style>
 </head>
 <body>
+  <header>
+    <div class="header-container">
+      <div class="logo">EduConnect</div>
+    </div>
+  </header>
   <div class="container">
     <div class="preview-header">
       <h1>Profile Preview</h1>
@@ -417,7 +512,7 @@ body {
   </div>
 
 
-  
+
 <script>
 // Show toast
 function showToast(message, type = 'success') {
@@ -435,7 +530,7 @@ function showToast(message, type = 'success') {
 // View Resume
 function viewResume() {
     const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
-    
+
     // Always check localStorage first for the latest resume URL
     const resumeUrl = localStorage.getItem('resumeUrl') || profileData.resumeUrl;
 
@@ -447,7 +542,7 @@ function viewResume() {
     } else if (!finalUrl.includes('updatedAt=')) {
       finalUrl += `&updatedAt=${Date.now()}`;
     }
-    
+
     window.open(finalUrl, '_blank');
   } else {
     showToast('No resume found. Please upload a resume in your profile.', 'error');
@@ -459,13 +554,13 @@ async function saveToFirebaseAndContinue() {
     try {
         console.log('Starting save to Firebase...');
         showToast('Saving profile...', 'info');
-        
+
         const profileData = JSON.parse(localStorage.getItem('internProfileData') || '{}');
-        
+
         // Update profile data with latest URLs from localStorage
         const latestProfilePicture = localStorage.getItem('profilePictureUrl');
         const latestResumeUrl = localStorage.getItem('resumeUrl');
-        
+
         if (latestProfilePicture) {
             profileData.profilePicture = latestProfilePicture;
         }
@@ -485,7 +580,7 @@ async function saveToFirebaseAndContinue() {
         const res = await fetch('/api/intern_profile', {
             method: 'POST',
             credentials: 'include',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
@@ -493,7 +588,7 @@ async function saveToFirebaseAndContinue() {
         });
 
         console.log('Response status:', res.status);
-        
+
         if (!res.ok) {
             const errorData = await res.json().catch(() => ({ detail: 'Unknown error' }));
             throw new Error(errorData.detail || `Server error: ${res.status}`);
@@ -501,10 +596,10 @@ async function saveToFirebaseAndContinue() {
 
         const result = await res.json();
         console.log('Save result:', result);
-        
+
         showToast('Profile saved successfully!', 'success');
         localStorage.setItem('selectedRole', 'intern');
-        
+
         // Wait a bit for the toast to show, then redirect
         setTimeout(() => {
             console.log('Redirecting to /home...');
@@ -520,16 +615,16 @@ async function saveToFirebaseAndContinue() {
 // DOM loaded
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing preview...');
-    
+
     const profileDataString = localStorage.getItem('internProfileData');
 
     if (profileDataString) {
         let profileData = JSON.parse(profileDataString);
-        
+
         // Always use the latest URLs from localStorage
         const latestProfilePic = localStorage.getItem('profilePictureUrl') || profileData.profilePicture;
         const latestResumeUrl = localStorage.getItem('resumeUrl') || profileData.resumeUrl;
-        
+
         let profilePicUrl = latestProfilePic || '';
         if (profilePicUrl) {
            if (!profilePicUrl.includes('?')) {
@@ -557,10 +652,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         const previewHTML = `
-            <div class="preview-personal">  
+            <div class="preview-personal">
                 <div class="preview-pic">
                     ${profilePicUrl ?
-                        `<img src="${profileData.profilePicture}" alt="Profile Picture" class="profile-picture">` :
+                        `<img src="${profilePicUrl}" alt="Profile Picture" class="profile-picture">` :
                         `<div class="placeholder-img">No Image</div>`}
                 </div>
                 <div class="preview-name">
@@ -617,13 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${makeSocialLink('github', profileData.github)}
                 </div>
             </div>` : ''}
-            ${hasValue(profileData.resumeUrl) || hasValue(localStorage.getItem('resumeUrl')) ? `
-            <div class="preview-section-item">
-                <h3>Resume</h3>
-                <div class="resume-section">
-                    <button class="btn-view-resume" onclick="viewResume()">View Resume</button>
-                </div>
-            </div>` : ''}
+
         `;
 
         previewContent.innerHTML = previewHTML;
@@ -646,20 +735,26 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
         console.error('Continue button not found!');
     }
-}
-);
 
+    // Cursor trailing effect
+    let lastTrailTime = 0;
+    document.addEventListener('mousemove', (e) => {
+        const now = Date.now();
+        if (now - lastTrailTime > 40) {
+            const trail = document.createElement('div');
+            trail.className = 'cursor-trail';
+            trail.style.left = e.clientX + 'px';
+            trail.style.top = e.clientY + 'px';
+            document.body.appendChild(trail);
 
+            setTimeout(() => {
+                trail.remove();
+            }, 500);
 
-  // Bind continue button safely
-  document.addEventListener('DOMContentLoaded', function () {
-    document.getElementById('continue-btn')?.addEventListener('click', function (e) {
-      e.preventDefault();
-      localStorage.setItem('selectedRole', 'intern');
-      saveToFirebaseAndContinue();
+            lastTrailTime = now;
+        }
     });
-  });
-
+});
 </script>
 </body>
 </html>

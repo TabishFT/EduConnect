@@ -8,13 +8,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👤</text></svg>">
-  <!-- Add to <head> section of all pages -->
-<link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   <style>
-        /* Import Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-/* Reset and Base Styles */
 * {
   margin: 0;
   padding: 0;
@@ -22,7 +19,6 @@
 }
 
 :root {
-  /* Premium color scheme with dark blue-gray & gold accents */
   --background: #1A1F2C;
   --foreground: #F9F7F7;
   --card: #111824;
@@ -41,15 +37,53 @@
 
 body {
   font-family: 'Poppins', sans-serif;
-  background-color: var(--background);
+  background: linear-gradient(135deg, #1A1F2C 0%, #0F1419 100%);
   color: var(--foreground);
   line-height: 1.6;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
 }
 
-/* Typography */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 20% 50%, rgba(230, 165, 94, 0.05) 0%, transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(230, 165, 94, 0.08) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cursor-trail {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation: trailFade 0.5s ease-out forwards;
+}
+
+@keyframes trailFade {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.2);
+  }
+}
+
 h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   line-height: 1.2;
@@ -57,13 +91,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1 {
-  font-size: 2.5rem;
-  letter-spacing: -0.5px;
+  font-size: 2.75rem;
+  letter-spacing: -1px;
 }
 
 h2 {
   font-size: 2rem;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
 }
 
 h3 {
@@ -72,34 +106,38 @@ h3 {
 
 p {
   margin-bottom: 1rem;
+  font-weight: 300;
 }
 
 a {
   color: var(--accent);
   text-decoration: none;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 a:hover {
   color: var(--accent-hover);
+  text-decoration: underline;
 }
 
-/* Layout */
 .container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 header {
-  padding: 1rem 0;
-  background-color: rgba(17, 24, 39, 0.95);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  padding: 1.25rem 0;
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   position: sticky;
   top: 0;
   z-index: 100;
   border-bottom: 1px solid var(--border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .header-container {
@@ -116,6 +154,20 @@ header {
   font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.5px;
+  text-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
+  position: relative;
+  padding-bottom: 0.25rem;
+}
+
+.logo::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 40%;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 2px;
 }
 
 nav ul {
@@ -129,6 +181,7 @@ nav a {
   font-weight: 500;
   position: relative;
   padding-bottom: 0.25rem;
+  transition: all 0.3s ease;
 }
 
 nav a::after {
@@ -137,14 +190,20 @@ nav a::after {
   width: 0;
   height: 2px;
   bottom: -2px;
-  left: 0;
-  background-color: var(--accent);
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
   transition: width 0.3s ease;
 }
 
 nav a:hover::after,
 nav a.active::after {
   width: 100%;
+}
+
+nav a:hover {
+  color: var(--accent);
+  text-decoration: none;
 }
 
 nav a.active {
@@ -154,12 +213,26 @@ nav a.active {
 main {
   flex: 1;
   padding: 4rem 0;
+  position: relative;
+  z-index: 1;
 }
 
 .intro {
   text-align: center;
   max-width: 800px;
-  margin: 0 auto 3rem;
+  margin: 0 auto 3.5rem;
+  animation: fadeInDown 0.8s ease;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .intro h1 {
@@ -168,79 +241,136 @@ main {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-bottom: 1rem;
+  font-weight: 700;
 }
 
-/* Form Container */
+.intro p {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 400;
+}
+
 .form-container {
-  background-color: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  max-width: 800px;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(17, 24, 39, 0.9) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(230, 165, 94, 0.1);
+  max-width: 850px;
   margin: 0 auto;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  animation: fadeInUp 0.8s ease;
 }
 
-/* Progress Bar */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .progress-container {
-  padding-top: 1.5rem;
-  background: var(--card);
+  padding: 2rem 0 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid var(--border);
 }
 
 .steps {
   display: flex;
   justify-content: space-between;
-  padding: 0 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 0 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.steps::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 2rem;
+  right: 2rem;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-50%);
+  z-index: 0;
 }
 
 .step {
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.875rem;
   position: relative;
   flex: 1;
   text-align: center;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+  font-weight: 500;
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.05);
 }
 
 .step.active {
   color: var(--accent);
   font-weight: 600;
-  transform: scale(1.05);
+}
+
+.step.active::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 6px rgba(230, 165, 94, 0.2), 0 0 20px rgba(230, 165, 94, 0.4);
+  width: 14px;
+  height: 14px;
+  top: -10px;
 }
 
 .progress-bar {
-  background-color: rgba(255, 255, 255, 0.1);
-  height: 3px;
+  background-color: rgba(255, 255, 255, 0.08);
+  height: 4px;
   width: 0;
   transition: width 0.5s ease;
-  border-radius: 3px;
+  border-radius: 4px;
+  margin: 0 2rem;
+  overflow: hidden;
 }
 
 .progress {
   background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
   height: 100%;
   width: 0;
-  transition: width 0.5s ease;
-  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 4px;
+  box-shadow: 0 0 12px rgba(230, 165, 94, 0.5);
 }
 
-/* Form Steps */
 .form-step {
   display: none;
-  padding: 2.5rem;
+  padding: 3rem;
 }
 
 .form-step.active {
   display: block;
-  animation: fadeIn 0.5s ease;
+  animation: fadeIn 0.6s ease;
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(15px);
   }
   to {
     opacity: 1;
@@ -250,32 +380,34 @@ main {
 
 .form-step h2 {
   color: white;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 .form-step p {
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 2rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin-bottom: 2.5rem;
+  font-size: 1rem;
 }
 
-/* Form Controls */
 .form-controls {
   display: flex;
   justify-content: space-between;
-  padding: 1.5rem 2.5rem;
+  padding: 1.75rem 3rem;
   border-top: 1px solid var(--border);
-  background-color: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
-/* Form Groups */
 .form-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .form-row {
   display: flex;
   gap: 1.5rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.75rem;
 }
 
 .form-group.half {
@@ -284,209 +416,288 @@ main {
 
 label {
   display: block;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.625rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.9375rem;
+  letter-spacing: 0.2px;
 }
 
 input, select, textarea {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.125rem;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
   color: white;
   font-family: 'Poppins', sans-serif;
-  transition: all 0.3s ease;
+  font-size: 0.9375rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: rgba(230, 165, 94, 0.3);
+  background-color: rgba(255, 255, 255, 0.07);
 }
 
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(230, 165, 94, 0.15), 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
 
 input.error, select.error, textarea.error {
   border-color: var(--error);
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
 }
 
 input[type="file"] {
-  padding: 0.5rem 0;
-  background: none;
-  border: none;
+  padding: 0.75rem 0;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.15);
   cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.3s ease;
+}
+
+input[type="file"]:hover {
+  border-color: rgba(230, 165, 94, 0.4);
+  background: rgba(230, 165, 94, 0.05);
 }
 
 .checkbox {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.625rem;
+  margin-top: 0.625rem;
 }
 
 .checkbox input {
   width: auto;
+  cursor: pointer;
 }
 
 .checkbox label {
   margin-bottom: 0;
   font-weight: normal;
   color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
 }
 
-/* Social Inputs */
 .social-input {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .social-input span {
-  min-width: 80px;
-  color: rgba(255, 255, 255, 0.7);
+  min-width: 90px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 500;
+  font-size: 0.9375rem;
 }
 
-/* Skill Input */
 .skill-input-container {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
+  align-items: stretch;
 }
 
-.skill-input-container input {
+.skill-input-container input,
+.skill-input-container select {
   flex: 1;
 }
 
-/* Buttons */
 button {
   cursor: pointer;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+button:hover::before {
+  width: 300px;
+  height: 300px;
 }
 
 .btn-primary {
-  background: linear-gradient(90deg, var(--accent) 0%, #F3C88C 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, #F3C88C 100%);
   color: #111824;
   border: none;
   border-radius: var(--radius);
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 2rem;
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.3px;
-  box-shadow: 0 4px 10px rgba(230, 165, 94, 0.2);
+  box-shadow: 0 4px 16px rgba(230, 165, 94, 0.3);
+  position: relative;
+  z-index: 1;
 }
 
 .btn-primary:hover {
-  box-shadow: 0 6px 15px rgba(230, 165, 94, 0.3);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(230, 165, 94, 0.4), 0 0 0 1px rgba(230, 165, 94, 0.5);
+  transform: translateY(-2px);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 2px 5px rgba(230, 165, 94, 0.2);
+  box-shadow: 0 2px 8px rgba(230, 165, 94, 0.3);
 }
 
 .btn-outline {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.03);
   color: var(--foreground);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius);
-  padding: 0.75rem 1.5rem;
+  padding: 0.875rem 2rem;
   font-size: 1rem;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-outline:hover {
   border-color: var(--accent);
   color: var(--accent);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: rgba(230, 165, 94, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
 }
 
 .btn-outline:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-outline:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--foreground);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .btn-secondary {
-  background-color: rgba(230, 165, 94, 0.1);
+  background: rgba(230, 165, 94, 0.12);
   color: var(--accent);
-  border: 1px solid var(--accent);
+  border: 1px solid rgba(230, 165, 94, 0.3);
   border-radius: var(--radius);
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  margin-top: 1rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  margin-top: 1.25rem;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-secondary:hover {
-  background-color: rgba(230, 165, 94, 0.2);
-  box-shadow: 0 4px 8px rgba(230, 165, 94, 0.1);
+  background: rgba(230, 165, 94, 0.2);
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(230, 165, 94, 0.2);
+  transform: translateY(-2px);
 }
 
 .btn-remove {
-  background-color: rgba(220, 38, 38, 0.1);
+  background: rgba(220, 38, 38, 0.12);
   color: var(--error);
   border: 1px solid rgba(220, 38, 38, 0.3);
   border-radius: var(--radius);
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  margin-top: 1rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  margin-top: 1.25rem;
+  position: relative;
+  z-index: 1;
 }
 
 .btn-remove:hover {
-  background-color: rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.2);
+  border-color: var(--error);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+  transform: translateY(-2px);
 }
 
-/* Education & Experience Entries */
 .education-entry, .experience-entry {
   position: relative;
-  padding: 1rem 0;
+  padding: 1.5rem 0;
 }
 
 .divider {
   height: 1px;
-  background-color: var(--border);
-  margin: 1.5rem 0 2rem;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  margin: 2rem 0;
 }
 
-/* Skills */
 .skills-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin: 1rem 0 2rem;
+  gap: 0.875rem;
+  margin: 1.25rem 0 2rem;
 }
 
 .skill-tag {
-  background-color: rgba(230, 165, 94, 0.15);
+  background: linear-gradient(135deg, rgba(230, 165, 94, 0.15) 0%, rgba(230, 165, 94, 0.1) 100%);
   color: var(--accent);
   border-radius: 9999px;
-  padding: 0.35rem 0.85rem;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
   display: inline-flex;
   align-items: center;
   border: 1px solid rgba(230, 165, 94, 0.3);
   position: relative;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.skill-tag:hover {
+  background: linear-gradient(135deg, rgba(230, 165, 94, 0.25) 0%, rgba(230, 165, 94, 0.15) 100%);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(230, 165, 94, 0.2);
 }
 
 .remove-skill {
-  margin-left: 0.5rem;
+  margin-left: 0.625rem;
   cursor: pointer;
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   line-height: 0.8;
-  opacity: 0.7;
-  transition: opacity 0.2s;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+  font-weight: 700;
 }
 
 .remove-skill:hover {
   opacity: 1;
+  color: var(--error);
+  transform: scale(1.2);
 }
 
-/* Footer */
 footer {
-  background-color: rgba(17, 24, 39, 0.95);
+  background: rgba(17, 24, 39, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   padding: 2rem 0;
   margin-top: 4rem;
   border-top: 1px solid var(--border);
+  position: relative;
+  z-index: 1;
 }
 
 .footer-container {
@@ -501,35 +712,41 @@ footer {
 
 .footer-links {
   display: flex;
-  gap: 1.5rem;
+  gap: 2rem;
 }
 
 .footer-links a {
   color: rgba(255, 255, 255, 0.7);
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  font-weight: 400;
 }
 
 .footer-links a:hover {
   color: var(--accent);
+  text-decoration: none;
+  transform: translateY(-2px);
 }
 
-/* Toast Notifications */
 .toast {
   position: fixed;
-  bottom: 20px;
+  bottom: 2rem;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(100px);
   background: #4CAF50;
   color: white;
-  padding: 15px;
-  border-radius: 5px;
+  padding: 0;
+  border-radius: calc(var(--radius) + 2px);
   display: none;
   z-index: 1000;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .toast.show {
   display: block;
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
 }
 
 .toast.error {
@@ -537,34 +754,49 @@ footer {
 }
 
 .toast-content {
-  border-radius: var(--radius);
-  padding: 1rem 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: calc(var(--radius) + 2px);
+  padding: 1.125rem 1.75rem;
   color: white;
   font-weight: 500;
+  font-size: 0.9375rem;
 }
 
 .toast.success .toast-content {
-  background-color: var(--success);
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
 }
 
-/* Responsive Design */
+.toast.error .toast-content {
+  background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+}
+
+.toast.info .toast-content {
+  background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
 @media (max-width: 768px) {
   .steps {
-    display: none; /* Progress steps ko mobile par hide karein */
+    display: none;
   }
   .form-step {
-    padding: 1.5rem; /* Mobile par form step padding kam karein */
+    padding: 2rem 1.5rem;
   }
   .form-controls {
-    padding: 1rem 1.5rem; /* Mobile par form controls padding kam karein */
+    padding: 1.5rem;
+    flex-direction: column;
+    gap: 1rem;
   }
   .form-row {
-    flex-direction: column; /* Form row ko mobile par stack karein */
+    flex-direction: column;
     gap: 0;
   }
   nav ul {
-    gap: 1rem; /* Mobile par navigation links ke beech gap kam karein */
+    gap: 1rem;
+  }
+  h1 {
+    font-size: 2.25rem;
+  }
+  .progress-container {
+    padding: 1.5rem 0 1rem;
   }
 }
 
@@ -584,73 +816,92 @@ footer {
     justify-content: center;
   }
   .btn-primary, .btn-outline {
-    padding: 0.75rem 1rem; /* Chhote screens par buttons ki padding kam karein */
+    padding: 0.75rem 1.5rem;
+    width: 100%;
   }
   .intro h1 {
-    font-size: 2rem; /* Chhote screens par heading ka size kam karein */
+    font-size: 2rem;
   }
   .form-step {
-    padding: 1.25rem; /* Chhote screens par form step padding aur kam karein */
+    padding: 1.75rem 1.25rem;
+  }
+  .social-input {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .social-input span {
+    min-width: auto;
   }
 }
 
-/* Select dropdown options ke liye styles */
 select option {
-  color: black;
-  background-color: white;
+  color: white;
+  background-color: #1A1F2C;
 }
 
-/* Add these styles to your existing CSS */
+select optgroup {
+  background-color: #111824;
+  color: var(--accent);
+  font-weight: 600;
+}
+
 .skill-select {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.125rem;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
   color: white;
   font-family: 'Poppins', sans-serif;
-  transition: all 0.3s ease;
-  margin-bottom: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 0;
 }
 
 .skill-select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(230, 165, 94, 0.15);
 }
 
 .skill-select option {
-  background-color: var(--card);
+  background-color: #1A1F2C;
   color: white;
-  padding: 0.5rem;
-}
-
-.skill-select optgroup {
-  background-color: var(--card);
-  color: var(--accent);
-  font-weight: 600;
+  padding: 0.625rem;
 }
 
 .skill-input {
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.875rem 1.125rem;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background-color: var(--input-bg);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(255, 255, 255, 0.05);
   color: white;
   font-family: 'Poppins', sans-serif;
-  transition: all 0.3s ease;
-  margin-bottom: 0.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 0;
 }
 
 .skill-input:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(230, 165, 94, 0.2);
+  background-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(230, 165, 94, 0.15);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 120px;
 }
 </style>
 </head>
 <body>
+  <header>
+    <div class="header-container">
+      <div class="logo">EduConnect</div>
+    </div>
+  </header>
   <main>
     <div class="container">
       <div class="intro">
@@ -689,16 +940,10 @@ select option {
             <label for="fullname">Full Name*</label>
             <input type="text" id="fullname" required autocomplete="name">
           </div>
-          
-          <div class="form-row">
-            <div class="form-group half">
-              <label for="profession">Profession*</label>
-              <input type="text" id="profession" required autocomplete="organization-title">
-            </div>
-            <div class="form-group half">
-              <label for="location">Location</label>
-              <input type="text" id="location" placeholder="City, Country" autocomplete="address-level2">
-            </div>
+
+          <div class="form-group">
+            <label for="location">Location</label>
+            <input type="text" id="location" placeholder="City, Country" autocomplete="address-level2">
           </div>
           <div class="form-group">
             <label for="bio">Bio/Summary</label>
@@ -770,72 +1015,65 @@ select option {
           <p>Showcase your key skills.</p>
           <div class="form-group">
             <label for="skill-input">Key Skills</label>
-            <div class="skill-input-container">
-              <select id="skill-select" class="skill-select">
-                <option value="">Select a skill</option>
-                <optgroup label="Programming Languages">
-                  <option value="Python">Python</option>
-                  <option value="JavaScript">JavaScript</option>
-                  <option value="Java">Java</option>
-                  <option value="C++">C++</option>
-                  <option value="C#">C#</option>
-                  <option value="Ruby">Ruby</option>
-                  <option value="PHP">PHP</option>
-                  <option value="Swift">Swift</option>
-                  <option value="Kotlin">Kotlin</option>
-                  <option value="Go">Go</option>
-                </optgroup>
-                <optgroup label="Web Development">
-                  <option value="HTML5">HTML5</option>
-                  <option value="CSS3">CSS3</option>
-                  <option value="React">React</option>
-                  <option value="Angular">Angular</option>
-                  <option value="Vue.js">Vue.js</option>
-                  <option value="Node.js">Node.js</option>
-                  <option value="Express.js">Express.js</option>
-                  <option value="Django">Django</option>
-                  <option value="Flask">Flask</option>
-                  <option value="Laravel">Laravel</option>
-                </optgroup>
-                <optgroup label="Databases">
-                  <option value="MySQL">MySQL</option>
-                  <option value="PostgreSQL">PostgreSQL</option>
-                  <option value="MongoDB">MongoDB</option>
-                  <option value="Redis">Redis</option>
-                  <option value="SQLite">SQLite</option>
-                  <option value="Oracle">Oracle</option>
-                </optgroup>
-                <optgroup label="DevOps & Tools">
-                  <option value="Git">Git</option>
-                  <option value="Docker">Docker</option>
-                  <option value="Kubernetes">Kubernetes</option>
-                  <option value="AWS">AWS</option>
-                  <option value="Azure">Azure</option>
-                  <option value="GCP">Google Cloud Platform</option>
-                  <option value="Jenkins">Jenkins</option>
-                  <option value="CI/CD">CI/CD</option>
-                </optgroup>
-                <optgroup label="Data Science & AI">
-                  <option value="Machine Learning">Machine Learning</option>
-                  <option value="Deep Learning">Deep Learning</option>
-                  <option value="TensorFlow">TensorFlow</option>
-                  <option value="PyTorch">PyTorch</option>
-                  <option value="Data Analysis">Data Analysis</option>
-                  <option value="Data Visualization">Data Visualization</option>
-                </optgroup>
-                <optgroup label="Mobile Development">
-                  <option value="React Native">React Native</option>
-                  <option value="Flutter">Flutter</option>
-                  <option value="Android Development">Android Development</option>
-                  <option value="iOS Development">iOS Development</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option value="other">Add Custom Skill</option>
-                </optgroup>
-              </select>
-              <input type="text" id="skill-input" class="skill-input" placeholder="Enter a custom skill" style="display: none;">
-              <button type="button" class="btn-secondary" id="add-skill">Add</button>
+            <div id="skills-checkbox-container" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.12); border-radius: var(--radius); padding: 1rem; background: rgba(255,255,255,0.05); margin-bottom: 1rem;">
+              <div style="margin-bottom: 1rem;"><strong style="color: var(--accent);">Programming Languages</strong></div>
+              <label class="checkbox"><input type="checkbox" value="Python"> Python</label>
+              <label class="checkbox"><input type="checkbox" value="JavaScript"> JavaScript</label>
+              <label class="checkbox"><input type="checkbox" value="Java"> Java</label>
+              <label class="checkbox"><input type="checkbox" value="C++"> C++</label>
+              <label class="checkbox"><input type="checkbox" value="C#"> C#</label>
+              <label class="checkbox"><input type="checkbox" value="Ruby"> Ruby</label>
+              <label class="checkbox"><input type="checkbox" value="PHP"> PHP</label>
+              <label class="checkbox"><input type="checkbox" value="Swift"> Swift</label>
+              <label class="checkbox"><input type="checkbox" value="Kotlin"> Kotlin</label>
+              <label class="checkbox"><input type="checkbox" value="Go"> Go</label>
+              
+              <div style="margin: 1rem 0;"><strong style="color: var(--accent);">Web Development</strong></div>
+              <label class="checkbox"><input type="checkbox" value="HTML5"> HTML5</label>
+              <label class="checkbox"><input type="checkbox" value="CSS3"> CSS3</label>
+              <label class="checkbox"><input type="checkbox" value="React"> React</label>
+              <label class="checkbox"><input type="checkbox" value="Angular"> Angular</label>
+              <label class="checkbox"><input type="checkbox" value="Vue.js"> Vue.js</label>
+              <label class="checkbox"><input type="checkbox" value="Node.js"> Node.js</label>
+              <label class="checkbox"><input type="checkbox" value="Express.js"> Express.js</label>
+              <label class="checkbox"><input type="checkbox" value="Django"> Django</label>
+              <label class="checkbox"><input type="checkbox" value="Flask"> Flask</label>
+              <label class="checkbox"><input type="checkbox" value="Laravel"> Laravel</label>
+              
+              <div style="margin: 1rem 0;"><strong style="color: var(--accent);">Databases</strong></div>
+              <label class="checkbox"><input type="checkbox" value="MySQL"> MySQL</label>
+              <label class="checkbox"><input type="checkbox" value="PostgreSQL"> PostgreSQL</label>
+              <label class="checkbox"><input type="checkbox" value="MongoDB"> MongoDB</label>
+              <label class="checkbox"><input type="checkbox" value="Redis"> Redis</label>
+              <label class="checkbox"><input type="checkbox" value="SQLite"> SQLite</label>
+              <label class="checkbox"><input type="checkbox" value="Oracle"> Oracle</label>
+              
+              <div style="margin: 1rem 0;"><strong style="color: var(--accent);">DevOps & Tools</strong></div>
+              <label class="checkbox"><input type="checkbox" value="Git"> Git</label>
+              <label class="checkbox"><input type="checkbox" value="Docker"> Docker</label>
+              <label class="checkbox"><input type="checkbox" value="Kubernetes"> Kubernetes</label>
+              <label class="checkbox"><input type="checkbox" value="AWS"> AWS</label>
+              <label class="checkbox"><input type="checkbox" value="Azure"> Azure</label>
+              <label class="checkbox"><input type="checkbox" value="GCP"> Google Cloud Platform</label>
+              <label class="checkbox"><input type="checkbox" value="Jenkins"> Jenkins</label>
+              <label class="checkbox"><input type="checkbox" value="CI/CD"> CI/CD</label>
+              
+              <div style="margin: 1rem 0;"><strong style="color: var(--accent);">Data Science & AI</strong></div>
+              <label class="checkbox"><input type="checkbox" value="Machine Learning"> Machine Learning</label>
+              <label class="checkbox"><input type="checkbox" value="Deep Learning"> Deep Learning</label>
+              <label class="checkbox"><input type="checkbox" value="TensorFlow"> TensorFlow</label>
+              <label class="checkbox"><input type="checkbox" value="PyTorch"> PyTorch</label>
+              <label class="checkbox"><input type="checkbox" value="Data Analysis"> Data Analysis</label>
+              <label class="checkbox"><input type="checkbox" value="Data Visualization"> Data Visualization</label>
+              
+              <div style="margin: 1rem 0;"><strong style="color: var(--accent);">Mobile Development</strong></div>
+              <label class="checkbox"><input type="checkbox" value="React Native"> React Native</label>
+              <label class="checkbox"><input type="checkbox" value="Flutter"> Flutter</label>
+              <label class="checkbox"><input type="checkbox" value="Android Development"> Android Development</label>
+              <label class="checkbox"><input type="checkbox" value="iOS Development"> iOS Development</label>
             </div>
+            <input type="text" id="skill-input" class="skill-input" placeholder="Add custom skill" style="margin-bottom: 0.75rem;">
+            <button type="button" class="btn-secondary" id="add-skill">Add Selected Skills</button>
             <div id="skills-display-container" class="skills-container">
               </div>
           </div>
@@ -882,44 +1120,34 @@ select option {
     </div>
   </main>
 
-  
+
 
   <div id="toast" class="toast">
     <div class="toast-content"></div>
   </div>
 
-
-
-
-
-
-
-  <!-- Toast notification function -->
-<script>
+  <script>
   function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     const toastContent = toast.querySelector('.toast-content');
-    
+
     toast.className = 'toast show ' + type;
     toastContent.textContent = message;
-    
+
     setTimeout(() => {
       toast.className = 'toast';
     }, 3000);
   }
 
-  // Function to load existing profile data
   async function loadExistingProfile() {
     try {
       const response = await fetch('/api/my-profile');
       const data = await response.json();
-      
+
       if (data.success && data.profile) {
         const profile = data.profile;
-        
-        // Fill form fields with existing data
+
         document.getElementById('fullname').value = profile.fullName || '';
-        document.getElementById('profession').value = profile.headline || '';
         document.getElementById('location').value = profile.location || '';
         document.getElementById('bio').value = profile.bio || '';
         document.getElementById('field').value = profile.field || '';
@@ -931,8 +1159,7 @@ select option {
         document.getElementById('linkedin').value = profile.linkedin || '';
         document.getElementById('twitter').value = profile.twitter || '';
         document.getElementById('github').value = profile.github || '';
-        
-        // Handle skills
+
         if (profile.skills && Array.isArray(profile.skills)) {
           const skillsContainer = document.getElementById('skills-display-container');
           skillsContainer.innerHTML = '';
@@ -942,29 +1169,24 @@ select option {
             }
           });
         }
-        
-        // Store URLs in localStorage if they exist
+
         if (profile.profilePicture) {
           localStorage.setItem('profilePictureUrl', profile.profilePicture);
-          // Show preview
           showImagePreview('profilePicture', profile.profilePicture, 'profile-pic-preview');
         }
-        
+
         if (profile.resumeUrl) {
           localStorage.setItem('resumeUrl', profile.resumeUrl);
-          // Show resume link
           showResumePreview(profile.resumeUrl);
         }
-        
+
         console.log('Existing profile data loaded successfully');
       }
     } catch (error) {
       console.error('Error loading existing profile:', error);
-      // Don't show error toast as this might be a new user
     }
   }
 
-  // Helper function to add skill to display
   function addSkillToDisplay(skillText) {
     const skillsContainer = document.getElementById('skills-display-container');
     const skillTag = document.createElement('div');
@@ -976,7 +1198,6 @@ select option {
     skillsContainer.appendChild(skillTag);
   }
 
-  // Helper function to show image preview
   function showImagePreview(inputId, imageUrl, className) {
     const input = document.getElementById(inputId);
     if (input) {
@@ -987,18 +1208,16 @@ select option {
       preview.style.borderRadius = '8px';
       preview.style.marginTop = '10px';
       preview.className = className;
-      
-      // Remove existing preview if any
+
       const existingPreview = document.querySelector('.' + className);
       if (existingPreview) {
         existingPreview.remove();
       }
-      
+
       input.parentNode.appendChild(preview);
     }
   }
 
-  // Helper function to show resume preview
   function showResumePreview(resumeUrl) {
     const resumeInput = document.getElementById('resumeInput');
     if (resumeInput) {
@@ -1010,13 +1229,12 @@ select option {
         </a>
       `;
       preview.className = 'resume-preview';
-      
-      // Remove existing preview if any
+
       const existingPreview = document.querySelector('.resume-preview');
       if (existingPreview) {
         existingPreview.remove();
       }
-      
+
       resumeInput.parentNode.appendChild(preview);
     }
   }
@@ -1024,10 +1242,8 @@ select option {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Load existing profile data if editing
   loadExistingProfile();
 
-  // Form navigation
   const formSteps = document.querySelectorAll('.form-step');
   const progressBar = document.querySelector('.progress');
   const steps = document.querySelectorAll('.step');
@@ -1037,13 +1253,11 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentStep = 0;
   const totalSteps = formSteps.length;
 
-  // Update progress bar
   function updateProgress() {
     const progress = ((currentStep + 1) / totalSteps) * 100;
     progressBar.style.width = `${progress}%`;
   }
 
-  // Show current step
   function showStep(stepIndex) {
     formSteps.forEach((step, index) => {
       step.classList.toggle('active', index === stepIndex);
@@ -1064,19 +1278,16 @@ document.addEventListener('DOMContentLoaded', function() {
     updateProgress();
   }
 
-  // Next button click
   nextBtn.addEventListener('click', function() {
     if (currentStep < totalSteps - 1) {
       currentStep++;
       showStep(currentStep);
     } else {
-      // This is the final step, show Apply button and hide Next
       nextBtn.style.display = 'none';
       document.getElementById('apply-btn').style.display = 'inline-block';
     }
   });
 
-  // Previous button click
   prevBtn.addEventListener('click', function() {
     if (currentStep > 0) {
       currentStep--;
@@ -1084,25 +1295,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Function to upload file to ImageKit
   async function uploadFileToImageKit(file) {
     const formData = new FormData();
     formData.append("file", file);
 
     try {
         showToast('Uploading file...', 'info');
-        
+
         const res = await fetch("/upload", {
             method: "POST",
             body: formData,
             credentials: "include"
         });
-        
+
         if (!res.ok) {
             const errorData = await res.json();
             throw new Error(errorData.error || `Upload failed: ${res.status}`);
         }
-        
+
         const data = await res.json();
         const fullUrl = data.url + (data.url.includes('?') ? '&' : '?') + `updatedAt=${Date.now()}`;
         localStorage.setItem('resumeUrl', fullUrl);
@@ -1116,137 +1326,84 @@ document.addEventListener('DOMContentLoaded', function() {
 }
 
 
-  // Handle profile picture upload
   const profilePictureInput = document.getElementById('profilePicture');
     if (profilePictureInput) {
         profilePictureInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
-                // Validate file type
                 const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
                 if (!allowedTypes.includes(file.type)) {
                     showToast('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'error');
-                    e.target.value = ''; // Clear the input
+                    e.target.value = '';
                     return;
                 }
-                
-                // Validate file size (max 5MB)
+
                 if (file.size > 5 * 1024 * 1024) {
                     showToast('Image file size should be less than 5MB', 'error');
-                    e.target.value = ''; // Clear the input
+                    e.target.value = '';
                     return;
                 }
-                
+
                 try {
                     const imageUrl = await uploadFileToImageKit(file);
-                    
-                    // Clear old profile picture URL and set new one
                     localStorage.removeItem('profilePictureUrl');
                     localStorage.setItem('profilePictureUrl', imageUrl);
-                    
                     console.log('New profile picture URL saved:', imageUrl);
-                    
-                    // Show preview
-                    const preview = document.createElement('img');
-                    preview.src = imageUrl;
-                    preview.style.maxWidth = '150px';
-                    preview.style.maxHeight = '150px';
-                    preview.style.borderRadius = '8px';
-                    preview.style.marginTop = '10px';
-                    
-                    // Remove existing preview if any
-                    const existingPreview = document.querySelector('.profile-pic-preview');
-                    if (existingPreview) {
-                        existingPreview.remove();
-                    }
-                    
-                    preview.className = 'profile-pic-preview';
-                    e.target.parentNode.appendChild(preview);
-                    
                 } catch (error) {
                     console.error('Profile picture upload failed:', error);
-                    e.target.value = ''; // Clear the input on error
+                    e.target.value = '';
                 }
             }
         });
     }
 
-  // Handle resume upload
 const resumeInput = document.getElementById('resumeInput');
     if (resumeInput) {
         resumeInput.addEventListener('change', async function(e) {
             const file = e.target.files[0];
             if (file) {
-                // Validate file type
                 const allowedTypes = ['application/pdf'];
                 if (!allowedTypes.includes(file.type)) {
                     showToast('Please select a valid file (PDF)', 'error');
-                    e.target.value = ''; // Clear the input
+                    e.target.value = '';
                     return;
                 }
-                
-                // Validate file size (max 5MB)
+
                 if (file.size > 5 * 1024 * 1024) {
                     showToast('Resume file size should be less than 10MB', 'error');
-                    e.target.value = ''; // Clear the input
+                    e.target.value = '';
                     return;
                 }
-                
+
                 try {
                     const resumeUrl = await uploadFileToImageKit(file);
-                    
-                    // Clear old resume URL and set new one
                     localStorage.removeItem('resumeUrl');
                     localStorage.setItem('resumeUrl', resumeUrl);
-                    
                     console.log('New resume URL saved:', resumeUrl);
-                    
-                    // Show upload success message
-                    const successMsg = document.createElement('div');
-                    successMsg.textContent = `✓ Resume uploaded: ${file.name}`;
-                    successMsg.style.color = 'green';
-                    successMsg.style.fontSize = '14px';
-                    successMsg.style.marginTop = '5px';
-                    successMsg.className = 'resume-upload-success';
-                    
-                    // Remove existing success message if any
-                    const existingMsg = document.querySelector('.resume-upload-success');
-                    if (existingMsg) {
-                        existingMsg.remove();
-                    }
-                    
-                    e.target.parentNode.appendChild(successMsg);
-                    
                 } catch (error) {
                     console.error('Resume upload failed:', error);
-                    e.target.value = ''; // Clear the input on error
+                    e.target.value = '';
                 }
             }
         });
     }
 
 
-  // Save profile data to localStorage
   async function saveProfileData() {
-    // Get uploaded file URLs from localStorage - these are the most recent uploads
     const profilePictureUrl = localStorage.getItem('profilePictureUrl') || '';
     const resumeUrl = localStorage.getItem('resumeUrl') || '';
-    
+
     console.log('Latest profile picture URL:', profilePictureUrl);
     console.log('Latest resume URL:', resumeUrl);
-    
-    // Create profile data object
+
     const profileData = {
         fullName: document.getElementById('fullname').value,
-        profession: document.getElementById('profession').value,
         bio: document.getElementById('bio').value,
-        profilePicture: profilePictureUrl, // Use latest uploaded URL
-        resumeUrl: resumeUrl, // Use latest uploaded URL
+        profilePicture: profilePictureUrl,
+        resumeUrl: resumeUrl,
         field: document.getElementById('field')?.value || '',
         headline: document.getElementById('headline')?.value || '',
         industry: document.getElementById('industry')?.value || '',
-        company: document.getElementById('company')?.value || '',
-        workExperience: document.getElementById('workExperience')?.value || '',
         website: document.getElementById('website')?.value || '',
         education: Array.from(document.querySelectorAll('#education-entries .education-entry')).map(entry => ({
             degree: entry.querySelector('[id^="degree"]')?.value || '',
@@ -1262,17 +1419,15 @@ const resumeInput = document.getElementById('resumeInput');
         github: document.getElementById('github').value
     };
 
-    // Store profile data in localStorage
     localStorage.setItem('internProfileData', JSON.stringify(profileData));
     console.log('Profile data saved to localStorage:', profileData);
 
-    // Set role and redirect to preview
     try {
         showToast('Setting role...', 'info');
-        
+
         const res = await fetch('/api/set_role', {
             method: 'POST',
-            headers: { 
+            headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             },
@@ -1296,7 +1451,6 @@ const resumeInput = document.getElementById('resumeInput');
 }
 
 
-  // Get skills from the form
   function getSkills() {
     const skillsDisplayContainer = document.getElementById('skills-display-container');
     if (!skillsDisplayContainer) return [];
@@ -1310,19 +1464,17 @@ const resumeInput = document.getElementById('resumeInput');
     return skills;
   }
 
-  // Function to add a skill tag to the display (needed for loading)
   function addSkillTag(skill) {
     if (skill && skill.trim()) {
       const skillsDisplayContainer = document.getElementById('skills-display-container');
       if (!skillsDisplayContainer) return;
-      
-      // Check if skill already exists
+
       const existingSkills = getSkills();
       if (existingSkills.includes(skill.trim())) {
         showToast('This skill already exists!', 'error');
         return;
       }
-      
+
       const skillTag = document.createElement('div');
       skillTag.className = 'skill-tag';
       skillTag.innerHTML = `${skill.trim()} <span class="remove-skill">×</span>`;
@@ -1338,59 +1490,36 @@ const resumeInput = document.getElementById('resumeInput');
     }
   }
 
-  // Add skill button logic
   const addSkillBtn = document.getElementById('add-skill');
   const skillSelect = document.getElementById('skill-select');
   const skillInput = document.getElementById('skill-input');
 
-  if (addSkillBtn && skillSelect && skillInput) {
+  if (addSkillBtn && skillInput) {
     addSkillBtn.addEventListener('click', function() {
-      let skillValue = '';
-
-      if (skillSelect.value === 'other') {
-        skillValue = skillInput.value.trim();
-      } else {
-        skillValue = skillSelect.value;
-      }
-
-      if (skillValue) {
-        addSkillTag(skillValue);
-
-        // Reset inputs
-        skillSelect.value = '';
+      const checkboxes = document.querySelectorAll('#skills-checkbox-container input[type="checkbox"]:checked');
+      checkboxes.forEach(cb => {
+        addSkillTag(cb.value);
+        cb.checked = false;
+      });
+      
+      const customSkill = skillInput.value.trim();
+      if (customSkill) {
+        addSkillTag(customSkill);
         skillInput.value = '';
-        skillInput.style.display = 'none';
-        skillSelect.style.display = 'block';
       }
     });
 
-    // Add change listener for skillSelect to toggle skillInput display
-    skillSelect.addEventListener('change', function() {
-      if (this.value === 'other') {
-        skillInput.style.display = 'block';
-        skillSelect.style.display = 'none';
-      } else {
-        skillInput.style.display = 'none';
-        skillSelect.style.display = 'block';
-      }
-    });
-
-    // Handle custom skill input Enter key
     skillInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         if (skillInput.value.trim()) {
           addSkillTag(skillInput.value.trim());
           skillInput.value = '';
-          skillInput.style.display = 'none';
-          skillSelect.style.display = 'block';
-          skillSelect.value = '';
         }
       }
     });
   }
 
-  // Function to add education entry HTML (needed for loading and adding new)
   function addEducationEntryHtml(degree = '', institution = '', year = '') {
     const educationContainer = document.getElementById('education-entries');
     if (!educationContainer) return;
@@ -1420,7 +1549,6 @@ const resumeInput = document.getElementById('resumeInput');
     educationContainer.insertAdjacentHTML('beforeend', entryHTML);
   }
 
-  // Make removeEducationEntry globally accessible
   window.removeEducationEntry = function(button) {
     const entry = button.closest('.education-entry');
     if (entry) {
@@ -1428,7 +1556,6 @@ const resumeInput = document.getElementById('resumeInput');
     }
   };
 
-  // Add event listener for the "Add Another Education" button
   const addEducationBtn = document.getElementById('add-education');
   if (addEducationBtn) {
     addEducationBtn.addEventListener('click', function() {
@@ -1436,22 +1563,16 @@ const resumeInput = document.getElementById('resumeInput');
     });
   }
 
-  // Load data from localStorage on page load
   const urlParams = new URLSearchParams(window.location.search);
   const isEditing = urlParams.get('edit') === 'true';
 
   const profileData = JSON.parse(localStorage.getItem('internProfileData'));
 
   if (profileData) {
-    // Fill form fields with existing data
     if (document.getElementById('fullname')) document.getElementById('fullname').value = profileData.fullName || '';
-    if (document.getElementById('profession')) document.getElementById('profession').value = profileData.profession || '';
     if (document.getElementById('bio')) document.getElementById('bio').value = profileData.bio || '';
-    if (document.getElementById('company')) document.getElementById('company').value = profileData.company || '';
-    if (document.getElementById('workExperience')) document.getElementById('workExperience').value = profileData.workExperience || '';
     if (document.getElementById('field')) document.getElementById('field').value = profileData.field || '';
 
-    // Fill education entries
     const educationContainer = document.getElementById('education-entries');
     if (educationContainer) {
       educationContainer.innerHTML = '';
@@ -1469,7 +1590,6 @@ const resumeInput = document.getElementById('resumeInput');
       }
     }
 
-    // Fill skills
     const skillsDisplayContainer = document.getElementById('skills-display-container');
     if (skillsDisplayContainer && profileData.skills && Array.isArray(profileData.skills)) {
       skillsDisplayContainer.innerHTML = '';
@@ -1489,43 +1609,10 @@ const resumeInput = document.getElementById('resumeInput');
     addEducationEntryHtml();
   }
 
-  // Show existing profile picture if available
-  const existingProfilePic = localStorage.getItem('profilePictureUrl');
-  if (existingProfilePic) {
-    const preview = document.createElement('img');
-    preview.src = existingProfilePic;
-    preview.style.maxWidth = '150px';
-    preview.style.maxHeight = '150px';
-    preview.style.borderRadius = '8px';
-    preview.style.marginTop = '10px';
-    preview.className = 'profile-pic-preview';
-    
-    const profilePicInput = document.getElementById('profilePicture');
-    if (profilePicInput) {
-      profilePicInput.parentNode.appendChild(preview);
-    }
-  }
-  
-  // Show existing resume if available
-  const existingResume = localStorage.getItem('resumeUrl');
-  if (existingResume) {
-    const successMsg = document.createElement('div');
-    successMsg.textContent = '✓ Resume already uploaded';
-    successMsg.style.color = 'green';
-    successMsg.style.fontSize = '14px';
-    successMsg.style.marginTop = '5px';
-    successMsg.className = 'resume-upload-success';
-    
-    const resumeInput = document.getElementById('resumeInput');
-    if (resumeInput) {
-      resumeInput.parentNode.appendChild(successMsg);
-    }
-  }
 
-  // Initial setup: Show the first step
+
   showStep(currentStep);
 
-  // Profile Save Logic (Apply Button)
   const applyBtn = document.getElementById('apply-btn');
   if (applyBtn) {
     applyBtn.addEventListener('click', async function(e) {
@@ -1533,6 +1620,25 @@ const resumeInput = document.getElementById('resumeInput');
       await saveProfileData();
     });
   }
+
+  // Cursor trailing effect
+  let lastTrailTime = 0;
+  document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - lastTrailTime > 40) {
+      const trail = document.createElement('div');
+      trail.className = 'cursor-trail';
+      trail.style.left = e.clientX + 'px';
+      trail.style.top = e.clientY + 'px';
+      document.body.appendChild(trail);
+
+      setTimeout(() => {
+        trail.remove();
+      }, 500);
+      
+      lastTrailTime = now;
+    }
+  });
 });
 </script>
 
