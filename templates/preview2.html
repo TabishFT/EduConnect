@@ -793,7 +793,11 @@ document.addEventListener('DOMContentLoaded', function() {
           function makeSocialLink(label, url) {
               if (!hasValue(url)) return '';
               let display = label.charAt(0).toUpperCase() + label.slice(1);
-              return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+              let fullUrl = url;
+              if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+                  fullUrl = 'https://' + fullUrl;
+              }
+              return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`;
           }
   
           const previewHTML = `
@@ -835,7 +839,7 @@ document.addEventListener('DOMContentLoaded', function() {
                   <div class="contact-info">
                       ${hasValue(startupProfileData.contactEmail) ? `<p><strong>Email:</strong> ${startupProfileData.contactEmail}</p>` : ''}
                       ${hasValue(startupProfileData.contactPhone) ? `<p><strong>Phone:</strong> ${startupProfileData.contactPhone}</p>` : ''}
-                      ${hasValue(startupProfileData.website) ? `<p><strong>Website:</strong> <a href="${startupProfileData.website}" target="_blank">${startupProfileData.website}</a></p>` : ''}
+                      ${hasValue(startupProfileData.website) ? `<p><strong>Website:</strong> <a href="${startupProfileData.website.startsWith('http://') || startupProfileData.website.startsWith('https://') ? startupProfileData.website : 'https://' + startupProfileData.website}" target="_blank">${startupProfileData.website}</a></p>` : ''}
                   </div>
                   <div class="social-links">
                       ${makeSocialLink('linkedin', startupProfileData.linkedin)}

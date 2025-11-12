@@ -648,7 +648,11 @@ document.addEventListener('DOMContentLoaded', function () {
         function makeSocialLink(label, url) {
             if (!hasValue(url)) return '';
             let display = label.charAt(0).toUpperCase() + label.slice(1);
-            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+            let fullUrl = url;
+            if (!fullUrl.startsWith('http://') && !fullUrl.startsWith('https://')) {
+                fullUrl = 'https://' + fullUrl;
+            }
+            return `<a href="${fullUrl}" target="_blank" rel="noopener noreferrer">${display}</a>`;
         }
 
         const previewHTML = `
@@ -678,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     ${hasValue(profileData.industry) ? `<p><strong>Industry:</strong> ${profileData.industry}</p>` : ''}
                     ${hasValue(profileData.company) ? `<p><strong>Company:</strong> ${profileData.company}</p>` : ''}
                     ${hasValue(profileData.workExperience) ? `<p><strong>Experience:</strong> ${profileData.workExperience}</p>` : ''}
-                    ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
+                    ${hasValue(profileData.website) ? `<p><strong>Website:</strong> <a href="${profileData.website.startsWith('http://') || profileData.website.startsWith('https://') ? profileData.website : 'https://' + profileData.website}" target="_blank">${profileData.website}</a></p>` : ''}
                 </div>
             </div>` : ''}
             ${(profileData.education && profileData.education.length > 0) ? `
